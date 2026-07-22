@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Take the version from the tag
+        run: node scripts/set-version.mjs "${GITHUB_REF_NAME#v}"
+
+      - name: Verify before publishing
+        run: |
+          pnpm -r test
+          pnpm exec eslint .
+
+      - name: Build and zip
+        run: pnpm --filter @caliper/qa-extension zip
+
+      - name: Publish to the Chrome Web Store
+        working-directory: apps/qa-extension
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: pnpm exec wxt submit --chrome-zip ".output/caliper-${GITHUB_REF_NAME#v}-chrome.zip"
+
+      - name: Attach the zip to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/qa-extension/.output/caliper-*-chrome.zip
+          generate_release_notes: true

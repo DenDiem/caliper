@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm -r test
+
+      - name: Lint
+        run: pnpm exec eslint .
+
+      - name: Type-check core
+        run: pnpm exec tsc --noEmit -p packages/core/tsconfig.json
+
+      - name: Type-check overlay
+        run: pnpm exec tsc --noEmit -p packages/overlay/tsconfig.json
+
+      - name: Type-check extension
+        run: pnpm exec tsc --noEmit -p apps/qa-extension/tsconfig.json
+
+      - name: Build extension
+        run: pnpm --filter @caliper/qa-extension build

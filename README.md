@@ -58,6 +58,31 @@ panel to review and export.
 Screenshots live in a separate `assets` map keyed by `screenshotId`, and are omitted from
 `Copy JSON` by default.
 
+## Releasing
+
+Every tag matching `v*` builds, verifies, publishes to the Chrome Web Store and attaches the zip to
+a GitHub release:
+
+```bash
+git tag v0.2.0
+git push --follow-tags
+```
+
+The workflow takes the version from the tag name, so `package.json` is never bumped by hand.
+
+**One-time setup.** The Chrome Web Store API can only *update* an existing item, so the first
+version has to be uploaded manually — that upload is what mints the extension ID. After that:
+
+1. Google Cloud Console → new project → enable **Chrome Web Store API** → OAuth client of type
+   *Desktop app*.
+2. Run `pnpm --filter @caliper/qa-extension exec wxt submit init` — it walks through the OAuth flow
+   and prints the refresh token.
+3. Add four repository secrets: `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`,
+   `CHROME_REFRESH_TOKEN`.
+4. Verify without uploading anything: `wxt submit --dry-run --chrome-zip .output/caliper-<v>-chrome.zip`.
+
+Each upload goes through Google's review, so a published tag is not live immediately.
+
 ## License
 
 MIT

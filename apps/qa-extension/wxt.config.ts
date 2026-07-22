@@ -2,6 +2,7 @@ import {defineConfig} from 'wxt';
 
 export default defineConfig({
   srcDir: 'src',
+  zip: {name: 'caliper'},
   manifest: {
     name: 'Caliper',
     description: 'Turn a clicked element into a machine-precise defect annotation.',
