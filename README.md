@@ -83,6 +83,11 @@ version has to be uploaded manually — that upload is what mints the extension 
 
 Each upload goes through Google's review, so a published tag is not live immediately.
 
+## Privacy
+
+Everything stays in `chrome.storage.local`. No backend, no network requests, no telemetry — see
+[PRIVACY.md](PRIVACY.md).
+
 ## License
 
 MIT
