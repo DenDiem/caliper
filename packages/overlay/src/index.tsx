@@ -26,7 +26,11 @@ export const mountOverlay = ({onSubmit}: OverlayOptions): OverlayHandle => {
   const tokens = collectTokens(document);
   let active = true;
   let hovered: {box: Box; label: string | null} | null = null;
+  let hoveredElement: Element | null = null;
   let selected: ElementContext | null = null;
+  let pointerX = 0;
+  let pointerY = 0;
+  let frame: number | null = null;
 
   const paint = () => {
     render(
@@ -54,20 +58,36 @@ export const mountOverlay = ({onSubmit}: OverlayOptions): OverlayHandle => {
     );
   };
 
-  const onPointerMove = (event: PointerEvent) => {
-    if (!active || selected) return;
-    const element = elementAt(document, event.clientX, event.clientY);
+  const updateHover = () => {
+    const element = elementAt(document, pointerX, pointerY);
+    if (element === hoveredElement) return;
+
+    hoveredElement = element;
+
     if (!element) {
       hovered = null;
       paint();
       return;
     }
+
     const rect = element.getBoundingClientRect();
     hovered = {
       box: {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
       label: element.tagName.toLowerCase(),
     };
     paint();
+  };
+
+  const onPointerMove = (event: PointerEvent) => {
+    if (!active || selected) return;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    if (frame !== null) return;
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      if (!active || selected) return;
+      updateHover();
+    });
   };
 
   const onClick = (event: MouseEvent) => {
@@ -78,6 +98,7 @@ export const mountOverlay = ({onSubmit}: OverlayOptions): OverlayHandle => {
     event.stopPropagation();
     selected = extractContext(element, tokens);
     hovered = null;
+    hoveredElement = null;
     paint();
   };
 
@@ -85,6 +106,7 @@ export const mountOverlay = ({onSubmit}: OverlayOptions): OverlayHandle => {
     if (event.key !== 'Escape') return;
     selected = null;
     hovered = null;
+    hoveredElement = null;
     paint();
   };
 
@@ -96,6 +118,8 @@ export const mountOverlay = ({onSubmit}: OverlayOptions): OverlayHandle => {
 
   return {
     destroy: () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
       document.removeEventListener('pointermove', onPointerMove, true);
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
@@ -106,6 +130,7 @@ export const mountOverlay = ({onSubmit}: OverlayOptions): OverlayHandle => {
       active = next;
       if (!next) {
         hovered = null;
+        hoveredElement = null;
         selected = null;
         paint();
       }

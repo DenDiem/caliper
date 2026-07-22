@@ -11,6 +11,19 @@ export default defineBackground(() => {
     await chrome.tabs.sendMessage(tab.id, {type: 'caliper/toggle'});
   });
 
+  chrome.commands.onCommand.addListener((command, tab) => {
+    if (typeof tab?.id !== 'number') return;
+
+    if (command === 'toggle-picker') {
+      void chrome.tabs.sendMessage(tab.id, {type: 'caliper/toggle'});
+      return;
+    }
+
+    if (command === 'open-panel') {
+      void chrome.sidePanel.open({tabId: tab.id});
+    }
+  });
+
   chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
     if (!isCaliperMessage(message)) return false;
 
