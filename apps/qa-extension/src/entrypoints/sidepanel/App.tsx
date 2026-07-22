@@ -1,4 +1,5 @@
 import type {CaliperSession} from '@caliper/core';
+import {toToon} from '@caliper/core';
 import {useEffect, useState} from 'preact/hooks';
 import {copyToClipboard, downloadJson, exportSession} from '../../export/export-session';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
@@ -28,6 +29,7 @@ export const App = () => {
       <header class="panel__header">
         <strong>{session.annotations.length} defects</strong>
         <div class="panel__actions">
+          <button onClick={() => void copyToClipboard(toToon(session))}>Copy TOON</button>
           <button onClick={() => void copyToClipboard(exportSession(session, {withAssets: false}))}>
             Copy JSON
           </button>
