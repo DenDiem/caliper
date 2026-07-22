@@ -2,3 +2,5 @@ export * from './schema/annotation.schema';
 export * from './selector/build-selector';
 export * from './selector/is-generated-id';
 export * from './component/resolve-component';
+export * from './styles/collect-styles';
+export * from './styles/style-allowlist';
