@@ -31,11 +31,41 @@ const namesWithValue = (tokens: TokenMap, predicate: (value: string) => boolean)
   return names;
 };
 
-const matchDimension = (value: string, tokens: TokenMap): TokenMatch => {
+const NAME_HINTS: Readonly<Record<string, readonly string[]>> = {
+  padding: ['pad', 'offset', 'space', 'gap', 'inset'],
+  margin: ['margin', 'offset', 'space', 'gap'],
+  gap: ['gap', 'space', 'offset'],
+  'font-size': ['font', 'text', 'size'],
+  'line-height': ['line', 'leading', 'height'],
+  'letter-spacing': ['letter', 'tracking'],
+  'border-radius': ['radius', 'round', 'corner'],
+  'min-height': ['height', 'size'],
+  'max-width': ['width', 'size'],
+};
+
+const hintsFor = (property: string): readonly string[] => {
+  const direct = NAME_HINTS[property];
+  if (direct) return direct;
+
+  const group = Object.keys(NAME_HINTS).find((key) => property.startsWith(key));
+  return group ? (NAME_HINTS[group] ?? []) : [];
+};
+
+const preferByName = (property: string, candidates: readonly string[]): string | null => {
+  const hints = hintsFor(property);
+  const preferred = candidates.filter((name) =>
+    hints.some((hint) => name.toLowerCase().includes(hint)),
+  );
+  return preferred.length === 1 ? (preferred[0] ?? null) : null;
+};
+
+const matchDimension = (property: string, value: string, tokens: TokenMap): TokenMatch => {
   if (!DIMENSION_VALUE_PATTERN.test(value)) return NO_MATCH;
 
   const candidates = namesWithValue(tokens, (tokenValue) => tokenValue === value);
-  const only = candidates.length === 1 ? candidates[0] : null;
+  if (candidates.length === 0) return NO_MATCH;
+
+  const only = candidates.length === 1 ? candidates[0] : preferByName(property, candidates);
 
   return only ? {token: only, tokenMatch: 'exact'} : NO_MATCH;
 };
@@ -72,7 +102,7 @@ export const matchToken = (property: string, value: string, tokens: TokenMap): T
   const normalized = value.trim();
 
   if (COLOR_PROPERTIES.has(property)) return matchColor(normalized, tokens);
-  if (DIMENSION_PROPERTY_PATTERN.test(property)) return matchDimension(normalized, tokens);
+  if (DIMENSION_PROPERTY_PATTERN.test(property)) return matchDimension(property, normalized, tokens);
 
   return NO_MATCH;
 };

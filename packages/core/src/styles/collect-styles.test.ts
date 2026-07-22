@@ -55,6 +55,28 @@ describe('collectStyles', () => {
     expect(collectStyles(query('#t'))['align-items']).toBe('center');
   });
 
+  it('drops an inherited value the element never set itself', () => {
+    document.body.innerHTML = '<div style="color: rgb(1, 2, 3)"><p id="t">x</p></div>';
+    expect(collectStyles(query('#t'))).not.toHaveProperty('color');
+  });
+
+  it('keeps an inherited property the element overrides', () => {
+    document.body.innerHTML =
+      '<div style="color: rgb(1, 2, 3)"><p id="t" style="color: rgb(9, 9, 9)">x</p></div>';
+    expect(collectStyles(query('#t'))['color']).toBe('rgb(9, 9, 9)');
+  });
+
+  it('drops the border colour when no border is actually drawn', () => {
+    document.body.innerHTML = '<div id="t" style="border-top-color: rgb(1, 2, 3)"></div>';
+    expect(collectStyles(query('#t'))).not.toHaveProperty('border-top-color');
+  });
+
+  it('keeps the border colour when a border is drawn', () => {
+    document.body.innerHTML =
+      '<div id="t" style="border-top: 2px solid rgb(1, 2, 3)"></div>';
+    expect(collectStyles(query('#t'))['border-top-color']).toBe('rgb(1, 2, 3)');
+  });
+
   it('does not report width and height, which the box already carries', () => {
     expect(STYLE_ALLOWLIST).not.toContain('width');
     expect(STYLE_ALLOWLIST).not.toContain('height');

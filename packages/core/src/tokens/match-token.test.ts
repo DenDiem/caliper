@@ -31,8 +31,23 @@ describe('matchToken', () => {
     });
   });
 
-  it('refuses to guess when several tokens share the value', () => {
-    expect(matchToken('padding-top', '16px', tokens)).toEqual({token: null, tokenMatch: null});
+  it('refuses to guess when several tokens share the value and none fits the property', () => {
+    const tied = new Map<string, string>([
+      ['--iti-flag-width', '16px'],
+      ['--mat-badge-size', '16px'],
+    ]);
+    expect(matchToken('padding-top', '16px', tied)).toEqual({token: null, tokenMatch: null});
+  });
+
+  it('picks the token whose name fits the property when values tie', () => {
+    const tied = new Map<string, string>([
+      ['--iti-flag-width', '20px'],
+      ['--offset-20px', '20px'],
+    ]);
+    expect(matchToken('padding-top', '20px', tied)).toEqual({
+      token: '--offset-20px',
+      tokenMatch: 'exact',
+    });
   });
 
   it('never matches a dimension against a colour token', () => {

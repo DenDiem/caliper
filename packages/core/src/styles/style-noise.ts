@@ -40,6 +40,28 @@ export const NOISE_VALUES: Readonly<Record<string, readonly string[]>> = {
   'z-index': ['auto'],
 };
 
+export const INHERITED_PROPERTIES: ReadonlySet<string> = new Set([
+  'color',
+  'font-family',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'letter-spacing',
+  'line-height',
+  'text-align',
+  'text-transform',
+  'white-space',
+]);
+
+export const BORDER_WIDTH_PROPERTIES: readonly string[] = [
+  'border-top-width',
+  'border-right-width',
+  'border-bottom-width',
+  'border-left-width',
+];
+
+export const BORDER_COLOR_PROPERTIES: ReadonlySet<string> = new Set(['border-top-color']);
+
 export const LAYOUT_ONLY_PROPERTIES: ReadonlySet<string> = new Set([
   'align-items',
   'column-gap',
