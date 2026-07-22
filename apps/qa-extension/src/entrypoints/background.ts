@@ -1,4 +1,5 @@
 import {isCaliperMessage} from '../messaging/messages';
+import {captureElement} from '../screenshot/capture';
 import {chromeStorageSink} from '../sinks/chrome-storage.sink';
 
 export default defineBackground(() => {
@@ -17,6 +18,13 @@ export default defineBackground(() => {
       void chromeStorageSink
         .push(message.annotation, message.screenshot)
         .then(() => sendResponse(true));
+      return true;
+    }
+
+    if (message.type === 'caliper/capture') {
+      void captureElement(message.box, message.dpr)
+        .then((dataUrl) => sendResponse(dataUrl))
+        .catch(() => sendResponse(null));
       return true;
     }
 
