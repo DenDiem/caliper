@@ -37,6 +37,7 @@ export const downloadSessionBundle = async (session: CaliperSession): Promise<vo
     await chrome.downloads.download({
       url: await toBlobUrl(dataUrl),
       filename: `${folder}/${annotation.screenshotId}.png`,
+      saveAs: false,
     });
   }
 
@@ -47,7 +48,10 @@ export const downloadSessionBundle = async (session: CaliperSession): Promise<vo
   };
 
   await chrome.downloads.download({
-    url: URL.createObjectURL(new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'})),
+    url: URL.createObjectURL(
+      new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'}),
+    ),
     filename: `${folder}/session.json`,
+    saveAs: false,
   });
 };
