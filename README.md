@@ -6,6 +6,8 @@ Visual bug reporters produce a screenshot and a sentence. Caliper produces a sta
 owning component name, and computed styles already matched against your design tokens — so an agent
 can go straight to the file and the variable instead of decoding a picture.
 
+![Arming the picker, clicking an element, describing the defect and watching it land in the session](docs/media/demo.gif)
+
 ## What is here
 
 | Package | Description |
