@@ -1,3 +1,5 @@
+<img src="docs/media/icon.png" width="88" alt="" />
+
 # Caliper
 
 Turn a clicked DOM element into a machine-precise defect annotation for an AI coding agent.

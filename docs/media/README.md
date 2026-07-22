@@ -1,5 +1,9 @@
 # Demo media
 
+`icon.png` and the extension icon set are generated, not drawn — rerun `node scripts/make-icons.mjs`
+after changing the shape or the palette. It writes 16/32/48/128 into the extension's `public/icon`
+and a 512 version here for the README and the store listing.
+
 How the GIF in the root README and the store screenshots are produced. `ffmpeg` does the work; the
 recording itself can come from anything that writes an mp4.
 
