@@ -67,7 +67,46 @@ describe('buildSelector', () => {
     expect(result.strategy).toBe('component-path');
   });
 
-  it('falls back to an nth-child path with low confidence', () => {
+  it('climbs to a further ancestor when the nearest component is ambiguous', () => {
+    render(
+      '<ram-page><ram-card><p class="t">1</p></ram-card></ram-page>' +
+        '<ram-other><ram-card><p class="t">2</p></ram-card></ram-other>',
+    );
+    const target = query('ram-other .t');
+    const result = buildSelector(target);
+    expect(result.selector).toBe('ram-other p.t');
+    expect(result.strategy).toBe('component-path');
+    expect(document.querySelectorAll(result.selector)).toHaveLength(1);
+  });
+
+  it('indexes a repeated component instead of walking up to the document', () => {
+    render(
+      '<ram-list>' +
+        '<ram-card><p class="name">first</p></ram-card>' +
+        '<ram-card><p class="name">second</p></ram-card>' +
+        '</ram-list>',
+    );
+    const target = query('ram-card:nth-of-type(2) .name');
+    const result = buildSelector(target);
+    expect(result.selector).toBe('ram-card:nth-of-type(2) p.name');
+    expect(document.querySelector(result.selector)?.textContent).toBe('second');
+  });
+
+  it('scopes an nth-child path to the owning component rather than the body', () => {
+    render(
+      '<ram-root><div><div><ram-footer><div>a</div><div><span>x</span><span>y</span></div></ram-footer></div></div></ram-root>',
+    );
+    const target = query('ram-footer div:nth-child(2)').children[1];
+    if (!target) throw new Error('missing second span');
+    const result = buildSelector(target);
+    expect(result.strategy).toBe('nth-path');
+    expect(result.confidence).toBe('low');
+    expect(result.selector.startsWith('ram-footer')).toBe(true);
+    expect(result.selector).not.toContain('ram-root');
+    expect(document.querySelector(result.selector)?.textContent).toBe('y');
+  });
+
+  it('falls back to a body-rooted nth-child path when no component owns the element', () => {
     render('<div><span>a</span><span>b</span></div>');
     const target = query('div').children[1];
     if (!target) throw new Error('missing second span');
