@@ -39,6 +39,30 @@ describe('caliperAnnotationSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('reads an annotation stored before author existed as human-authored', () => {
+    const parsed = caliperAnnotationSchema.parse(validAnnotation);
+    expect(parsed.author).toBe('human');
+    expect(parsed.concernType).toBeNull();
+    expect(parsed.verdict).toBeNull();
+  });
+
+  it('accepts an agent-authored concern carrying a verdict', () => {
+    const parsed = caliperAnnotationSchema.parse({
+      ...validAnnotation,
+      author: 'agent',
+      concernType: 'guessed-token',
+      verdict: 'needs-work',
+    });
+    expect(parsed.author).toBe('agent');
+    expect(parsed.concernType).toBe('guessed-token');
+    expect(parsed.verdict).toBe('needs-work');
+  });
+
+  it('rejects an unknown verdict', () => {
+    const result = caliperAnnotationSchema.safeParse({...validAnnotation, verdict: 'lgtm'});
+    expect(result.success).toBe(false);
+  });
+
   it('defaults an empty session to schemaVersion 1', () => {
     const session = caliperSessionSchema.parse({
       id: 's1',
