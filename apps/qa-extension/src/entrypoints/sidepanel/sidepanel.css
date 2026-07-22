@@ -132,3 +132,38 @@ body {
 .item__remove {
   margin-top: 8px;
 }
+
+.shortcuts {
+  padding: 12px 16px;
+  border-top: 1px solid var(--caliper-border);
+  color: var(--caliper-muted);
+}
+
+.shortcuts__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.shortcuts__key {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid var(--caliper-border);
+  border-radius: 3px;
+  font: 400 11px/1.4 ui-monospace, monospace;
+  color: var(--caliper-text);
+}
+
+.shortcuts__key--missing {
+  border-color: var(--caliper-blocker-text);
+  color: var(--caliper-blocker-text);
+}
+
+.shortcuts__label {
+  font-size: 11px;
+}
+
+.shortcuts__fix {
+  margin-top: 6px;
+}

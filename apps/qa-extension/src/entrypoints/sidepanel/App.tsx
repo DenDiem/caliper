@@ -3,6 +3,7 @@ import {toToon} from '@caliper/core';
 import {useEffect, useState} from 'preact/hooks';
 import {copyToClipboard, downloadSessionBundle, exportSession} from '../../export/export-session';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
+import {Shortcuts} from './Shortcuts';
 
 export const App = () => {
   const [session, setSession] = useState<CaliperSession | null>(null);
@@ -21,7 +22,12 @@ export const App = () => {
   if (!session) return <p class="empty">Loading…</p>;
 
   if (session.annotations.length === 0) {
-    return <p class="empty">No defects yet. Click the toolbar icon, then click an element.</p>;
+    return (
+      <div class="panel">
+        <p class="empty">No defects yet. Click the toolbar icon, then click an element.</p>
+        <Shortcuts />
+      </div>
+    );
   }
 
   return (
@@ -61,6 +67,8 @@ export const App = () => {
           </li>
         ))}
       </ul>
+
+      <Shortcuts />
     </div>
   );
 };
