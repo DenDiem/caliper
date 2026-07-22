@@ -2,6 +2,9 @@
 
 Copy-paste source for the store entry. Not part of the build.
 
+**Extension ID:** `biedcnpfkefnocikeonknogjcippdopm` — derived from the item's public key, public by
+design (it appears in the store URL). This is the value the `CHROME_EXTENSION_ID` secret needs.
+
 ## Name
 
 ```
