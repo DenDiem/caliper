@@ -18,10 +18,15 @@ can go straight to the file and the variable instead of decoding a picture.
 
 ```bash
 pnpm install
-pnpm --filter @caliper/qa-extension dev
+pnpm --filter @caliper/qa-extension build
 ```
 
 Then load `apps/qa-extension/.output/chrome-mv3` via `chrome://extensions` → Load unpacked.
+
+`pnpm --filter @caliper/qa-extension dev` gives you hot reload, but writes a development build to the
+same directory: it registers the content script at runtime through the dev server instead of
+declaring it in the manifest, so the picker stops working the moment that server is gone. If the
+shortcut list shows `Alt+R — Reload the extension during development`, you are running the dev build.
 
 Click the toolbar icon to arm the picker, click an element, describe the defect, save. Open the side
 panel to review and export.
