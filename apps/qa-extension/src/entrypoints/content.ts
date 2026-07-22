@@ -1,4 +1,4 @@
-import type {CaliperAnnotation} from '@caliper/core';
+import type {Box, CaliperAnnotation} from '@caliper/core';
 import {mountOverlay} from '@caliper/overlay';
 import type {AnnotationDraft, OverlayHandle} from '@caliper/overlay';
 import {isCaliperMessage} from '../messaging/messages';
@@ -30,17 +30,20 @@ export default defineContentScript({
       target: draft.context,
     });
 
-    const submit = async (draft: AnnotationDraft) => {
-      const annotation = toAnnotation(draft);
-      const screenshot: unknown = await chrome.runtime.sendMessage({
+    const capture = async (box: Box): Promise<string | null> => {
+      const result: unknown = await chrome.runtime.sendMessage({
         type: 'caliper/capture',
-        box: draft.context.box,
+        box,
         dpr: window.devicePixelRatio,
       });
+      return typeof result === 'string' ? result : null;
+    };
+
+    const submit = async (draft: AnnotationDraft) => {
       await chrome.runtime.sendMessage({
         type: 'caliper/annotation-created',
-        annotation,
-        ...(typeof screenshot === 'string' ? {screenshot} : {}),
+        annotation: toAnnotation(draft),
+        ...(draft.screenshot ? {screenshot: draft.screenshot} : {}),
       });
     };
 
@@ -51,7 +54,7 @@ export default defineContentScript({
         handle = null;
         return;
       }
-      handle = mountOverlay({onSubmit: (draft) => void submit(draft)});
+      handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft)});
     });
   },
 });

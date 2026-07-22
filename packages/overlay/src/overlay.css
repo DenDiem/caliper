@@ -60,6 +60,42 @@
   pointer-events: auto;
 }
 
+.caliper-badge {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--caliper-surface);
+  border: 1px solid var(--caliper-border);
+  box-shadow: 0 4px 12px var(--caliper-shadow);
+  font: 400 12px/1.4 system-ui, sans-serif;
+  color: var(--caliper-text);
+  pointer-events: none;
+}
+
+.caliper-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--caliper-accent);
+}
+
+.caliper-popover__shot {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  margin-bottom: 8px;
+  border: 1px solid var(--caliper-border);
+  border-radius: 4px;
+  object-fit: cover;
+  object-position: top;
+}
+
 .caliper-popover__component {
   margin-bottom: 8px;
   font: 500 12px/1.4 ui-monospace, monospace;
