@@ -2,25 +2,36 @@ import {isCaliperMessage} from '../messaging/messages';
 import {captureElement} from '../screenshot/capture';
 import {chromeStorageSink} from '../sinks/chrome-storage.sink';
 
-export default defineBackground(() => {
-  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
+const CONTENT_SCRIPT = 'content-scripts/content.js';
 
-  chrome.action.onClicked.addListener(async (tab) => {
+const togglePicker = async (tabId: number): Promise<void> => {
+  try {
+    await chrome.tabs.sendMessage(tabId, {type: 'caliper/toggle'});
+  } catch {
+    await chrome.scripting.executeScript({target: {tabId}, files: [CONTENT_SCRIPT]});
+    await chrome.tabs.sendMessage(tabId, {type: 'caliper/toggle'});
+  }
+};
+
+export default defineBackground(() => {
+  chrome.action.onClicked.addListener((tab) => {
     if (typeof tab.id !== 'number') return;
-    await chrome.sidePanel.open({tabId: tab.id});
-    await chrome.tabs.sendMessage(tab.id, {type: 'caliper/toggle'});
+    const tabId = tab.id;
+    void chrome.sidePanel.open({tabId});
+    void togglePicker(tabId);
   });
 
   chrome.commands.onCommand.addListener((command, tab) => {
     if (typeof tab?.id !== 'number') return;
+    const tabId = tab.id;
 
     if (command === 'toggle-picker') {
-      void chrome.tabs.sendMessage(tab.id, {type: 'caliper/toggle'});
+      void togglePicker(tabId);
       return;
     }
 
     if (command === 'open-panel') {
-      void chrome.sidePanel.open({tabId: tab.id});
+      void chrome.sidePanel.open({tabId});
     }
   });
 
@@ -43,4 +54,6 @@ export default defineBackground(() => {
 
     return false;
   });
+
+  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
 });
