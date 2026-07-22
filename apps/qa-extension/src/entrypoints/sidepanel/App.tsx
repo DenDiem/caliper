@@ -1,18 +1,21 @@
 import type {CaliperSession} from '@caliper/core';
-import {toToon} from '@caliper/core';
+import {toJiraComment, toToon} from '@caliper/core';
 import {useEffect, useState} from 'preact/hooks';
 import {copyToClipboard, downloadSessionArchive, exportSession} from '../../export/export-session';
-import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
+import {chromeSessionHistory, chromeStorageSink} from '../../sinks/chrome-storage.sink';
 import {Controls} from './Controls';
+import {SessionBar} from './SessionBar';
 
 const index = (position: number): string => String(position + 1).padStart(2, '0');
 
 export const App = () => {
   const [session, setSession] = useState<CaliperSession | null>(null);
+  const [sessions, setSessions] = useState<CaliperSession[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
 
   const refresh = () => {
     void chromeStorageSink.read().then(setSession);
+    void chromeSessionHistory.list().then(setSessions);
   };
 
   const copy = (label: string, text: string) => {
@@ -47,6 +50,13 @@ export const App = () => {
           <button
             class="btn"
             disabled={annotations.length === 0}
+            onClick={() => copy('jira', toJiraComment(session))}
+          >
+            {copied === 'jira' ? 'copied' : 'Jira'}
+          </button>
+          <button
+            class="btn"
+            disabled={annotations.length === 0}
             onClick={() => copy('toon', toToon(session))}
           >
             {copied === 'toon' ? 'copied' : 'TOON'}
@@ -74,6 +84,8 @@ export const App = () => {
           </button>
         </div>
       </header>
+
+      <SessionBar session={session} sessions={sessions} onChanged={refresh} />
 
       {annotations.length === 0 ? (
         <div class="blank">
