@@ -30,11 +30,8 @@ export default defineConfig({
     },
     side_panel: {default_path: 'sidepanel.html'},
     commands: {
-      _execute_action: {
-        suggested_key: {default: 'Alt+Shift+C'},
-      },
       'toggle-picker': {
-        suggested_key: {default: 'Alt+Shift+X'},
+        suggested_key: {default: 'Alt+Shift+C'},
         description: 'Arm or disarm the Caliper picker',
       },
       'open-panel': {

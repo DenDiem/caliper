@@ -23,11 +23,15 @@ produces the same directory without the dev server.
 
 ## Shortcuts
 
-| Keys | Action |
+| Input | Action |
 | --- | --- |
+| Toolbar icon | Open or close the side panel |
 | `Alt+Shift+C` | Arm or disarm the picker |
 | `Alt+Shift+P` | Open the side panel |
-| `Escape` | Dismiss the popover |
+| `Escape` | Dismiss the popover, then disarm the picker |
+
+The picker is armed from the panel's **Arm picker** button or the shortcut — never by opening the
+panel, so the icon stays a safe thing to click.
 
 Rebind them at `chrome://extensions/shortcuts`. The picker only inspects the page while it is armed,
 and recomputes at most once per animation frame, and only when the cursor crosses into a different

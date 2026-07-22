@@ -14,13 +14,6 @@ const togglePicker = async (tabId: number): Promise<void> => {
 };
 
 export default defineBackground(() => {
-  chrome.action.onClicked.addListener((tab) => {
-    if (typeof tab.id !== 'number') return;
-    const tabId = tab.id;
-    void chrome.sidePanel.open({tabId});
-    void togglePicker(tabId);
-  });
-
   chrome.commands.onCommand.addListener((command, tab) => {
     if (typeof tab?.id !== 'number') return;
     const tabId = tab.id;
@@ -62,5 +55,5 @@ export default defineBackground(() => {
     return false;
   });
 
-  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
+  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true}).catch(() => undefined);
 });
