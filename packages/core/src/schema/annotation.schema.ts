@@ -9,8 +9,8 @@ export const componentSourceSchema = z.enum(['ng-devmode', 'tag-heuristic']).nul
 
 export const styleValueSchema = z.object({
   value: z.string(),
-  token: z.string().nullable(),
-  tokenMatch: z.enum(['exact', 'nearest']).nullable(),
+  token: z.string().nullish(),
+  tokenMatch: z.enum(['exact', 'nearest']).nullish(),
 });
 
 export const boxSchema = z.object({

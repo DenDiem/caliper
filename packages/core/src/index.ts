@@ -4,6 +4,7 @@ export * from './selector/is-generated-id';
 export * from './component/resolve-component';
 export * from './styles/collect-styles';
 export * from './styles/style-allowlist';
+export * from './styles/style-noise';
 export * from './tokens/collect-tokens';
 export * from './tokens/color';
 export * from './tokens/match-token';

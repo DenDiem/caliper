@@ -34,4 +34,29 @@ describe('collectStyles', () => {
   it('keeps the allowlist under 50 properties so annotations stay small', () => {
     expect(STYLE_ALLOWLIST.length).toBeLessThan(50);
   });
+
+  it('drops values that carry no design intent', () => {
+    document.body.innerHTML =
+      '<div id="t" style="padding-top: 0px; transform: none; opacity: 1; margin-left: 4px"></div>';
+    const styles = collectStyles(query('#t'));
+    expect(styles).not.toHaveProperty('padding-top');
+    expect(styles).not.toHaveProperty('transform');
+    expect(styles).not.toHaveProperty('opacity');
+    expect(styles['margin-left']).toBe('4px');
+  });
+
+  it('drops flex and grid properties when the element is not a layout container', () => {
+    document.body.innerHTML = '<div id="t" style="display: block; align-items: center"></div>';
+    expect(collectStyles(query('#t'))).not.toHaveProperty('align-items');
+  });
+
+  it('keeps flex properties on a flex container', () => {
+    document.body.innerHTML = '<div id="t" style="display: flex; align-items: center"></div>';
+    expect(collectStyles(query('#t'))['align-items']).toBe('center');
+  });
+
+  it('does not report width and height, which the box already carries', () => {
+    expect(STYLE_ALLOWLIST).not.toContain('width');
+    expect(STYLE_ALLOWLIST).not.toContain('height');
+  });
 });

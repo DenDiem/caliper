@@ -19,8 +19,6 @@ export const STYLE_ALLOWLIST: readonly string[] = [
   'margin-right',
   'margin-bottom',
   'margin-left',
-  'width',
-  'height',
   'min-height',
   'max-width',
   'border-top-width',
