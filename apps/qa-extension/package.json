@@ -13,6 +13,7 @@
     "@caliper/core": "workspace:*",
     "@caliper/overlay": "workspace:*",
     "@preact/signals": "^1.3.0",
+    "fflate": "^0.8.3",
     "preact": "^10.24.0"
   },
   "devDependencies": {

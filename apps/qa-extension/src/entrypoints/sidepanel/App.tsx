@@ -1,7 +1,7 @@
 import type {CaliperSession} from '@caliper/core';
 import {toToon} from '@caliper/core';
 import {useEffect, useState} from 'preact/hooks';
-import {copyToClipboard, downloadSessionBundle, exportSession} from '../../export/export-session';
+import {copyToClipboard, downloadSessionArchive, exportSession} from '../../export/export-session';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
 import {Controls} from './Controls';
 
@@ -61,9 +61,9 @@ export const App = () => {
           <button
             class="btn"
             disabled={annotations.length === 0}
-            onClick={() => void downloadSessionBundle(session)}
+            onClick={() => void downloadSessionArchive(session)}
           >
-            save
+            zip
           </button>
           <button
             class="btn btn--danger"

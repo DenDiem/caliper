@@ -1,4 +1,6 @@
 import type {CaliperAnnotation, CaliperSession} from '@caliper/core';
+import {toToon} from '@caliper/core';
+import {zipSync} from 'fflate';
 
 export interface ExportOptions {
   withAssets: boolean;
@@ -15,30 +17,30 @@ export const copyToClipboard = async (text: string): Promise<void> => {
   await navigator.clipboard.writeText(text);
 };
 
-const toBlobUrl = async (dataUrl: string): Promise<string> => {
-  const response = await fetch(dataUrl);
-  return URL.createObjectURL(await response.blob());
-};
-
 const withScreenshotPath = (annotation: CaliperAnnotation): CaliperAnnotation =>
   annotation.screenshotId
     ? {...annotation, screenshot: `${annotation.screenshotId}.png`}
     : annotation;
 
-export const downloadSessionBundle = async (session: CaliperSession): Promise<void> => {
+const toBytes = async (dataUrl: string): Promise<Uint8Array> => {
+  const response = await fetch(dataUrl);
+  return new Uint8Array(await response.arrayBuffer());
+};
+
+const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
+
+export const downloadSessionArchive = async (session: CaliperSession): Promise<void> => {
   const folder = `caliper-${session.id.slice(0, FOLDER_ID_LENGTH)}`;
+  const files: Record<string, Uint8Array> = {};
 
   for (const annotation of session.annotations) {
-    const dataUrl = annotation.screenshotId
-      ? session.assets[annotation.screenshotId]
-      : undefined;
-    if (!dataUrl || !annotation.screenshotId) continue;
+    const {screenshotId} = annotation;
+    if (!screenshotId) continue;
 
-    await chrome.downloads.download({
-      url: await toBlobUrl(dataUrl),
-      filename: `${folder}/${annotation.screenshotId}.png`,
-      saveAs: false,
-    });
+    const dataUrl = session.assets[screenshotId];
+    if (!dataUrl) continue;
+
+    files[`${screenshotId}.png`] = await toBytes(dataUrl);
   }
 
   const manifest: CaliperSession = {
@@ -47,11 +49,11 @@ export const downloadSessionBundle = async (session: CaliperSession): Promise<vo
     assets: {},
   };
 
-  await chrome.downloads.download({
-    url: URL.createObjectURL(
-      new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'}),
-    ),
-    filename: `${folder}/session.json`,
-    saveAs: false,
-  });
+  files['session.json'] = encode(JSON.stringify(manifest, null, 2));
+  files['session.toon'] = encode(toToon(session));
+
+  const archive = zipSync({[folder]: files});
+  const url = URL.createObjectURL(new Blob([archive], {type: 'application/zip'}));
+
+  await chrome.downloads.download({url, filename: `${folder}.zip`, saveAs: false});
 };

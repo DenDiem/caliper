@@ -40,6 +40,14 @@ element.
 
 **Copy JSON** — the same data as JSON, `assets` stripped.
 
-**Download** — a folder `caliper-<id>/` holding `session.json` plus one PNG per annotation. The
-JSON carries a relative `screenshot` path instead of inline base64, so an agent reads the structure
+**zip** — a single `caliper-<id>.zip`:
+
+```
+caliper-<id>/
+  session.json     annotations with a relative `screenshot` path, no inline base64
+  session.toon     the same session in TOON, ready to paste into an agent
+  <id>.png         one cropped screenshot per annotation
+```
+
+The JSON points at the PNGs by path instead of carrying base64, so an agent reads the structure
 cheaply and opens an image only when the structure was not enough.
