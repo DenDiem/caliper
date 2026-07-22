@@ -1,0 +1,86 @@
+body {
+  margin: 0;
+  font: 400 13px/1.5 system-ui, sans-serif;
+  color: #1a1a1a;
+}
+
+.empty {
+  padding: 16px;
+  color: #666;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.item__severity {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.item__severity--blocker {
+  background: #ffe0e0;
+  color: #a10000;
+}
+
+.item__severity--major {
+  background: #ffeccc;
+  color: #a55200;
+}
+
+.item__severity--minor {
+  background: #e8f0ff;
+  color: #204a99;
+}
+
+.item__severity--nitpick {
+  background: #f0f0f0;
+  color: #555;
+}
+
+.item__component {
+  font: 500 12px/1.4 ui-monospace, monospace;
+  color: #4f7cff;
+}
+
+.item__comment {
+  margin: 4px 0;
+}
+
+.item__selector {
+  display: block;
+  font: 400 11px/1.4 ui-monospace, monospace;
+  color: #888;
+  word-break: break-all;
+}
+
+.item__shot {
+  display: block;
+  max-width: 100%;
+  margin-top: 8px;
+  border: 1px solid #e6e6e6;
+  border-radius: 4px;
+}
+
+.item__remove {
+  margin-top: 8px;
+}
