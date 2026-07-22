@@ -16,7 +16,16 @@ export interface CaptureMessage {
   dpr: number;
 }
 
-export type CaliperMessage = ToggleMessage | AnnotationCreatedMessage | CaptureMessage;
+export interface ToggleTabMessage {
+  type: 'caliper/toggle-tab';
+  tabId: number;
+}
+
+export type CaliperMessage =
+  | ToggleMessage
+  | AnnotationCreatedMessage
+  | CaptureMessage
+  | ToggleTabMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
   if (typeof value !== 'object' || value === null) return false;
@@ -24,6 +33,7 @@ export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
   return (
     type === 'caliper/toggle' ||
     type === 'caliper/annotation-created' ||
-    type === 'caliper/capture'
+    type === 'caliper/capture' ||
+    type === 'caliper/toggle-tab'
   );
 };

@@ -45,6 +45,13 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === 'caliper/toggle-tab') {
+      void togglePicker(message.tabId)
+        .then(() => sendResponse(true))
+        .catch(() => sendResponse(false));
+      return true;
+    }
+
     if (message.type === 'caliper/capture') {
       void captureElement(message.box, message.dpr)
         .then((dataUrl) => sendResponse(dataUrl))
