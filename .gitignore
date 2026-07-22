@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.output/
+.wxt/
+*.local
+.DS_Store
+.claude-ctx/
