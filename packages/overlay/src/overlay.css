@@ -1,0 +1,73 @@
+:host {
+  all: initial;
+}
+
+.caliper-highlight {
+  position: fixed;
+  border: 2px solid #4f7cff;
+  background: rgba(79, 124, 255, 0.12);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.caliper-highlight__label {
+  position: absolute;
+  top: -22px;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #4f7cff;
+  color: #fff;
+  font: 500 11px/1.4 ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+.caliper-popover {
+  position: fixed;
+  width: 280px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  font: 400 13px/1.5 system-ui, sans-serif;
+  color: #1a1a1a;
+  pointer-events: auto;
+}
+
+.caliper-popover__component {
+  margin-bottom: 8px;
+  font: 500 12px/1.4 ui-monospace, monospace;
+  color: #4f7cff;
+  word-break: break-all;
+}
+
+.caliper-popover__field {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid #d8d8d8;
+  border-radius: 4px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.caliper-popover__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.caliper-popover__button {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: #4f7cff;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.caliper-popover__button--ghost {
+  background: transparent;
+  color: #666;
+}
