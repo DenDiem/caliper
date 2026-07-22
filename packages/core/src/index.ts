@@ -7,3 +7,6 @@ export * from './styles/style-allowlist';
 export * from './tokens/collect-tokens';
 export * from './tokens/color';
 export * from './tokens/match-token';
+export * from './context/extract-context';
+export * from './picker/pick-target';
+export * from './session/sink';
