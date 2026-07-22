@@ -1,5 +1,6 @@
 import type {CaliperSession} from '@caliper/core';
 import {useEffect, useState} from 'preact/hooks';
+import {copyToClipboard, downloadJson, exportSession} from '../../export/export-session';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
 
 export const App = () => {
@@ -26,7 +27,19 @@ export const App = () => {
     <div class="panel">
       <header class="panel__header">
         <strong>{session.annotations.length} defects</strong>
-        <button onClick={() => void chromeStorageSink.clear().then(refresh)}>Clear</button>
+        <div class="panel__actions">
+          <button onClick={() => void copyToClipboard(exportSession(session, {withAssets: false}))}>
+            Copy JSON
+          </button>
+          <button
+            onClick={() =>
+              downloadJson(exportSession(session, {withAssets: true}), `caliper-${session.id}.json`)
+            }
+          >
+            Download
+          </button>
+          <button onClick={() => void chromeStorageSink.clear().then(refresh)}>Clear</button>
+        </div>
       </header>
 
       <ul class="list">

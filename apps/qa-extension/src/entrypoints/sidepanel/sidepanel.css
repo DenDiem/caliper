@@ -17,6 +17,11 @@ body {
   border-bottom: 1px solid #e6e6e6;
 }
 
+.panel__actions {
+  display: flex;
+  gap: 6px;
+}
+
 .list {
   margin: 0;
   padding: 0;
