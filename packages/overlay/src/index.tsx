@@ -50,11 +50,8 @@ export const mountOverlay = ({onSubmit, capture}: OverlayOptions): OverlayHandle
   const paint = () => {
     render(
       <>
-        {capturing ? null : (
-          <Highlight
-            box={selected ? selected.box : (hovered?.box ?? null)}
-            label={hovered?.label ?? null}
-          />
+        {selected || capturing ? null : (
+          <Highlight box={hovered?.box ?? null} label={hovered?.label ?? null} />
         )}
         {active && !selected && !capturing ? <Badge /> : null}
         {selected ? (
