@@ -50,6 +50,7 @@ export const caliperAnnotationSchema = z.object({
   }),
   target: elementContextSchema,
   screenshotId: z.string().optional(),
+  screenshot: z.string().optional(),
 });
 
 export const caliperSessionSchema = z.object({

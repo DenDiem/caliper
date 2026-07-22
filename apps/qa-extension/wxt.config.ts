@@ -5,7 +5,14 @@ export default defineConfig({
   manifest: {
     name: 'Caliper',
     description: 'Turn a clicked element into a machine-precise defect annotation.',
-    permissions: ['storage', 'unlimitedStorage', 'activeTab', 'sidePanel', 'scripting'],
+    permissions: [
+      'storage',
+      'unlimitedStorage',
+      'activeTab',
+      'sidePanel',
+      'scripting',
+      'downloads',
+    ],
     host_permissions: ['<all_urls>'],
     action: {default_title: 'Toggle Caliper'},
     side_panel: {default_path: 'sidepanel.html'},
