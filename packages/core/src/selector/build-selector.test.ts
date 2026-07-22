@@ -92,16 +92,30 @@ describe('buildSelector', () => {
     expect(document.querySelector(result.selector)?.textContent).toBe('second');
   });
 
-  it('scopes an nth-child path to the owning component rather than the body', () => {
+  it('anchors on a nearby class instead of walking up to a component', () => {
+    render(
+      '<ram-content><ion-content><div class="page"><div class="contacts">' +
+        '<bnt-translate>a</bnt-translate><bnt-translate>b</bnt-translate>' +
+        '</div></div></ion-content></ram-content>' +
+        '<ram-other><bnt-translate>c</bnt-translate></ram-other>',
+    );
+    const target = query('.contacts').children[1];
+    if (!target) throw new Error('missing second translate');
+    const result = buildSelector(target);
+    expect(result.selector).toBe('div.contacts bnt-translate:nth-of-type(2)');
+    expect(result.strategy).toBe('component-path');
+    expect(document.querySelector(result.selector)?.textContent).toBe('b');
+  });
+
+  it('indexes the element against a component anchor instead of pathing from the root', () => {
     render(
       '<ram-root><div><div><ram-footer><div>a</div><div><span>x</span><span>y</span></div></ram-footer></div></div></ram-root>',
     );
     const target = query('ram-footer div:nth-child(2)').children[1];
     if (!target) throw new Error('missing second span');
     const result = buildSelector(target);
-    expect(result.strategy).toBe('nth-path');
-    expect(result.confidence).toBe('low');
-    expect(result.selector.startsWith('ram-footer')).toBe(true);
+    expect(result.selector).toBe('ram-footer span:nth-of-type(2)');
+    expect(result.strategy).toBe('component-path');
     expect(result.selector).not.toContain('ram-root');
     expect(document.querySelector(result.selector)?.textContent).toBe('y');
   });

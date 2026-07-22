@@ -44,16 +44,35 @@ const nthOfType = (element: Element): string => {
   return `:nth-of-type(${siblings.indexOf(element) + 1})`;
 };
 
-const componentAncestors = (element: Element): Element[] => {
-  const ancestors: Element[] = [];
+const MAX_ANCHOR_DEPTH = 8;
+
+const anchorPart = (element: Element): string | null => {
+  const tag = element.tagName.toLowerCase();
+
+  if (element.id && !isGeneratedId(element.id)) return `#${element.id}`;
+
+  const className = stableClass(element);
+  if (className) return `${tag}.${className}`;
+
+  return isAppComponentTag(tag) ? tag : null;
+};
+
+interface Anchor {
+  element: Element;
+  part: string;
+}
+
+const anchors = (element: Element): Anchor[] => {
+  const found: Anchor[] = [];
   let current = element.parentElement;
 
-  while (current) {
-    if (isAppComponentTag(current.tagName.toLowerCase())) ancestors.push(current);
+  while (current && current !== document.body && found.length < MAX_ANCHOR_DEPTH) {
+    const part = anchorPart(current);
+    if (part) found.push({element: current, part});
     current = current.parentElement;
   }
 
-  return ancestors;
+  return found;
 };
 
 const nthPathWithin = (element: Element, root: Element | null): string => {
@@ -87,23 +106,26 @@ export const buildSelector = (element: Element): SelectorResult => {
   }
 
   const local = localPart(element);
-  const ancestors = componentAncestors(element);
+  const found = anchors(element);
 
-  for (const ancestor of ancestors) {
-    const selector = `${ancestor.tagName.toLowerCase()} ${local}`;
+  for (const anchor of found) {
+    const selector = `${anchor.part} ${local}`;
     if (isUnique(selector)) return {selector, strategy: 'component-path', confidence: 'medium'};
   }
 
-  const nearest = ancestors[0] ?? null;
+  const ordinal = nthOfType(element);
 
-  if (nearest) {
-    const selector = `${nearest.tagName.toLowerCase()}${nthOfType(nearest)} ${local}`;
-    if (isUnique(selector)) return {selector, strategy: 'component-path', confidence: 'medium'};
+  for (const anchor of found) {
+    for (const part of [anchor.part, `${anchor.part}${nthOfType(anchor.element)}`]) {
+      const selector = `${part} ${local}${ordinal}`;
+      if (isUnique(selector)) return {selector, strategy: 'component-path', confidence: 'medium'};
+    }
   }
 
   if (isAppComponentTag(element.tagName.toLowerCase()) && isUnique(local)) {
     return {selector: local, strategy: 'component-path', confidence: 'medium'};
   }
 
-  return {selector: nthPathWithin(element, nearest), strategy: 'nth-path', confidence: 'low'};
+  const root = found[0]?.element ?? null;
+  return {selector: nthPathWithin(element, root), strategy: 'nth-path', confidence: 'low'};
 };
