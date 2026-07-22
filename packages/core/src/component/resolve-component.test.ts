@@ -7,6 +7,11 @@ const query = (selector: string): Element => {
   return found;
 };
 
+const defineVendorTag = (tag: string): void => {
+  if (customElements.get(tag)) return;
+  customElements.define(tag, class extends HTMLElement {});
+};
+
 describe('resolveComponent', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -44,9 +49,28 @@ describe('resolveComponent', () => {
     document.body.innerHTML = '<font-face></font-face>';
     expect(resolveComponent(query('font-face')).name).toBeNull();
   });
+
+  it('skips a registered design-system element in favour of the owning app component', () => {
+    defineVendorTag('ion-content');
+    document.body.innerHTML = '<ram-home><ion-content></ion-content></ram-home>';
+    expect(resolveComponent(query('ion-content'))).toEqual({
+      name: 'ram-home',
+      source: 'tag-heuristic',
+    });
+  });
+
+  it('keeps the vendor element when nothing else owns it', () => {
+    defineVendorTag('ion-app');
+    document.body.innerHTML = '<ion-app></ion-app>';
+    expect(resolveComponent(query('ion-app')).name).toBe('ion-app');
+  });
 });
 
 describe('buildComponentChain', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
   it('lists custom-element ancestors from nearest to furthest', () => {
     document.body.innerHTML =
       '<soa-menu-page><soa-inform-block><p class="t">x</p></soa-inform-block></soa-menu-page>';
@@ -60,5 +84,12 @@ describe('buildComponentChain', () => {
       'soa-inform-block',
       'soa-menu-page',
     ]);
+  });
+
+  it('leaves registered design-system elements out of the chain', () => {
+    defineVendorTag('ion-router-outlet');
+    document.body.innerHTML =
+      '<ram-root><ion-router-outlet><ram-home><p class="t">x</p></ram-home></ion-router-outlet></ram-root>';
+    expect(buildComponentChain(query('.t'))).toEqual(['ram-home', 'ram-root']);
   });
 });

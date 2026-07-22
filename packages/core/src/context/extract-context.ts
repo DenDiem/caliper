@@ -1,4 +1,3 @@
-import type {ComponentInfo} from '../component/resolve-component';
 import {buildComponentChain, resolveComponent} from '../component/resolve-component';
 import type {ElementContext} from '../schema/annotation.schema';
 import {buildSelector} from '../selector/build-selector';
@@ -22,18 +21,9 @@ const collectAttributes = (element: Element): Record<string, string> => {
   return attributes;
 };
 
-const resolveOwningComponent = (element: Element, chain: readonly string[]): ComponentInfo => {
-  const direct = resolveComponent(element);
-  if (direct.name) return direct;
-
-  const nearest = chain[0];
-  return nearest ? {name: nearest, source: 'tag-heuristic'} : direct;
-};
-
 export const extractContext = (element: Element, tokens: TokenMap): ElementContext => {
   const {selector, strategy, confidence} = buildSelector(element);
-  const componentChain = buildComponentChain(element);
-  const {name, source} = resolveOwningComponent(element, componentChain);
+  const {name, source} = resolveComponent(element);
   const rect = element.getBoundingClientRect();
 
   return {
@@ -43,7 +33,7 @@ export const extractContext = (element: Element, tokens: TokenMap): ElementConte
     tagName: element.tagName.toLowerCase(),
     componentName: name,
     componentSource: source,
-    componentChain,
+    componentChain: buildComponentChain(element),
     text: (element.textContent ?? '').trim().slice(0, MAX_TEXT_LENGTH),
     attributes: collectAttributes(element),
     box: {
