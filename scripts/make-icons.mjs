@@ -4,8 +4,14 @@ import {join} from 'node:path';
 
 const EXTENSION_ICONS = 'apps/qa-extension/src/public/icon';
 const MEDIA_ICON = 'docs/media/icon.png';
+const STORE_ICON = 'docs/media/store-icon-128.png';
 const EXTENSION_SIZES = [16, 32, 48, 128];
 const MEDIA_SIZE = 512;
+
+// The Chrome Web Store crops corners and adds its own frame, so the artwork sits in a 96px
+// safe area centred on the 128px canvas rather than reaching the edges.
+const STORE_CANVAS = 128;
+const STORE_ARTWORK = 96;
 
 const BG = [0x13, 0x16, 0x1d, 0xff];
 const INK = [0x4f, 0xd1, 0xc5, 0xff];
@@ -93,3 +99,16 @@ for (const size of EXTENSION_SIZES) {
 
 writeFileSync(MEDIA_ICON, png(MEDIA_SIZE, draw(MEDIA_SIZE)));
 console.log(MEDIA_ICON);
+
+const inset = (STORE_CANVAS - STORE_ARTWORK) / 2;
+const artwork = draw(STORE_ARTWORK);
+
+writeFileSync(
+  STORE_ICON,
+  png(STORE_CANVAS, (x, y) => {
+    const insideX = x >= inset && x < inset + STORE_ARTWORK;
+    const insideY = y >= inset && y < inset + STORE_ARTWORK;
+    return insideX && insideY ? artwork(x - inset, y - inset) : BG;
+  }),
+);
+console.log(STORE_ICON);

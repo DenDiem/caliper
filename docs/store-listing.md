@@ -18,6 +18,11 @@ Click an element, describe what is wrong, export a defect report an AI agent can
 
 Developer Tools
 
+## Store icon
+
+`docs/media/store-icon-128.png` — 128×128 PNG, artwork inside a centred 96×96 safe area because the
+store crops the corners. This is a separate upload from the icons in the manifest.
+
 ## Description
 
 ```
