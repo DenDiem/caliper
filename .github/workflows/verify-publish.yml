@@ -1,0 +1,36 @@
+name: Verify publish
+
+# Manual check that the Chrome Web Store secrets and OAuth chain work in CI.
+# Runs the same submit as the release, but with --dry-run: it fetches an access
+# token from the refresh token and stops before uploading anything.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and zip
+        run: pnpm --filter @caliper/qa-extension zip
+
+      - name: Dry-run submit (no upload)
+        working-directory: apps/qa-extension
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: pnpm exec wxt submit --dry-run --chrome-zip "$(ls .output/caliper-*-chrome.zip | head -1)"
