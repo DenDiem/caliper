@@ -31,6 +31,8 @@ jobs:
         run: |
           pnpm -r test
           pnpm exec eslint .
+          pnpm exec tsc --noEmit -p apps/mcp-server/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/mcp-server/client/tsconfig.json
 
       - name: Build
         run: pnpm --filter @caliper/mcp-server build

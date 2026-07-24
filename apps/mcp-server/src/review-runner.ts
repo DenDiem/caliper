@@ -164,7 +164,7 @@ export class ReviewRunner {
         port,
         sessionId: state.id,
         token: state.token,
-        handlers: makeApiHandlers(this.registry, state.id),
+        handlers: makeApiHandlers(this.registry, state.id, {bootstrap: true}),
         allowedOrigin: targetOrigin,
         onListen: (origin) => {
           this.registry.setOrigin(state.id, origin, [targetOrigin]);

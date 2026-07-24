@@ -53,9 +53,25 @@ const respondBadRequest = (res: ServerResponse): void => {
   res.end('Invalid JSON body');
 };
 
-export const makeApiHandlers = (registry: SessionRegistry, sessionId: string): ProxyHandlers => ({
+export interface ApiHandlersOptions {
+  // Bootstrap hands out the session token to any caller presenting the app's Origin — necessary
+  // in snippet mode (a static <script> tag can't carry a per-session token) but a token-issuance
+  // hole in proxy mode, where the client never calls it: it reads ?s=&t= from its own script src.
+  // Keep this opt-in so proxy mode never wires the route up.
+  bootstrap?: boolean;
+}
+
+export const makeApiHandlers = (
+  registry: SessionRegistry,
+  sessionId: string,
+  options: ApiHandlersOptions = {},
+): ProxyHandlers => ({
   api(req, res, url) {
     if (url.pathname.endsWith('/bootstrap') && req.method === 'GET') {
+      // Unwired in proxy mode: fall through to the caller's own 404 for the prefix instead of
+      // reaching the token-gated routes below, so the route is indistinguishable from "unknown path".
+      if (!options.bootstrap) return false;
+
       const allowedOrigin = registry.resolveAllowedOrigin(sessionId, req.headers.origin);
       if (!allowedOrigin) {
         res.writeHead(403).end();

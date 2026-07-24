@@ -67,6 +67,9 @@ URL yourself.
   with it, checked in constant time.
 - Origin and Host are validated on every request, so another site or process can't drive an
   active review session.
+- Snippet mode hands the session token to any caller presenting the app's Origin — necessary
+  because a static `<script>` tag can't carry a per-session token — so it assumes no untrusted
+  local process is running. Proxy mode (the default) never exposes that endpoint at all.
 
 ## License
 
