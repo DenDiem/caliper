@@ -178,14 +178,19 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   };
 
   const submit = async (): Promise<void> => {
-    submittingSignal.value = true;
     submitErrorSignal.value = null;
+
+    const answers = zonesSignal.value
+      .map((zone) => ({ref: zone.ref, answer: draftsSignal.value[zone.ref] ?? '', verdict: zone.verdict ?? undefined}))
+      .filter((entry) => entry.answer.trim().length > 0);
+
+    if (answers.length === 0) {
+      submitErrorSignal.value = 'Answer at least one question before submitting.';
+      return;
+    }
+
+    submittingSignal.value = true;
     try {
-      const answers = zonesSignal.value.map((zone) => ({
-        ref: zone.ref,
-        answer: draftsSignal.value[zone.ref] ?? '',
-        verdict: zone.verdict ?? undefined,
-      }));
       await postAnswers(answers);
     } catch (error) {
       submitErrorSignal.value = error instanceof Error ? error.message : 'Submit failed';

@@ -89,6 +89,9 @@ export const startProxyServer = (opts: {
     }
     if (url.pathname.startsWith(CLIENT_PATH_PREFIX)) {
       if (opts.handlers.api(req, res, url)) return;
+      res.writeHead(404, {'content-type': 'text/plain'});
+      res.end('Not found');
+      return;
     }
     proxy.web(req, res);
   });
