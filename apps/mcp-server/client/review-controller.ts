@@ -2,7 +2,7 @@ import {computed, effect, signal} from '@preact/signals';
 import {extractContext} from '@caliper/core';
 import type {Box, ElementContext, ReviewSessionState, ReviewZoneState, TokenMap} from '@caliper/core';
 import {mountOverlay} from '@caliper/overlay';
-import type {AnnotationDraft, OverlayHandle} from '@caliper/overlay';
+import type {OverlayHandle} from '@caliper/overlay';
 import type {AnswerPopoverProps} from '@caliper/overlay/review';
 import {postAnswers, postDraft} from './sink';
 
@@ -14,6 +14,9 @@ export interface ReviewClientStore {
   draft: (ref: string) => string;
   isResolved: (ref: string) => boolean;
   isSubmitting: () => boolean;
+  submitError: () => string | null;
+  liveSyncLost: () => boolean;
+  setLiveSyncLost: (lost: boolean) => void;
   setActiveRef: (ref: string | null) => void;
   setDraft: (ref: string, value: string) => void;
   saveDraft: (ref: string) => void;
@@ -23,9 +26,16 @@ export interface ReviewClientStore {
   onChange: (listener: () => void) => () => void;
 }
 
+const queryOrNull = (selector: string): Element | null => {
+  try {
+    return document.querySelector(selector);
+  } catch {
+    return null;
+  }
+};
+
 const locateElement = (zone: ReviewZoneState): Element | null =>
-  document.querySelector(`[data-caliper-ref="${zone.ref}"]`) ??
-  (zone.selector ? document.querySelector(zone.selector) : null);
+  queryOrNull(`[data-caliper-ref="${zone.ref}"]`) ?? (zone.selector ? queryOrNull(zone.selector) : null);
 
 const boxOf = (element: Element): Box => {
   const rect = element.getBoundingClientRect();
@@ -43,6 +53,8 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const draftsSignal = signal<Record<string, string>>({});
   const activeRefSignal = signal<string | null>(null);
   const submittingSignal = signal(false);
+  const submitErrorSignal = signal<string | null>(null);
+  const liveSyncLostSignal = signal(false);
 
   const resolvedElements = new Map<string, Element>();
   let pickerHandle: OverlayHandle | null = null;
@@ -148,8 +160,9 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const reanchor = (ref: string): void => {
     pickerHandle?.destroy();
     pickerHandle = mountOverlay({
-      onSubmit: (draft: AnnotationDraft) => {
-        applyReanchor(ref, draft.context);
+      onSubmit: () => {},
+      onPick: (context: ElementContext) => {
+        applyReanchor(ref, context);
         pickerHandle?.destroy();
         pickerHandle = null;
       },
@@ -162,6 +175,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
 
   const submit = async (): Promise<void> => {
     submittingSignal.value = true;
+    submitErrorSignal.value = null;
     try {
       const answers = zonesSignal.value.map((zone) => ({
         ref: zone.ref,
@@ -169,6 +183,8 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
         verdict: zone.verdict ?? undefined,
       }));
       await postAnswers(answers);
+    } catch (error) {
+      submitErrorSignal.value = error instanceof Error ? error.message : 'Submit failed';
     } finally {
       submittingSignal.value = false;
     }
@@ -182,6 +198,11 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     draft: (ref) => draftsSignal.value[ref] ?? '',
     isResolved: (ref) => Boolean(contextsSignal.value[ref]),
     isSubmitting: () => submittingSignal.value,
+    submitError: () => submitErrorSignal.value,
+    liveSyncLost: () => liveSyncLostSignal.value,
+    setLiveSyncLost: (lost) => {
+      liveSyncLostSignal.value = lost;
+    },
     setActiveRef: (ref) => {
       activeRefSignal.value = ref;
     },

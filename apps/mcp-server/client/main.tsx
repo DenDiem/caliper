@@ -1,5 +1,6 @@
 import {render} from 'preact';
 import {collectTokens} from '@caliper/core';
+import type {ReviewSessionState} from '@caliper/core';
 import {AnswerPopover, createOverlayHost, HighlightLayer} from '@caliper/overlay/review';
 import type {OverlayHost} from '@caliper/overlay/review';
 import {Panel} from './panel';
@@ -15,7 +16,7 @@ const hostContainer = (host: OverlayHost): HTMLDivElement => {
 };
 
 const boot = async (): Promise<void> => {
-  const host = createOverlayHost(reviewStyles);
+  const host = createOverlayHost(reviewStyles, 'caliper-review-host');
   const container = hostContainer(host);
   const store = startController({tokens: collectTokens(document)});
 
@@ -38,8 +39,21 @@ const boot = async (): Promise<void> => {
 
   const stream = events();
   stream.addEventListener('state', (event: MessageEvent<string>) => {
-    store.hydrate(JSON.parse(event.data));
+    let state: ReviewSessionState;
+    try {
+      state = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    store.setLiveSyncLost(false);
+    store.hydrate(state);
+  });
+
+  stream.addEventListener('error', () => {
+    if (stream.readyState === EventSource.CLOSED) store.setLiveSyncLost(true);
   });
 };
 
-void boot();
+void boot().catch((error: unknown) => {
+  console.error('Caliper review client failed to boot', error);
+});

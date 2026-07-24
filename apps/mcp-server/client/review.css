@@ -5,6 +5,7 @@
   --caliper-accent: #4f7cff;
   --caliper-warn: #d9822b;
   --caliper-ok: #2f9e58;
+  --caliper-danger: #d64545;
   --caliper-surface: #ffffff;
   --caliper-text: #1a1a1a;
   --caliper-muted: #666666;
@@ -24,6 +25,7 @@
     --caliper-accent: #7d9bff;
     --caliper-warn: #e6a15c;
     --caliper-ok: #57c07d;
+    --caliper-danger: #ff6b6b;
     --caliper-surface: #1e1f24;
     --caliper-text: #eaedf5;
     --caliper-muted: #9aa0ae;
@@ -140,6 +142,14 @@
   font: 500 12px/1.4 system-ui, sans-serif;
 }
 
+.caliper-panel__notice {
+  margin: 0;
+  padding: 8px 16px;
+  background: var(--caliper-warn-tint);
+  color: var(--caliper-warn);
+  font: 500 12px/1.4 system-ui, sans-serif;
+}
+
 .caliper-panel__list {
   flex: 1;
   margin: 0;
@@ -231,6 +241,12 @@
 .caliper-panel__footer {
   padding: 12px 16px;
   border-top: 1px solid var(--caliper-border);
+}
+
+.caliper-panel__error {
+  margin: 0 0 8px;
+  color: var(--caliper-danger);
+  font: 500 12px/1.4 system-ui, sans-serif;
 }
 
 .caliper-panel__submit {

@@ -77,6 +77,10 @@ export const Panel = ({store}: PanelProps) => {
         <span class="caliper-panel__count">{zones.length}</span>
       </div>
 
+      {store.liveSyncLost() ? (
+        <p class="caliper-panel__notice">Live sync lost — reload the page</p>
+      ) : null}
+
       <ul class="caliper-panel__list">
         {zones.map((zone) => (
           <PanelItem key={zone.ref} zone={zone} store={store} />
@@ -84,6 +88,7 @@ export const Panel = ({store}: PanelProps) => {
       </ul>
 
       <div class="caliper-panel__footer">
+        {store.submitError() ? <p class="caliper-panel__error">{store.submitError()}</p> : null}
         <button
           type="button"
           class="caliper-panel__submit"
