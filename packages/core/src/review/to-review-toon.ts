@@ -2,12 +2,15 @@ import type {ReviewSessionState, ReviewZoneState} from './session';
 
 const NULL = 'null';
 const QUOTE_REQUIRED = /[",:|\t]|^\s|\s$/;
+const NUMBER_LIKE = /^-?\d+(\.\d+)?$/;
+
+const flat = (value: string | null | undefined): string => (value ?? '').replace(/\s+/g, ' ').trim();
 
 const cell = (value: string | null | undefined): string => {
-  const flat = (value ?? '').replace(/\s+/g, ' ').trim();
-  if (!flat) return NULL;
-  if (!QUOTE_REQUIRED.test(flat)) return flat;
-  return `"${flat.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  const text = flat(value);
+  if (!text) return NULL;
+  if (!QUOTE_REQUIRED.test(text) && !NUMBER_LIKE.test(text)) return text;
+  return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 };
 
 const status = (zone: ReviewZoneState): string => (zone.answered ? 'answered' : 'pending');
@@ -15,8 +18,8 @@ const status = (zone: ReviewZoneState): string => (zone.answered ? 'answered' : 
 export const toReviewToon = (state: ReviewSessionState): string => {
   const header = [
     'review:',
-    `  id: ${state.id}`,
-    `  target: ${state.target}`,
+    `  id: ${flat(state.id)}`,
+    `  target: ${flat(state.target)}`,
     `  count: ${state.zones.length}`,
   ].join('\n');
 
