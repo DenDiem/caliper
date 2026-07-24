@@ -13,6 +13,7 @@ export type {AnnotationDraft};
 export interface OverlayOptions {
   onSubmit: (draft: AnnotationDraft) => void;
   capture?: (box: Box) => Promise<string | null>;
+  onPick?: (context: ElementContext) => void;
 }
 
 export interface OverlayHandle {
@@ -25,7 +26,7 @@ const toBox = (element: Element): Box => {
   return {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
 };
 
-export const mountOverlay = ({onSubmit, capture}: OverlayOptions): OverlayHandle => {
+export const mountOverlay = ({onSubmit, capture, onPick}: OverlayOptions): OverlayHandle => {
   const host = createOverlayHost(overlayStyles);
   const container = document.createElement('div');
   host.root.append(container);
@@ -108,6 +109,11 @@ export const mountOverlay = ({onSubmit, capture}: OverlayOptions): OverlayHandle
 
   const select = async (element: Element) => {
     const context = extractContext(element, tokens);
+
+    if (onPick) {
+      onPick(context);
+      return;
+    }
 
     if (!capture) {
       selected = context;
