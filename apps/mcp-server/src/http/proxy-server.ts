@@ -25,6 +25,7 @@ export const startProxyServer = (opts: {
   token: string;
   handlers: ProxyHandlers;
   onListen: (origin: string) => void;
+  onError?: (error: Error) => void;
 }): {close: () => void} => {
   const proxy = httpProxy.createProxyServer({target: opts.target, selfHandleResponse: true, ws: true, changeOrigin: false});
 
@@ -87,6 +88,8 @@ export const startProxyServer = (opts: {
     }
     proxy.web(req, res);
   });
+
+  server.on('error', (error) => opts.onError?.(error));
 
   server.on('upgrade', (req, socket, head) => proxy.ws(req, socket, head));
 

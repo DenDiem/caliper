@@ -45,6 +45,7 @@ const nonLoopbackTargetError = (target: string): Error =>
 export class ReviewRunner {
   private readonly registry = new SessionRegistry();
   private active: ActiveSession | null = null;
+  private starting: Promise<ActiveSession> | null = null;
 
   public async ask(payload: AskPayload): Promise<AskResult> {
     if (this.active) {
@@ -57,9 +58,8 @@ export class ReviewRunner {
     if (!target) throw noTargetError();
     if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
 
-    const session = await this.startSession(target);
+    const session = this.active ?? (await this.ensureSession(target));
     this.registry.merge(session.id, payload.zones);
-    await open(session.origin);
     return this.settle(session.id, session.origin);
   }
 
@@ -83,9 +83,31 @@ export class ReviewRunner {
     return process.env.CALIPER_TARGET;
   }
 
+  private async ensureSession(target: string): Promise<ActiveSession> {
+    const active = this.active;
+    if (active) return active;
+
+    if (!this.starting) {
+      this.starting = this.startSession(target)
+        .then(async (session) => {
+          try {
+            await open(session.origin);
+          } catch {
+            // Browser launch is best-effort: headless/WSL/container sessions still get the URL in the result.
+          }
+          return session;
+        })
+        .finally(() => {
+          this.starting = null;
+        });
+    }
+
+    return this.starting;
+  }
+
   private startSession(target: string): Promise<ActiveSession> {
     const state = this.registry.open(target);
-    return new Promise<ActiveSession>((resolve) => {
+    return new Promise<ActiveSession>((resolve, reject) => {
       const {close} = startProxyServer({
         target,
         sessionId: state.id,
@@ -97,6 +119,7 @@ export class ReviewRunner {
           this.active = session;
           resolve(session);
         },
+        onError: (error) => reject(new Error(`Failed to start review proxy server: ${error.message}`)),
       });
     });
   }
