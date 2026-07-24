@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {"caliper": "./dist/cli.js"},
-  "files": ["dist"],
+  "files": ["dist", "skills"],
   "scripts": {
     "build": "tsup && pnpm run build:client",
     "build:client": "vite build -c client/vite.config.ts",

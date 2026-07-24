@@ -20,7 +20,7 @@ interface ActiveSession {
 
 const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
-const isLoopbackTarget = (target: string): boolean => {
+export const isLoopbackTarget = (target: string): boolean => {
   let url: URL;
   try {
     url = new URL(target);
@@ -119,7 +119,8 @@ export class ReviewRunner {
           this.active = session;
           resolve(session);
         },
-        onError: (error) => reject(new Error(`Failed to start review proxy server: ${error.message}`)),
+        onError: (error) =>
+          reject(new Error(`Failed to start review proxy server: ${error.message}`)),
       });
     });
   }
