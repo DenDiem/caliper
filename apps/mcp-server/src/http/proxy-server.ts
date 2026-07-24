@@ -36,25 +36,29 @@ export const startProxyServer = (opts: {
   proxy.on('proxyRes', (proxyRes, req, res) => {
     const type = proxyRes.headers['content-type'] ?? '';
     const isHtml = type.includes('text/html');
-    const chunks: Buffer[] = [];
-    proxyRes.on('data', (chunk) => chunks.push(chunk));
+
     proxyRes.on('error', () => {
       if (!res.headersSent) res.writeHead(502, {'content-type': 'text/html'});
       res.end();
     });
+
+    if (!isHtml) {
+      res.writeHead(proxyRes.statusCode ?? 200, proxyRes.headers);
+      proxyRes.pipe(res);
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    proxyRes.on('data', (chunk) => chunks.push(chunk));
     proxyRes.on('end', () => {
       const headers = {...proxyRes.headers};
-      if (isHtml) {
-        delete headers['content-length'];
-        delete headers['content-encoding'];
-        const src = `${CLIENT_BUNDLE_PATH}?s=${opts.sessionId}&t=${opts.token}`;
-        const body = injectScriptTag(Buffer.concat(chunks).toString('utf8'), src);
-        res.writeHead(proxyRes.statusCode ?? 200, headers);
-        res.end(body);
-        return;
-      }
+      delete headers['content-length'];
+      delete headers['content-encoding'];
+      delete headers['transfer-encoding'];
+      const src = `${CLIENT_BUNDLE_PATH}?s=${opts.sessionId}&t=${opts.token}`;
+      const body = injectScriptTag(Buffer.concat(chunks).toString('utf8'), src);
       res.writeHead(proxyRes.statusCode ?? 200, headers);
-      res.end(Buffer.concat(chunks));
+      res.end(body);
     });
   });
 
