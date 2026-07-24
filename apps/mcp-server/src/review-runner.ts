@@ -3,8 +3,9 @@ import {allAnswered, pendingRefs, toReviewToon} from '@caliper/core';
 import type {AskPayload} from '@caliper/core';
 import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
+import {startSnippetServer} from './http/snippet-server';
 import {makeApiHandlers} from './http/api';
-import {ASK_WINDOW_MS} from './config';
+import {ASK_WINDOW_MS, CLIENT_BUNDLE_PATH, resolveMode, resolveSnippetPort} from './config';
 
 export interface AskResult {
   completed: boolean;
@@ -14,7 +15,11 @@ export interface AskResult {
 
 interface ActiveSession {
   id: string;
-  origin: string;
+  // What to open in the browser and show as the review url — the caliper server's own origin in
+  // proxy mode, the app's real origin (unchanged) in snippet mode.
+  reviewUrl: string;
+  // Non-null in snippet mode: a status line reminding the developer the app must carry the snippet tag.
+  snippetNotice: string | null;
   close: () => void;
 }
 
@@ -51,7 +56,7 @@ export class ReviewRunner {
     if (this.active) {
       const active = this.active;
       this.registry.merge(active.id, payload.zones);
-      return this.settle(active.id, active.origin);
+      return this.settle(active);
     }
 
     const target = payload.target ?? this.defaultTarget();
@@ -60,7 +65,7 @@ export class ReviewRunner {
 
     const session = this.active ?? (await this.ensureSession(target));
     this.registry.merge(session.id, payload.zones);
-    return this.settle(session.id, session.origin);
+    return this.settle(session);
   }
 
   public async wait(ticket: string): Promise<AskResult> {
@@ -68,7 +73,7 @@ export class ReviewRunner {
       return {completed: false, ticket, text: 'Error: caliper_wait requires a non-empty "ticket".'};
     }
     if (this.active && this.active.id === ticket) {
-      return this.settle(this.active.id, this.active.origin);
+      return this.settle(this.active);
     }
 
     const restored = this.registry.get(ticket);
@@ -108,7 +113,7 @@ export class ReviewRunner {
       this.starting = this.startSession(target)
         .then(async (session) => {
           try {
-            await open(session.origin);
+            await open(session.reviewUrl);
           } catch {
             // Browser launch is best-effort: headless/WSL/container sessions still get the URL in the result.
           }
@@ -123,6 +128,10 @@ export class ReviewRunner {
   }
 
   private startSession(target: string): Promise<ActiveSession> {
+    return resolveMode() === 'snippet' ? this.startSnippetSession(target) : this.startProxySession(target);
+  }
+
+  private startProxySession(target: string): Promise<ActiveSession> {
     const state = this.registry.open(target);
     return new Promise<ActiveSession>((resolve, reject) => {
       const {close} = startProxyServer({
@@ -131,8 +140,8 @@ export class ReviewRunner {
         token: state.token,
         handlers: makeApiHandlers(this.registry, state.id),
         onListen: (origin) => {
-          this.registry.setOrigin(state.id, origin);
-          const session: ActiveSession = {id: state.id, origin, close};
+          this.registry.setOrigin(state.id, origin, [origin]);
+          const session: ActiveSession = {id: state.id, reviewUrl: origin, snippetNotice: null, close};
           this.active = session;
           resolve(session);
         },
@@ -142,15 +151,44 @@ export class ReviewRunner {
     });
   }
 
-  private async settle(id: string, origin: string): Promise<AskResult> {
-    const state = await this.registry.wait(id, ASK_WINDOW_MS);
+  private startSnippetSession(target: string): Promise<ActiveSession> {
+    const state = this.registry.open(target);
+    const port = resolveSnippetPort();
+    const targetOrigin = new URL(target).origin;
+    return new Promise<ActiveSession>((resolve, reject) => {
+      const {close} = startSnippetServer({
+        port,
+        sessionId: state.id,
+        token: state.token,
+        handlers: makeApiHandlers(this.registry, state.id),
+        allowedOrigin: targetOrigin,
+        onListen: (origin) => {
+          this.registry.setOrigin(state.id, origin, [targetOrigin]);
+          const snippetNotice =
+            'status: snippet mode active — the app must include ' +
+            `<script data-caliper src="${origin}${CLIENT_BUNDLE_PATH}"></script> in its root HTML, ` +
+            'or the review panel will not appear.';
+          const session: ActiveSession = {id: state.id, reviewUrl: target, snippetNotice, close};
+          this.active = session;
+          resolve(session);
+        },
+        onError: (error) =>
+          reject(new Error(`Failed to start Caliper snippet server: ${error.message}`)),
+      });
+    });
+  }
+
+  private async settle(session: ActiveSession): Promise<AskResult> {
+    const state = await this.registry.wait(session.id, ASK_WINDOW_MS);
     const completed = allAnswered(state);
     const toon = toReviewToon(state);
-    const reviewUrlLine = `review url: ${origin}`;
+    const reviewUrlLine = `review url: ${session.reviewUrl}`;
+    const noticeLine = session.snippetNotice ? `\n${session.snippetNotice}` : '';
     if (completed) {
-      return {completed, ticket: id, text: `${toon}\n\n${reviewUrlLine}`};
+      return {completed, ticket: session.id, text: `${toon}\n\n${reviewUrlLine}${noticeLine}`};
     }
-    const pendingLine = `status: PENDING — not all zones answered. Call caliper_wait({ticket: "${id}"}) to continue.`;
-    return {completed, ticket: id, text: `${toon}\n\n${pendingLine}\n${reviewUrlLine}`};
+    const pendingLine =
+      `status: PENDING — not all zones answered. Call caliper_wait({ticket: "${session.id}"}) to continue.`;
+    return {completed, ticket: session.id, text: `${toon}\n\n${pendingLine}\n${reviewUrlLine}${noticeLine}`};
   }
 }

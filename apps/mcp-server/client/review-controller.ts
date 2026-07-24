@@ -15,8 +15,8 @@ export interface ReviewClientStore {
   isResolved: (ref: string) => boolean;
   isSubmitting: () => boolean;
   submitError: () => string | null;
-  liveSyncLost: () => boolean;
-  setLiveSyncLost: (lost: boolean) => void;
+  syncNotice: () => string | null;
+  setSyncNotice: (message: string | null) => void;
   setActiveRef: (ref: string | null) => void;
   setDraft: (ref: string, value: string) => void;
   saveDraft: (ref: string) => void;
@@ -54,7 +54,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const activeRefSignal = signal<string | null>(null);
   const submittingSignal = signal(false);
   const submitErrorSignal = signal<string | null>(null);
-  const liveSyncLostSignal = signal(false);
+  const syncNoticeSignal = signal<string | null>(null);
 
   const resolvedElements = new Map<string, Element>();
   let pickerHandle: OverlayHandle | null = null;
@@ -208,9 +208,9 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     isResolved: (ref) => Boolean(contextsSignal.value[ref]),
     isSubmitting: () => submittingSignal.value,
     submitError: () => submitErrorSignal.value,
-    liveSyncLost: () => liveSyncLostSignal.value,
-    setLiveSyncLost: (lost) => {
-      liveSyncLostSignal.value = lost;
+    syncNotice: () => syncNoticeSignal.value,
+    setSyncNotice: (message) => {
+      syncNoticeSignal.value = message;
     },
     setActiveRef: (ref) => {
       activeRefSignal.value = ref;

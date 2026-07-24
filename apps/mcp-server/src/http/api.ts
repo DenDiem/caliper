@@ -55,6 +55,26 @@ const respondBadRequest = (res: ServerResponse): void => {
 
 export const makeApiHandlers = (registry: SessionRegistry, sessionId: string): ProxyHandlers => ({
   api(req, res, url) {
+    if (url.pathname.endsWith('/bootstrap') && req.method === 'GET') {
+      const allowedOrigin = registry.resolveAllowedOrigin(sessionId, req.headers.origin);
+      if (!allowedOrigin) {
+        res.writeHead(403).end();
+        return true;
+      }
+      const state = registry.get(sessionId);
+      if (!state) {
+        res.writeHead(404).end();
+        return true;
+      }
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        'access-control-allow-origin': allowedOrigin,
+        vary: 'Origin',
+      });
+      res.end(JSON.stringify({sessionId: state.id, token: state.token}));
+      return true;
+    }
+
     if (!registry.authorize(sessionId, req, tokenFromRequest(req, url))) {
       res.writeHead(403).end();
       return true;

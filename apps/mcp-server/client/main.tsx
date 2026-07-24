@@ -5,8 +5,10 @@ import {AnswerPopover, createOverlayHost, HighlightLayer} from '@caliper/overlay
 import type {OverlayHost} from '@caliper/overlay/review';
 import {Panel} from './panel';
 import {startController} from './review-controller';
-import {events, fetchState} from './sink';
+import {bootstrap, events, fetchState} from './sink';
 import reviewStyles from './review.css?inline';
+
+const LIVE_SYNC_LOST_MESSAGE = 'Live sync lost — reload the page';
 
 const hostContainer = (host: OverlayHost): HTMLDivElement => {
   const container = document.createElement('div');
@@ -35,6 +37,13 @@ const boot = async (): Promise<void> => {
   store.onChange(paint);
   paint();
 
+  try {
+    await bootstrap();
+  } catch (error) {
+    store.setSyncNotice(error instanceof Error ? error.message : 'Caliper could not reach its server.');
+    return;
+  }
+
   store.hydrate(await fetchState());
 
   const stream = events();
@@ -45,12 +54,12 @@ const boot = async (): Promise<void> => {
     } catch {
       return;
     }
-    store.setLiveSyncLost(false);
+    store.setSyncNotice(null);
     store.hydrate(state);
   });
 
   stream.addEventListener('error', () => {
-    if (stream.readyState === EventSource.CLOSED) store.setLiveSyncLost(true);
+    if (stream.readyState === EventSource.CLOSED) store.setSyncNotice(LIVE_SYNC_LOST_MESSAGE);
   });
 };
 

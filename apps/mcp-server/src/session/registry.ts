@@ -14,7 +14,12 @@ const tokensMatch = (provided: string | null, expected: string): boolean => {
 
 interface Entry {
   state: ReviewSessionState;
-  origin: string; // e.g. http://127.0.0.1:49871 — set by setOrigin after the proxy binds
+  // Where Caliper's own HTTP server is reachable — checked against the request Host header.
+  // Proxy mode: the ephemeral proxy origin. Snippet mode: http://127.0.0.1:<port>.
+  origin: string;
+  // Acceptable values of the request Origin header.
+  // Proxy mode: [proxyOrigin] (same-origin as today). Snippet mode: [targetOrigin] (the app's real origin).
+  allowedOrigins: string[];
   waiters: (() => void)[];
   sseListeners: (() => void)[];
 }
@@ -24,13 +29,15 @@ export class SessionRegistry {
 
   public open(target: string): ReviewSessionState {
     const state = createSession({id: randomUUID(), token: randomUUID(), target, createdAt: new Date().toISOString()});
-    this.byId.set(state.id, {state, origin: '', waiters: [], sseListeners: []});
+    this.byId.set(state.id, {state, origin: '', allowedOrigins: [], waiters: [], sseListeners: []});
     persist(state);
     return state;
   }
 
-  public setOrigin(id: string, origin: string): void {
-    this.require(id).origin = origin;
+  public setOrigin(id: string, origin: string, allowedOrigins: readonly string[]): void {
+    const entry = this.require(id);
+    entry.origin = origin;
+    entry.allowedOrigins = [...allowedOrigins];
   }
 
   public draft(id: string, ref: string, patch: {answer?: string | null; verdict?: Verdict | null}): ReviewSessionState {
@@ -53,7 +60,7 @@ export class SessionRegistry {
     const entry = this.byId.get(id);
     if (entry) return entry.state;
     const restored = load(id);
-    if (restored) this.byId.set(id, {state: restored, origin: '', waiters: [], sseListeners: []});
+    if (restored) this.byId.set(id, {state: restored, origin: '', allowedOrigins: [], waiters: [], sseListeners: []});
     return restored ?? undefined;
   }
 
@@ -96,11 +103,20 @@ export class SessionRegistry {
     const entry = this.byId.get(id);
     if (!entry) return false;
     if (!tokensMatch(token, entry.state.token)) return false;
-    const origin = req.headers.origin;
-    if (origin && origin !== entry.origin) return false;
     const host = req.headers.host;
     if (!host) return false;
-    return `http://${host}` === entry.origin || `https://${host}` === entry.origin;
+    if (`http://${host}` !== entry.origin && `https://${host}` !== entry.origin) return false;
+    const origin = req.headers.origin;
+    if (origin && !entry.allowedOrigins.includes(origin)) return false;
+    return true;
+  }
+
+  // Resolves the request's Origin header to an allowed value, or null when it isn't one —
+  // lets the API layer echo it back as Access-Control-Allow-Origin (never "*") on cross-origin routes.
+  public resolveAllowedOrigin(id: string, requestOrigin: string | undefined): string | null {
+    const entry = this.byId.get(id);
+    if (!entry || !requestOrigin) return null;
+    return entry.allowedOrigins.includes(requestOrigin) ? requestOrigin : null;
   }
 
   public subscribe(id: string, listener: () => void): () => void {

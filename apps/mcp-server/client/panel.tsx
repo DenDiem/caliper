@@ -77,9 +77,7 @@ export const Panel = ({store}: PanelProps) => {
         <span class="caliper-panel__count">{zones.length}</span>
       </div>
 
-      {store.liveSyncLost() ? (
-        <p class="caliper-panel__notice">Live sync lost — reload the page</p>
-      ) : null}
+      {store.syncNotice() ? <p class="caliper-panel__notice">{store.syncNotice()}</p> : null}
 
       <ul class="caliper-panel__list">
         {zones.map((zone) => (
