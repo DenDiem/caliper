@@ -1,5 +1,5 @@
 import type {IncomingMessage, ServerResponse} from 'node:http';
-import {verdictSchema} from '@caliper/core';
+import {elementContextSchema, verdictSchema} from '@caliper/core';
 import {z} from 'zod';
 import type {SessionRegistry} from '../session/registry';
 import type {ProxyHandlers} from './proxy-server';
@@ -22,6 +22,11 @@ const draftBodySchema = z.object({
   ref: z.string(),
   answer: z.string().nullish(),
   verdict: verdictSchema.nullish(),
+});
+
+const resolveBodySchema = z.object({
+  ref: z.string(),
+  target: elementContextSchema,
 });
 
 const answersBodySchema = z.object({
@@ -73,6 +78,21 @@ export const makeApiHandlers = (registry: SessionRegistry, sessionId: string): P
             answer: parsed.data.answer ?? null,
             verdict: parsed.data.verdict ?? null,
           });
+          res.writeHead(204).end();
+        })
+        .catch(() => respondBadRequest(res));
+      return true;
+    }
+
+    if (url.pathname.endsWith('/resolve') && req.method === 'POST') {
+      readJson(req)
+        .then((body) => {
+          const parsed = resolveBodySchema.safeParse(body);
+          if (!parsed.success) {
+            respondBadRequest(res);
+            return;
+          }
+          registry.resolve(sessionId, parsed.data.ref, parsed.data.target);
           res.writeHead(204).end();
         })
         .catch(() => respondBadRequest(res));

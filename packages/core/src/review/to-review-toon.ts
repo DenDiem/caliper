@@ -15,6 +15,8 @@ const cell = (value: string | null | undefined): string => {
 
 const status = (zone: ReviewZoneState): string => (zone.answered ? 'answered' : 'pending');
 
+const effectiveSelector = (zone: ReviewZoneState): string | null => zone.resolvedTarget?.selector ?? zone.selector;
+
 export const toReviewToon = (state: ReviewSessionState): string => {
   const header = [
     'review:',
@@ -28,7 +30,7 @@ export const toReviewToon = (state: ReviewSessionState): string => {
     [
       cell(zone.ref),
       cell(zone.route),
-      cell(zone.selector),
+      cell(effectiveSelector(zone)),
       cell(zone.question),
       cell(zone.answer),
       cell(zone.verdict),
@@ -40,7 +42,7 @@ export const toReviewToon = (state: ReviewSessionState): string => {
 
   const help = [
     'help[2]:',
-    '  Apply each answer at its selector; a null selector means the zone was not built yet — build it per the answer',
+    '  Apply each answer at its selector; a null selector means the zone was never anchored on the page — locate or build it from the question and answer',
     '  status=pending means the developer has not answered that zone; call caliper_wait again',
   ].join('\n');
 

@@ -1,7 +1,7 @@
 import {randomUUID, timingSafeEqual} from 'node:crypto';
 import type {IncomingMessage} from 'node:http';
-import {addZones, allAnswered, createSession, setDraft, submitAnswers} from '@caliper/core';
-import type {ReviewSessionState, ReviewZone, Verdict} from '@caliper/core';
+import {addZones, allAnswered, createSession, resolveZone, setDraft, submitAnswers} from '@caliper/core';
+import type {ElementContext, ReviewSessionState, ReviewZone, Verdict} from '@caliper/core';
 import {load, persist} from './persistence';
 
 const tokensMatch = (provided: string | null, expected: string): boolean => {
@@ -36,6 +36,14 @@ export class SessionRegistry {
   public draft(id: string, ref: string, patch: {answer?: string | null; verdict?: Verdict | null}): ReviewSessionState {
     const entry = this.require(id);
     entry.state = setDraft(entry.state, ref, patch);
+    persist(entry.state);
+    this.flushSse(entry);
+    return entry.state;
+  }
+
+  public resolve(id: string, ref: string, target: ElementContext): ReviewSessionState {
+    const entry = this.require(id);
+    entry.state = resolveZone(entry.state, ref, target);
     persist(entry.state);
     this.flushSse(entry);
     return entry.state;

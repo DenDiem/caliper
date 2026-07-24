@@ -4,7 +4,7 @@ import type {Box, ElementContext, ReviewSessionState, ReviewZoneState, TokenMap}
 import {mountOverlay} from '@caliper/overlay';
 import type {OverlayHandle} from '@caliper/overlay';
 import type {AnswerPopoverProps} from '@caliper/overlay/review';
-import {postAnswers, postDraft} from './sink';
+import {postAnswers, postDraft, postResolve} from './sink';
 
 export interface ReviewClientStore {
   zones: () => ReviewZoneState[];
@@ -74,7 +74,9 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
       const element = locateElement(zone);
       if (!element) continue;
       resolvedElements.set(zone.ref, element);
-      setContext(zone.ref, extractContext(element, tokens));
+      const context = extractContext(element, tokens);
+      setContext(zone.ref, context);
+      void postResolve(zone.ref, context).catch(() => {});
     }
   };
 
@@ -153,8 +155,10 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
 
   const applyReanchor = (ref: string, context: ElementContext): void => {
     const element = document.querySelector(context.selector);
-    if (element) resolvedElements.set(ref, element);
     setContext(ref, context);
+    if (!element) return;
+    resolvedElements.set(ref, element);
+    void postResolve(ref, context).catch(() => {});
   };
 
   const reanchor = (ref: string): void => {

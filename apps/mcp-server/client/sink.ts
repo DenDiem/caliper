@@ -1,3 +1,5 @@
+import type {ElementContext} from '@caliper/core';
+
 const params = new URLSearchParams(
   new URL(document.currentScript instanceof HTMLScriptElement ? document.currentScript.src : location.href).search,
 );
@@ -26,5 +28,12 @@ export const postAnswers = (answers: {ref: string; answer: string; verdict?: str
   fetch(`${prefix}/answers?t=${TOKEN}`, {method: 'POST', headers: auth, body: JSON.stringify({answers})}).then(
     assertOk,
   );
+
+export const postResolve = (ref: string, target: ElementContext) =>
+  fetch(`${prefix}/resolve?t=${TOKEN}`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ref, target}),
+  }).then(assertOk);
 
 export const events = () => new EventSource(`${prefix}/events?t=${TOKEN}`);
