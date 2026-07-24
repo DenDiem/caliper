@@ -1,5 +1,6 @@
 import type {IncomingMessage, ServerResponse} from 'node:http';
-import type {Verdict} from '@caliper/core';
+import {verdictSchema} from '@caliper/core';
+import {z} from 'zod';
 import type {SessionRegistry} from '../session/registry';
 import type {ProxyHandlers} from './proxy-server';
 
@@ -17,21 +18,21 @@ const readJson = (req: IncomingMessage): Promise<unknown> =>
     });
   });
 
-interface DraftBody {
-  ref: string;
-  answer?: string;
-  verdict?: Verdict | null;
-}
+const draftBodySchema = z.object({
+  ref: z.string(),
+  answer: z.string().nullish(),
+  verdict: verdictSchema.nullish(),
+});
 
-interface AnswersBody {
-  answers: {ref: string; answer: string; verdict?: Verdict | null}[];
-}
-
-const isDraftBody = (value: unknown): value is DraftBody =>
-  typeof value === 'object' && value !== null && 'ref' in value && typeof value.ref === 'string';
-
-const isAnswersBody = (value: unknown): value is AnswersBody =>
-  typeof value === 'object' && value !== null && 'answers' in value && Array.isArray(value.answers);
+const answersBodySchema = z.object({
+  answers: z.array(
+    z.object({
+      ref: z.string(),
+      answer: z.string(),
+      verdict: verdictSchema.nullish(),
+    }),
+  ),
+});
 
 const tokenFromRequest = (req: IncomingMessage, url: URL): string | null => {
   const fromQuery = url.searchParams.get('t');
@@ -63,9 +64,15 @@ export const makeApiHandlers = (registry: SessionRegistry, sessionId: string): P
     if (url.pathname.endsWith('/drafts') && req.method === 'POST') {
       readJson(req)
         .then((body) => {
-          if (isDraftBody(body)) {
-            registry.draft(sessionId, body.ref, {answer: body.answer ?? null, verdict: body.verdict ?? null});
+          const parsed = draftBodySchema.safeParse(body);
+          if (!parsed.success) {
+            respondBadRequest(res);
+            return;
           }
+          registry.draft(sessionId, parsed.data.ref, {
+            answer: parsed.data.answer ?? null,
+            verdict: parsed.data.verdict ?? null,
+          });
           res.writeHead(204).end();
         })
         .catch(() => respondBadRequest(res));
@@ -75,9 +82,12 @@ export const makeApiHandlers = (registry: SessionRegistry, sessionId: string): P
     if (url.pathname.endsWith('/answers') && req.method === 'POST') {
       readJson(req)
         .then((body) => {
-          if (isAnswersBody(body)) {
-            registry.submit(sessionId, body.answers);
+          const parsed = answersBodySchema.safeParse(body);
+          if (!parsed.success) {
+            respondBadRequest(res);
+            return;
           }
+          registry.submit(sessionId, parsed.data.answers);
           res.writeHead(204).end();
         })
         .catch(() => respondBadRequest(res));
