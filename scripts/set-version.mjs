@@ -9,6 +9,7 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 
 const files = [
   'apps/qa-extension/package.json',
+  'apps/mcp-server/package.json',
   'packages/core/package.json',
   'packages/overlay/package.json',
 ];
@@ -19,3 +20,18 @@ for (const file of files) {
   writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(`${file} -> ${version}`);
 }
+
+const configFile = 'apps/mcp-server/src/config.ts';
+const configSource = readFileSync(configFile, 'utf8');
+const versionExportPattern = /export const CALIPER_VERSION = '[^']*';/;
+
+if (!versionExportPattern.test(configSource)) {
+  console.error(`Could not find "export const CALIPER_VERSION = '...';" in ${configFile}`);
+  process.exit(1);
+}
+
+writeFileSync(
+  configFile,
+  configSource.replace(versionExportPattern, `export const CALIPER_VERSION = '${version}';`),
+);
+console.log(`${configFile} -> ${version}`);

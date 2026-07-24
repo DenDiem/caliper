@@ -17,6 +17,7 @@ can go straight to the file and the variable instead of decoding a picture.
 | `packages/core` | Element → annotation logic. No `chrome.*`, no UI framework, portable to any shell. |
 | `packages/overlay` | In-page picker UI rendered in a Shadow DOM. |
 | `apps/qa-extension` | Chrome MV3 extension for manual QA. |
+| `apps/mcp-server` | MCP server that lets a coding agent ask the developer to review ambiguous UI regions live — see [its README](apps/mcp-server/README.md). |
 
 ## Quick start
 

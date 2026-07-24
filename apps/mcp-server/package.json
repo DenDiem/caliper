@@ -1,7 +1,21 @@
 {
   "name": "@caliper/mcp-server",
   "version": "0.1.0",
+  "description": "MCP server that lets a coding agent ask the developer to review ambiguous UI regions directly in the running dev preview.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DenDiem/caliper.git",
+    "directory": "apps/mcp-server"
+  },
+  "homepage": "https://github.com/DenDiem/caliper/tree/main/apps/mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/DenDiem/caliper/issues"
+  },
+  "keywords": ["mcp", "claude-code", "codex", "design-review", "ui-review"],
   "type": "module",
+  "publishConfig": {"access": "public"},
+  "engines": {"node": ">=20"},
   "bin": {"caliper": "./dist/cli.js"},
   "files": ["dist", "skills"],
   "scripts": {
@@ -11,8 +25,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@caliper/core": "workspace:*",
-    "@caliper/overlay": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@preact/signals": "^1.3.0",
     "http-proxy": "^1.18.1",
@@ -21,6 +33,8 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@caliper/core": "workspace:*",
+    "@caliper/overlay": "workspace:*",
     "@preact/preset-vite": "^2.9.0",
     "@types/http-proxy": "^1.17.15",
     "@types/node": "^22.7.0",
