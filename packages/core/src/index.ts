@@ -2,6 +2,7 @@ export * from './schema/annotation.schema';
 export * from './schema/review.schema';
 export * from './review/session';
 export * from './review/to-review-toon';
+export * from './review/inject';
 export * from './selector/build-selector';
 export * from './selector/is-generated-id';
 export * from './component/resolve-component';
