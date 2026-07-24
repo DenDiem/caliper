@@ -36,5 +36,8 @@ jobs:
       - name: Type-check extension
         run: pnpm exec tsc --noEmit -p apps/qa-extension/tsconfig.json
 
+      - name: Type-check mcp-server
+        run: pnpm exec tsc --noEmit -p apps/mcp-server/tsconfig.json
+
       - name: Build extension
         run: pnpm --filter @caliper/qa-extension build
