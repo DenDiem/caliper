@@ -1,7 +1,7 @@
 import type {ReviewSessionState, ReviewZoneState} from './session';
 
 const NULL = 'null';
-const QUOTE_REQUIRED = /[",\t]|^\s|\s$/;
+const QUOTE_REQUIRED = /[",:|\t]|^\s|\s$/;
 
 const cell = (value: string | null | undefined): string => {
   const flat = (value ?? '').replace(/\s+/g, ' ').trim();
@@ -15,8 +15,8 @@ const status = (zone: ReviewZoneState): string => (zone.answered ? 'answered' : 
 export const toReviewToon = (state: ReviewSessionState): string => {
   const header = [
     'review:',
-    `  id: ${cell(state.id)}`,
-    `  target: ${cell(state.target)}`,
+    `  id: ${state.id}`,
+    `  target: ${state.target}`,
     `  count: ${state.zones.length}`,
   ].join('\n');
 
