@@ -5,8 +5,11 @@ import type {ReviewSessionState, ReviewZone, Verdict} from '@caliper/core';
 import {load, persist} from './persistence';
 
 const tokensMatch = (provided: string | null, expected: string): boolean => {
-  if (!provided || provided.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  if (!provided) return false;
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  if (providedBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(providedBuffer, expectedBuffer);
 };
 
 interface Entry {
