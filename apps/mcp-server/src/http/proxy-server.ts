@@ -28,11 +28,19 @@ export const startProxyServer = (opts: {
 }): {close: () => void} => {
   const proxy = httpProxy.createProxyServer({target: opts.target, selfHandleResponse: true, ws: true, changeOrigin: false});
 
+  proxy.on('proxyReq', (proxyReq) => {
+    proxyReq.setHeader('accept-encoding', 'identity');
+  });
+
   proxy.on('proxyRes', (proxyRes, req, res) => {
     const type = proxyRes.headers['content-type'] ?? '';
     const isHtml = type.includes('text/html');
     const chunks: Buffer[] = [];
     proxyRes.on('data', (chunk) => chunks.push(chunk));
+    proxyRes.on('error', () => {
+      if (!res.headersSent) res.writeHead(502, {'content-type': 'text/html'});
+      res.end();
+    });
     proxyRes.on('end', () => {
       const headers = {...proxyRes.headers};
       if (isHtml) {
@@ -51,9 +59,13 @@ export const startProxyServer = (opts: {
 
   proxy.on('error', (_err, _req, res) => {
     if ('writeHead' in res) {
-      res.writeHead(502, {'content-type': 'text/html'});
+      if (!res.headersSent) {
+        res.writeHead(502, {'content-type': 'text/html'});
+      }
       res.end('<h1>Caliper: dev server unreachable</h1><p>Is the target dev server running?</p>');
+      return;
     }
+    if ('destroy' in res) res.destroy();
   });
 
   const server = createServer((req, res) => {
