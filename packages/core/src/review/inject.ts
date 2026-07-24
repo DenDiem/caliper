@@ -1,13 +1,14 @@
 const MARKER = 'data-caliper';
+const INJECTED = `<script ${MARKER}`;
 
 export const injectScriptTag = (html: string, scriptSrc: string): string => {
-  if (html.includes(MARKER)) return html;
+  if (html.includes(INJECTED)) return html;
 
   const tag = `<script ${MARKER} src="${scriptSrc}"></script>`;
   const headClose = /<\/head>/i;
   const bodyClose = /<\/body>/i;
 
-  if (headClose.test(html)) return html.replace(headClose, `${tag}</head>`);
-  if (bodyClose.test(html)) return html.replace(bodyClose, `${tag}</body>`);
+  if (headClose.test(html)) return html.replace(headClose, () => `${tag}</head>`);
+  if (bodyClose.test(html)) return html.replace(bodyClose, () => `${tag}</body>`);
   return html + tag;
 };

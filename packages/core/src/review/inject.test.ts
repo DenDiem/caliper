@@ -29,4 +29,14 @@ describe('injectScriptTag', () => {
     const out = injectScriptTag('<HTML><HEAD></HEAD></HTML>', SRC);
     expect(out).toContain('<script data-caliper');
   });
+
+  it('does not treat a data-caliper-ref attribute as an existing injection', () => {
+    const out = injectScriptTag('<head></head><div data-caliper-ref="z1"></div>', SRC);
+    expect(out).toContain('<script data-caliper src=');
+  });
+
+  it('treats scriptSrc literally, with no $-pattern expansion', () => {
+    const out = injectScriptTag('<head></head>', '/x?t=a$&b');
+    expect(out).toContain('src="/x?t=a$&b"');
+  });
 });
