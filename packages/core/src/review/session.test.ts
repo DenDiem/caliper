@@ -26,7 +26,7 @@ describe('review session reducers', () => {
     const s1 = addZones(base(), [{ref: 'z1', question: 'q1'}]);
     const s2 = addZones(s1, [{ref: 'z1', question: 'q1-updated'}, {ref: 'z2', question: 'q2'}]);
     expect(s2.zones).toHaveLength(2);
-    expect(s2.zones[0].question).toBe('q1-updated');
+    expect(s2.zones[0]?.question).toBe('q1-updated');
   });
 
   it('setDraft updates answer/verdict without marking answered', () => {
@@ -36,13 +36,13 @@ describe('review session reducers', () => {
 
   it('resolveZone attaches the extracted target', () => {
     const s = resolveZone(addZones(base(), [{ref: 'z1', question: 'q'}]), 'z1', target('div'));
-    expect(s.zones[0].resolvedTarget?.selector).toBe('div');
+    expect(s.zones[0]?.resolvedTarget?.selector).toBe('div');
   });
 
   it('submitAnswers finalizes answers and marks answered', () => {
     const s = submitAnswers(addZones(base(), [{ref: 'z1', question: 'q'}, {ref: 'z2', question: 'q2'}]), [{ref: 'z1', answer: 'do X', verdict: 'accepted'}]);
     expect(s.zones[0]).toMatchObject({answer: 'do X', verdict: 'accepted', answered: true});
-    expect(s.zones[1].answered).toBe(false);
+    expect(s.zones[1]?.answered).toBe(false);
   });
 
   it('pendingRefs and allAnswered track unanswered zones', () => {

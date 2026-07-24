@@ -38,7 +38,7 @@ describe('askPayloadSchema', () => {
 });
 
 describe('caliperAnnotationSchema.answer', () => {
-  it('defaults answer to null when omitted', () => {
+  it('leaves answer undefined when omitted', () => {
     const parsed = caliperAnnotationSchema.parse({
       id: 'a', createdAt: '2026-07-24T00:00:00.000Z', comment: 'q', severity: 'minor',
       page: {url: 'http://x', title: 't', viewport: {width: 1, height: 1, dpr: 1}},
@@ -48,6 +48,6 @@ describe('caliperAnnotationSchema.answer', () => {
         box: {x: 0, y: 0, width: 0, height: 0}, styles: {},
       },
     });
-    expect(parsed.answer).toBeNull();
+    expect(parsed.answer).toBeUndefined();
   });
 });
