@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import type {IncomingMessage} from 'node:http';
 import {addZones, allAnswered, createSession, setDraft, submitAnswers} from '@caliper/core';
 import type {ReviewSessionState, ReviewZone, Verdict} from '@caliper/core';
-import {load, persist} from './persistence.js';
+import {load, persist} from './persistence';
 
 interface Entry {
   state: ReviewSessionState;

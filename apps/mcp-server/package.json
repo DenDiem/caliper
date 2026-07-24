@@ -5,7 +5,7 @@
   "bin": {"caliper": "./dist/cli.js"},
   "files": ["dist"],
   "scripts": {
-    "build": "tsc -p tsconfig.json && pnpm run build:client",
+    "build": "tsup && pnpm run build:client",
     "build:client": "vite build -c client/vite.config.ts",
     "demo": "tsx demo/server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@types/http-proxy": "^1.17.15",
     "@types/node": "^22.7.0",
+    "tsup": "^8.0.0",
     "tsx": "^4.19.0",
     "vite": "^5.4.0"
   }
