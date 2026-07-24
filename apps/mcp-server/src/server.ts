@@ -3,7 +3,8 @@ import {StdioServerTransport} from '@modelcontextprotocol/sdk/server/stdio.js';
 import {askPayloadSchema} from '@caliper/core';
 import {z} from 'zod';
 import {ReviewRunner} from './review-runner';
-import {CALIPER_VERSION} from './config';
+import {pruneStaleSessions} from './session/persistence';
+import {CALIPER_VERSION, SESSION_MAX_AGE_MS} from './config';
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -21,6 +22,8 @@ const WAIT_DESCRIPTION =
 const waitInputSchema = z.object({
   ticket: z.string().min(1).describe('The session id returned as "ticket" by a PENDING caliper_ask result.'),
 });
+
+pruneStaleSessions(SESSION_MAX_AGE_MS);
 
 const runner = new ReviewRunner();
 const server = new McpServer({name: 'caliper', version: CALIPER_VERSION}, {capabilities: {tools: {}}});

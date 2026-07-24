@@ -1,5 +1,5 @@
 import open from 'open';
-import {allAnswered, toReviewToon} from '@caliper/core';
+import {allAnswered, pendingRefs, toReviewToon} from '@caliper/core';
 import type {AskPayload} from '@caliper/core';
 import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
@@ -67,7 +67,12 @@ export class ReviewRunner {
     if (!ticket) {
       return {completed: false, ticket, text: 'Error: caliper_wait requires a non-empty "ticket".'};
     }
-    if (!this.active || this.active.id !== ticket) {
+    if (this.active && this.active.id === ticket) {
+      return this.settle(this.active.id, this.active.origin);
+    }
+
+    const restored = this.registry.get(ticket);
+    if (!restored) {
       return {
         completed: false,
         ticket,
@@ -76,7 +81,19 @@ export class ReviewRunner {
           'was restarted. Call caliper_ask again to start a new review.',
       };
     }
-    return this.settle(this.active.id, this.active.origin);
+
+    if (allAnswered(restored)) {
+      return {completed: true, ticket, text: toReviewToon(restored)};
+    }
+
+    const remainingRefs = pendingRefs(restored).join(', ');
+    return {
+      completed: false,
+      ticket,
+      text:
+        'Error: this review session did not survive an MCP server restart — its browser page is gone. ' +
+        `Call caliper_ask again with the remaining zones: ${remainingRefs}`,
+    };
   }
 
   private defaultTarget(): string | undefined {
