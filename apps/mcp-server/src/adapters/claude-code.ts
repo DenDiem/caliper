@@ -1,7 +1,8 @@
-import {copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, rmSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {writeFileAtomic} from './atomic-write';
 import type {AgentAdapter, InstallConfig} from './types';
 
 // The Caliper entry merged into .mcp.json / ~/.claude.json:
@@ -28,13 +29,21 @@ const readJsonRecord = (path: string): Record<string, unknown> => {
   if (!existsSync(path)) return {};
   const raw = readFileSync(path, 'utf8').trim();
   if (raw.length === 0) return {};
-  const parsed: unknown = JSON.parse(raw);
-  return isRecord(parsed) ? parsed : {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`${path} is not valid JSON -- fix or remove the file and try again.`);
+  }
+  if (!isRecord(parsed)) {
+    throw new Error(`${path} must contain a JSON object at its root -- refusing to overwrite it.`);
+  }
+  return parsed;
 };
 
 const writeJsonRecord = (path: string, data: Record<string, unknown>): void => {
   mkdirSync(dirname(path), {recursive: true});
-  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+  writeFileAtomic(path, `${JSON.stringify(data, null, 2)}\n`);
 };
 
 const withoutKey = (record: Record<string, unknown>, key: string): Record<string, unknown> => {
@@ -70,7 +79,7 @@ const installGuidance = (config: InstallConfig): void => {
   const targetDir = skillTargetDir(config.global);
   mkdirSync(targetDir, {recursive: true});
   const targetFile = join(targetDir, 'SKILL.md');
-  copyFileSync(skillSourcePath(), targetFile);
+  writeFileAtomic(targetFile, readFileSync(skillSourcePath(), 'utf8'));
   console.log(`  skill -> ${targetFile}`);
 };
 

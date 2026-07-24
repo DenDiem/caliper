@@ -1,6 +1,7 @@
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
+import {writeFileAtomic} from './atomic-write';
 import type {AgentAdapter, InstallConfig} from './types';
 
 // The Caliper block merged into ~/.codex/config.toml:
@@ -111,7 +112,7 @@ const registerServer = (config: InstallConfig): void => {
   const path = configTomlPath();
   mkdirSync(dirname(path), {recursive: true});
   const existing = existsSync(path) ? readFileSync(path, 'utf8') : '';
-  writeFileSync(path, upsertCaliperBlock(existing, buildCaliperBlock(config)), 'utf8');
+  writeFileAtomic(path, upsertCaliperBlock(existing, buildCaliperBlock(config)));
   console.log(`  mcp server -> ${path}`);
 };
 
@@ -119,7 +120,7 @@ const installGuidance = (config: InstallConfig): void => {
   const path = agentsMdPath(config.global);
   mkdirSync(dirname(path), {recursive: true});
   const existing = existsSync(path) ? readFileSync(path, 'utf8') : '';
-  writeFileSync(path, upsertCaliperSection(existing, buildCaliperSection(config)), 'utf8');
+  writeFileAtomic(path, upsertCaliperSection(existing, buildCaliperSection(config)));
   console.log(`  agents guidance -> ${path}`);
 };
 
@@ -129,7 +130,7 @@ const uninstall = (config: Pick<InstallConfig, 'global'>): void => {
     const before = readFileSync(tomlPath, 'utf8');
     const after = removeCaliperBlock(before);
     if (after !== before) {
-      writeFileSync(tomlPath, after, 'utf8');
+      writeFileAtomic(tomlPath, after);
       console.log(`  removed mcp server block -> ${tomlPath}`);
     }
   }
@@ -138,7 +139,7 @@ const uninstall = (config: Pick<InstallConfig, 'global'>): void => {
     const before = readFileSync(mdPath, 'utf8');
     const after = removeCaliperSection(before);
     if (after !== before) {
-      writeFileSync(mdPath, after, 'utf8');
+      writeFileAtomic(mdPath, after);
       console.log(`  removed agents guidance -> ${mdPath}`);
     }
   }
