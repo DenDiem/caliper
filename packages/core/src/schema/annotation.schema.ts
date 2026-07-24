@@ -42,6 +42,7 @@ export const caliperAnnotationSchema = z.object({
   author: authorSchema.default('human'),
   concernType: z.string().nullable().default(null),
   verdict: verdictSchema.nullable().default(null),
+  answer: z.string().nullish().default(null),
   figmaUrl: z.string().url().optional(),
   page: z.object({
     url: z.string(),
