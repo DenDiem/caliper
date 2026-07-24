@@ -838,6 +838,57 @@ git commit -m "chore(mcp-server): scaffold package, tsconfig, CI type-check"
 
 ---
 
+## Task 6A: Demo target dev server (test fixture)
+
+**Why:** the developer has no app handy to point Caliper at. This tiny static server gives every later
+manual verification (Tasks 8, 10, 11) a stable target with pre-stamped `data-caliper-ref` elements, so the
+proxy/inject/client/round-trip can be exercised end-to-end without a real app. (HMR passthrough is verified
+separately against a real Vite app if/when one is available — a static target does not exercise HMR.)
+
+**Files:**
+- Create: `apps/mcp-server/demo/server.ts`
+- Modify: `apps/mcp-server/package.json` (add `"demo"` script + `tsx` dev dep)
+
+- [ ] **Step 1: Implement the demo server**
+
+Create `apps/mcp-server/demo/server.ts`:
+```ts
+import {createServer} from 'node:http';
+
+const page = (route: string): string =>
+  `<!doctype html><html><head><title>Caliper demo — ${route}</title></head>
+<body>
+  <h1>Demo (${route})</h1>
+  <button data-caliper-ref="z-cta">Primary action</button>
+  <aside data-caliper-ref="z-sidebar" style="width:220px;height:140px;border:1px solid #ccc">sidebar</aside>
+  <nav><a href="/">home</a> <a href="/orders">orders</a></nav>
+</body></html>`;
+
+createServer((req, res) => {
+  res.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
+  res.end(page(req.url ?? '/'));
+}).listen(5599, '127.0.0.1', () => process.stdout.write('demo target: http://127.0.0.1:5599\n'));
+```
+
+- [ ] **Step 2: Wire the script**
+
+In `apps/mcp-server/package.json`, add to `scripts`: `"demo": "tsx demo/server.ts"`, and add `"tsx": "^4.19.0"`
+to `devDependencies`. Run `pnpm install`.
+
+- [ ] **Step 3: Verify**
+
+Run: `pnpm --filter @caliper/mcp-server demo` (in a spare terminal), then `curl http://127.0.0.1:5599/orders`.
+Expected: the HTML page with `data-caliper-ref="z-cta"` and `z-sidebar`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/mcp-server/demo/server.ts apps/mcp-server/package.json pnpm-lock.yaml
+git commit -m "chore(mcp-server): demo target dev server for smoke tests"
+```
+
+---
+
 ## Task 7: Session registry, tickets, ephemeral server + persistence + security
 
 **Files:**
@@ -1107,11 +1158,11 @@ export const startProxyServer = (opts: {
 
 - [ ] **Step 2: Manual verification**
 
-With a dev app running on `http://localhost:3000` (any — e.g. `pnpm --filter @caliper/qa-extension dev` is
-not a web page; use any local site), start a throwaway script that calls `startProxyServer` with a no-op
+Start the demo target (`pnpm --filter @caliper/mcp-server demo`, Task 6A → `http://127.0.0.1:5599`). Start a
+throwaway script that calls `startProxyServer({target:'http://127.0.0.1:5599', ...})` with a no-op
 `handlers.api` returning `false` and logs the origin, then `open` it. Confirm: the page loads through the
-proxy and `view-source` shows the injected `<script data-caliper …>`. Confirm HMR still works on a Vite app.
-Delete the throwaway script.
+proxy and `view-source` shows the injected `<script data-caliper …>` plus the two `data-caliper-ref`
+elements. (HMR passthrough is verified separately against a real Vite app when available.) Delete the throwaway script.
 
 - [ ] **Step 3: Commit**
 
@@ -1336,11 +1387,13 @@ Expected: `apps/mcp-server/dist/client.js` produced (IIFE).
 
 - [ ] **Step 6: Manual end-to-end (with Tasks 7–9)**
 
-Wire a throwaway script: `registry.open('http://localhost:3000', origin)` → `startProxyServer` with
-`makeApiHandlers` → `open(origin)`. In the dev app, add `data-caliper-ref="z1"` to some element, merge a
-zone `{ref:'z1', question:'Right spacing?'}`, and confirm in the browser: the rectangle draws over the
-element, the panel lists the question, typing autosaves (Network shows `/drafts`), Submit posts `/answers`,
-and the SSE pushes state. Delete the throwaway.
+Start the demo target (Task 6A → `http://127.0.0.1:5599`). Wire a throwaway script:
+`const session = registry.open('http://127.0.0.1:5599')` → `startProxyServer({target, sessionId: session.id,
+token: session.token, handlers: makeApiHandlers(registry, session.id), onListen: (o) => registry.setOrigin(session.id, o)})`
+→ `open(origin)`. Merge a zone `{ref:'z-cta', question:'Right label?'}` (the demo page already carries
+`data-caliper-ref="z-cta"`), and confirm in the browser: the rectangle draws over the button, the panel
+lists the question, typing autosaves (Network shows `/drafts`), Submit posts `/answers`, and the SSE pushes
+state. Delete the throwaway.
 
 - [ ] **Step 7: Commit**
 
@@ -1465,11 +1518,13 @@ await server.connect(new StdioServerTransport());
 
 - [ ] **Step 3: Manual verification (real MCP client)**
 
-Build (`pnpm --filter @caliper/mcp-server build`). Register the built server with Claude Code
-(`claude mcp add caliper -- node <abs>/apps/mcp-server/dist/server.js`, with `CALIPER_TARGET` set). In a
-Claude Code session over a running dev app, have it call `caliper_ask` with one zone; confirm the browser
-opens, you answer + Submit, and the tool result comes back as the `toReviewToon` table. Test the PENDING
-path by not answering for >50 s and confirming `caliper_wait` resumes.
+Start the demo target (Task 6A → `http://127.0.0.1:5599`). Build (`pnpm --filter @caliper/mcp-server build`).
+Register the built server with **Claude Code** (the first-verified agent):
+`claude mcp add caliper --env CALIPER_TARGET=http://127.0.0.1:5599 -- node <abs>/apps/mcp-server/dist/server.js`.
+In a Claude Code session, have it call `caliper_ask` with one zone `{ref:'z-cta', question:'Right label?'}`;
+confirm the browser opens on the proxied demo page, you answer + Submit, and the tool result comes back as
+the `toReviewToon` table. Test the PENDING path by not answering for >50 s and confirming `caliper_wait`
+resumes and returns the answers once you do submit.
 
 - [ ] **Step 4: Commit**
 
@@ -1542,9 +1597,10 @@ MUST, one worked example, and when NOT to use it (when you are confident — jus
 
 - [ ] **Step 6: Manual verification**
 
-`pnpm --filter @caliper/mcp-server build`; from a scratch dir run `node <abs>/dist/cli.js init --agent codex
---target http://localhost:3000` and confirm the `config.toml` block + `AGENTS.md` section appear; repeat
-`--agent claude-code` and confirm the `.mcp.json` entry + copied skill. Roll back the scratch edits.
+`pnpm --filter @caliper/mcp-server build`; from a scratch dir run (Claude Code first — the first-verified
+agent) `node <abs>/dist/cli.js init --agent claude-code --target http://127.0.0.1:5599` and confirm the
+`.mcp.json` entry (with `CALIPER_TARGET`) + the copied `caliper-review` skill; then `--agent codex` and
+confirm the `[mcp_servers.caliper]` `config.toml` block + the `AGENTS.md` section. Roll back the scratch edits.
 
 - [ ] **Step 7: Commit**
 
