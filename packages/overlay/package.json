@@ -5,7 +5,8 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "exports": {
-    ".": "./src/index.tsx"
+    ".": "./src/index.tsx",
+    "./review": "./src/review/index.tsx"
   },
   "dependencies": {
     "@caliper/core": "workspace:*",
