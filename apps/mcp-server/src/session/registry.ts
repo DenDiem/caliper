@@ -1,8 +1,13 @@
-import {randomUUID} from 'node:crypto';
+import {randomUUID, timingSafeEqual} from 'node:crypto';
 import type {IncomingMessage} from 'node:http';
 import {addZones, allAnswered, createSession, setDraft, submitAnswers} from '@caliper/core';
 import type {ReviewSessionState, ReviewZone, Verdict} from '@caliper/core';
 import {load, persist} from './persistence';
+
+const tokensMatch = (provided: string | null, expected: string): boolean => {
+  if (!provided || provided.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+};
 
 interface Entry {
   state: ReviewSessionState;
@@ -53,7 +58,7 @@ export class SessionRegistry {
     const entry = this.require(id);
     entry.state = submitAnswers(entry.state, answers);
     persist(entry.state);
-    entry.waiters.splice(0).forEach((resolve) => resolve());
+    entry.waiters.splice(0).forEach((notify) => notify());
     this.flushSse(entry);
     return entry.state;
   }
@@ -62,24 +67,29 @@ export class SessionRegistry {
     const entry = this.require(id);
     if (allAnswered(entry.state)) return Promise.resolve(entry.state);
     return new Promise((resolve) => {
-      const timer = setTimeout(finish, ms);
-      const waiter = () => finish();
-      entry.waiters.push(waiter);
-      function finish() {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
+        entry.waiters = entry.waiters.filter((item) => item !== waiter);
         resolve(entry.state);
-      }
+      };
+      const waiter = finish;
+      const timer = setTimeout(finish, ms);
+      entry.waiters.push(waiter);
     });
   }
 
   public authorize(id: string, req: IncomingMessage, token: string | null): boolean {
     const entry = this.byId.get(id);
     if (!entry) return false;
-    if (token !== entry.state.token) return false;
+    if (!tokensMatch(token, entry.state.token)) return false;
     const origin = req.headers.origin;
     if (origin && origin !== entry.origin) return false;
     const host = req.headers.host;
-    return !host || `http://${host}` === entry.origin || `https://${host}` === entry.origin;
+    if (!host) return false;
+    return `http://${host}` === entry.origin || `https://${host}` === entry.origin;
   }
 
   public subscribe(id: string, listener: () => void): () => void {
