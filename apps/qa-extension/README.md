@@ -37,7 +37,20 @@ Rebind them at `chrome://extensions/shortcuts`. The picker only inspects the pag
 and recomputes at most once per animation frame, and only when the cursor crosses into a different
 element.
 
+## Sessions and tasks
+
+The panel keeps a history rather than a single running list. A session can be tagged with the issue
+it belongs to — paste a Jira URL or type a bare key like `OM-4110`, and the key is extracted for you.
+
+**+ new** archives the current session and starts an empty one; an untouched session is discarded
+instead of archived, so browsing the panel never litters the history. The dropdown switches between
+sessions, showing the issue key, defect count and date.
+
 ## Export
+
+**Jira** — the session as a Jira-markup comment: a table of defects with selector, component,
+severity and the matched design token, plus the list of pages tested. Paste it straight into the
+issue. Screenshots are not embedded — Jira needs them as real attachments, so use **zip** for those.
 
 **Copy TOON** — the smallest payload for an agent: three tables (`session`, `annotations`,
 `styles`) with explicit row counts, no braces or quotes.

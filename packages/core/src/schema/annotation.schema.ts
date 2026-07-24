@@ -53,15 +53,24 @@ export const caliperAnnotationSchema = z.object({
   screenshot: z.string().optional(),
 });
 
+export const sessionTaskSchema = z.object({
+  key: z.string(),
+  url: z.string().url().nullish(),
+});
+
 export const caliperSessionSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   id: z.string(),
   createdAt: z.string().datetime(),
   label: z.string().optional(),
+  task: sessionTaskSchema.nullish(),
+  closedAt: z.string().datetime().nullish(),
   caliperVersion: z.string(),
   annotations: z.array(caliperAnnotationSchema),
   assets: z.record(z.string()),
 });
+
+export const caliperSessionsSchema = z.array(caliperSessionSchema);
 
 export type Severity = z.infer<typeof severitySchema>;
 export type Author = z.infer<typeof authorSchema>;
@@ -72,5 +81,6 @@ export type ComponentSource = z.infer<typeof componentSourceSchema>;
 export type StyleValue = z.infer<typeof styleValueSchema>;
 export type Box = z.infer<typeof boxSchema>;
 export type ElementContext = z.infer<typeof elementContextSchema>;
+export type SessionTask = z.infer<typeof sessionTaskSchema>;
 export type CaliperAnnotation = z.infer<typeof caliperAnnotationSchema>;
 export type CaliperSession = z.infer<typeof caliperSessionSchema>;
