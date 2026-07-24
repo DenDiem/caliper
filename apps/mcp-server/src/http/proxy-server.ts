@@ -6,6 +6,7 @@ import {dirname, join} from 'node:path';
 import httpProxy from 'http-proxy';
 import {injectScriptTag} from '@caliper/core';
 import {CLIENT_BUNDLE_PATH, CLIENT_PATH_PREFIX} from '../config';
+import {detectInjectionRisk} from './csp-risk';
 
 const readClientBundle = (): string | null => {
   try {
@@ -26,6 +27,7 @@ export const startProxyServer = (opts: {
   handlers: ProxyHandlers;
   onListen: (origin: string) => void;
   onError?: (error: Error) => void;
+  onInjectionRisk?: (reason: string) => void;
 }): {close: () => void} => {
   const proxy = httpProxy.createProxyServer({target: opts.target, selfHandleResponse: true, ws: true, changeOrigin: false});
 
@@ -55,6 +57,12 @@ export const startProxyServer = (opts: {
       delete headers['content-length'];
       delete headers['content-encoding'];
       delete headers['transfer-encoding'];
+
+      const cspHeader = proxyRes.headers['content-security-policy'];
+      const csp = Array.isArray(cspHeader) ? cspHeader.join(', ') : cspHeader;
+      const risk = detectInjectionRisk(csp, `http://127.0.0.1:${port()}`);
+      if (risk) opts.onInjectionRisk?.(risk);
+
       const src = `${CLIENT_BUNDLE_PATH}?s=${opts.sessionId}&t=${opts.token}`;
       const body = injectScriptTag(Buffer.concat(chunks).toString('utf8'), src);
       res.writeHead(proxyRes.statusCode ?? 200, headers);

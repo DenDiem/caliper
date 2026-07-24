@@ -64,3 +64,11 @@ keyed by `ref` — match each row back to the zone with the same `ref` and apply
 If the result text contains `status: PENDING`, not every zone was answered within the wait
 window — the review is still open. Call `caliper_wait` with the `ticket` from that result to
 keep waiting for the remaining answers; it resolves the same way once they come in.
+
+## If the review page looks broken
+
+Default is proxy mode — nothing to change in the app. If the page shows failing API calls with
+CORS errors, an OAuth redirect bouncing out, or a Next.js `allowedDevOrigins` warning, that's an
+origin shift proxy mode cannot fix. Switch to snippet mode: re-run `caliper init --mode snippet`,
+add the `<script>` line from `caliper snippet` to the app's root HTML (e.g. `index.html`), restart
+the agent, and remove the line once the review is done.

@@ -2,13 +2,14 @@ import {existsSync, mkdirSync, readFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {writeFileAtomic} from './atomic-write';
+import {buildServerEnv} from './server-env';
 import type {AgentAdapter, InstallConfig} from './types';
 
 // The Caliper block merged into ~/.codex/config.toml:
 // [mcp_servers.caliper]
 // command = "node"
 // args = ["<abs>/dist/server.js"]
-// env = { CALIPER_TARGET = "<target>" }
+// env = { CALIPER_TARGET = "<target>", CALIPER_MODE = "<mode>", CALIPER_PORT = "<port>" }
 // tool_timeout_sec = 600
 const BLOCK_HEADER = '[mcp_servers.caliper]';
 const TOOL_TIMEOUT_SEC = 600;
@@ -44,14 +45,18 @@ const findBlockRange = (lines: readonly string[]): {start: number; end: number} 
   return {start, end};
 };
 
-const buildCaliperBlock = (config: InstallConfig): string =>
-  [
+const buildCaliperBlock = (config: InstallConfig): string => {
+  const envEntries = Object.entries(buildServerEnv(config))
+    .map(([key, value]) => `${key} = ${tomlString(value)}`)
+    .join(', ');
+  return [
     BLOCK_HEADER,
     `command = ${tomlString('node')}`,
     `args = [${tomlString(config.serverCommand)}]`,
-    `env = { CALIPER_TARGET = ${tomlString(config.target)} }`,
+    `env = { ${envEntries} }`,
     `tool_timeout_sec = ${TOOL_TIMEOUT_SEC}`,
   ].join('\n');
+};
 
 const upsertCaliperBlock = (content: string, block: string): string => {
   const lines = content.length > 0 ? content.split('\n') : [];
@@ -86,6 +91,13 @@ const buildCaliperSection = (config: InstallConfig): string =>
       'call the `caliper_ask` MCP tool so the developer can answer directly in the running page.',
     `Pinned review target: ${config.target}.`,
     'If the result contains status: PENDING, call `caliper_wait` with the returned ticket to keep waiting.',
+    '',
+    'Default is proxy mode: nothing to change in the app. If the review page looks broken — ' +
+      'failing API calls with CORS errors, an OAuth redirect bouncing out, or a Next.js ' +
+      '`allowedDevOrigins` warning — that is an origin shift proxy mode cannot fix. Switch to ' +
+      'snippet mode: re-run `caliper init --mode snippet`, add the `<script>` line from ' +
+      '`caliper snippet` to the root HTML file, restart the agent, and remove the line when the ' +
+      'review work is done.',
     SECTION_END,
   ].join('\n');
 

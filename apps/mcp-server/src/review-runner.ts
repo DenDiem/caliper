@@ -5,7 +5,7 @@ import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
 import {startSnippetServer} from './http/snippet-server';
 import {makeApiHandlers} from './http/api';
-import {ASK_WINDOW_MS, CLIENT_BUNDLE_PATH, resolveMode, resolveSnippetPort} from './config';
+import {ASK_WINDOW_MS, buildSnippetTag, resolveMode, resolveSnippetPort} from './config';
 
 export interface AskResult {
   completed: boolean;
@@ -51,6 +51,7 @@ export class ReviewRunner {
   private readonly registry = new SessionRegistry();
   private active: ActiveSession | null = null;
   private starting: Promise<ActiveSession> | null = null;
+  private injectionRisk: string | null = null;
 
   public async ask(payload: AskPayload): Promise<AskResult> {
     if (this.active) {
@@ -145,6 +146,9 @@ export class ReviewRunner {
           this.active = session;
           resolve(session);
         },
+        onInjectionRisk: (reason) => {
+          this.injectionRisk = reason;
+        },
         onError: (error) =>
           reject(new Error(`Failed to start review proxy server: ${error.message}`)),
       });
@@ -166,8 +170,7 @@ export class ReviewRunner {
           this.registry.setOrigin(state.id, origin, [targetOrigin]);
           const snippetNotice =
             'status: snippet mode active — the app must include ' +
-            `<script data-caliper src="${origin}${CLIENT_BUNDLE_PATH}"></script> in its root HTML, ` +
-            'or the review panel will not appear.';
+            `${buildSnippetTag(port)} in its root HTML, or the review panel will not appear.`;
           const session: ActiveSession = {id: state.id, reviewUrl: target, snippetNotice, close};
           this.active = session;
           resolve(session);
@@ -184,11 +187,24 @@ export class ReviewRunner {
     const toon = toReviewToon(state);
     const reviewUrlLine = `review url: ${session.reviewUrl}`;
     const noticeLine = session.snippetNotice ? `\n${session.snippetNotice}` : '';
+    const warningLine = this.injectionRisk
+      ? '\nwarning: the app sent a Content-Security-Policy that may block Caliper' +
+        `'s injected script (${this.injectionRisk}). If the review page looks empty, re-run ` +
+        '`caliper init --mode snippet` and add the snippet tag instead.'
+      : '';
     if (completed) {
-      return {completed, ticket: session.id, text: `${toon}\n\n${reviewUrlLine}${noticeLine}`};
+      return {
+        completed,
+        ticket: session.id,
+        text: `${toon}\n\n${reviewUrlLine}${noticeLine}${warningLine}`,
+      };
     }
     const pendingLine =
       `status: PENDING — not all zones answered. Call caliper_wait({ticket: "${session.id}"}) to continue.`;
-    return {completed, ticket: session.id, text: `${toon}\n\n${pendingLine}\n${reviewUrlLine}${noticeLine}`};
+    return {
+      completed,
+      ticket: session.id,
+      text: `${toon}\n\n${pendingLine}\n${reviewUrlLine}${noticeLine}${warningLine}`,
+    };
   }
 }

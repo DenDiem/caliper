@@ -3,10 +3,12 @@ import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {writeFileAtomic} from './atomic-write';
+import {buildServerEnv} from './server-env';
 import type {AgentAdapter, InstallConfig} from './types';
 
 // The Caliper entry merged into .mcp.json / ~/.claude.json:
-// {"mcpServers": {"caliper": {"command": "node", "args": ["<abs>/dist/server.js"], "env": {"CALIPER_TARGET": "<target>"}}}}
+// {"mcpServers": {"caliper": {"command": "node", "args": ["<abs>/dist/server.js"],
+//   "env": {"CALIPER_TARGET": "<target>", "CALIPER_MODE": "<mode>", "CALIPER_PORT": "<port>"}}}}
 const SERVER_ID = 'caliper';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -68,7 +70,7 @@ const registerServer = (config: InstallConfig): void => {
       [SERVER_ID]: {
         command: 'node',
         args: [config.serverCommand],
-        env: {CALIPER_TARGET: config.target},
+        env: buildServerEnv(config),
       },
     },
   });
