@@ -6,9 +6,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DenDiem/caliper.git",
-    "directory": "apps/mcp-server"
+    "directory": "apps/ask"
   },
-  "homepage": "https://github.com/DenDiem/caliper/tree/main/apps/mcp-server#readme",
+  "homepage": "https://github.com/DenDiem/caliper/tree/main/apps/ask#readme",
   "bugs": {
     "url": "https://github.com/DenDiem/caliper/issues"
   },

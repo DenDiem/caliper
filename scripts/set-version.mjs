@@ -9,7 +9,7 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 
 const files = [
   'apps/qa-extension/package.json',
-  'apps/mcp-server/package.json',
+  'apps/ask/package.json',
   'packages/core/package.json',
   'packages/overlay/package.json',
 ];
@@ -21,7 +21,7 @@ for (const file of files) {
   console.log(`${file} -> ${version}`);
 }
 
-const configFile = 'apps/mcp-server/src/config.ts';
+const configFile = 'apps/ask/src/config.ts';
 const configSource = readFileSync(configFile, 'utf8');
 const versionExportPattern = /export const CALIPER_VERSION = '[^']*';/;
 

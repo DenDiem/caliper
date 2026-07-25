@@ -31,14 +31,14 @@ jobs:
         run: |
           pnpm -r test
           pnpm exec eslint .
-          pnpm exec tsc --noEmit -p apps/mcp-server/tsconfig.json
-          pnpm exec tsc --noEmit -p apps/mcp-server/client/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/ask/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/ask/client/tsconfig.json
 
       - name: Build
         run: pnpm --filter @caliper/ask build
 
       - name: Publish to npm
-        working-directory: apps/mcp-server
+        working-directory: apps/ask
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public

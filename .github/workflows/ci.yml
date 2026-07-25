@@ -37,10 +37,10 @@ jobs:
         run: pnpm exec tsc --noEmit -p apps/qa-extension/tsconfig.json
 
       - name: Type-check mcp-server
-        run: pnpm exec tsc --noEmit -p apps/mcp-server/tsconfig.json
+        run: pnpm exec tsc --noEmit -p apps/ask/tsconfig.json
 
       - name: Type-check mcp-server client
-        run: pnpm exec tsc --noEmit -p apps/mcp-server/client/tsconfig.json
+        run: pnpm exec tsc --noEmit -p apps/ask/client/tsconfig.json
 
       - name: Build mcp-server
         run: pnpm --filter @caliper/ask build
