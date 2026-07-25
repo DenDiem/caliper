@@ -5,9 +5,11 @@ import {fileURLToPath} from 'node:url';
 import {dirname, join} from 'node:path';
 import {CLIENT_BUNDLE_PATH, CLIENT_PATH_PREFIX} from '../config';
 
-const readClientBundle = (): string | null => {
+const defaultBundlePath = (): string => join(dirname(fileURLToPath(import.meta.url)), 'client.js');
+
+const readClientBundle = (path: string | undefined): string | null => {
   try {
-    return readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'client.js'), 'utf8');
+    return readFileSync(path ?? defaultBundlePath(), 'utf8');
   } catch {
     return null;
   }
@@ -37,6 +39,7 @@ export const startSnippetServer = (opts: {
   allowedOrigin: string;
   onListen: (origin: string) => void;
   onError?: (error: Error) => void;
+  clientBundlePath?: string;
 }): {close: () => void} => {
   const server = createServer((req, res) => {
     const origin = `http://127.0.0.1:${opts.port}`;
@@ -60,7 +63,7 @@ export const startSnippetServer = (opts: {
     }
 
     if (url.pathname === CLIENT_BUNDLE_PATH) {
-      const bundle = readClientBundle();
+      const bundle = readClientBundle(opts.clientBundlePath);
       if (bundle === null) {
         res.writeHead(404, {'content-type': 'text/plain'});
         res.end('Not found');

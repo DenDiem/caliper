@@ -8,9 +8,11 @@ import {injectScriptTag} from '@caliper/core';
 import {CLIENT_BUNDLE_PATH, CLIENT_PATH_PREFIX} from '../config';
 import {detectInjectionRisk} from './csp-risk';
 
-const readClientBundle = (): string | null => {
+const defaultBundlePath = (): string => join(dirname(fileURLToPath(import.meta.url)), 'client.js');
+
+const readClientBundle = (path: string | undefined): string | null => {
   try {
-    return readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'client.js'), 'utf8');
+    return readFileSync(path ?? defaultBundlePath(), 'utf8');
   } catch {
     return null;
   }
@@ -28,6 +30,7 @@ export const startProxyServer = (opts: {
   onListen: (origin: string) => void;
   onError?: (error: Error) => void;
   onInjectionRisk?: (reason: string) => void;
+  clientBundlePath?: string;
 }): {close: () => void} => {
   const proxy = httpProxy.createProxyServer({target: opts.target, selfHandleResponse: true, ws: true, changeOrigin: false});
 
@@ -85,7 +88,7 @@ export const startProxyServer = (opts: {
     const origin = `http://127.0.0.1:${port()}`;
     const url = new URL(req.url ?? '/', origin);
     if (url.pathname === CLIENT_BUNDLE_PATH) {
-      const bundle = readClientBundle();
+      const bundle = readClientBundle(opts.clientBundlePath);
       if (bundle === null) {
         res.writeHead(404, {'content-type': 'text/plain'});
         res.end('Not found');

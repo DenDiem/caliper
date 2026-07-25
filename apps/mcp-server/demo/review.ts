@@ -1,5 +1,5 @@
 import {request} from 'node:http';
-import {copyFileSync, existsSync, unlinkSync} from 'node:fs';
+import {existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {SessionRegistry} from '../src/session/registry';
@@ -63,9 +63,8 @@ const checkDemoTarget = async (): Promise<boolean> => {
   });
 };
 
-const copyClientBundle = (): void => {
+const clientBundlePath = (): string => {
   const distPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'client.js');
-  const demoPath = join(dirname(fileURLToPath(import.meta.url)), 'client.js');
 
   if (!existsSync(distPath)) {
     console.error('Error: dist/client.js not found');
@@ -73,18 +72,7 @@ const copyClientBundle = (): void => {
     process.exit(1);
   }
 
-  copyFileSync(distPath, demoPath);
-};
-
-const deleteClientBundle = (): void => {
-  const demoPath = join(dirname(fileURLToPath(import.meta.url)), 'client.js');
-  if (existsSync(demoPath)) {
-    try {
-      unlinkSync(demoPath);
-    } catch {
-      // ignore cleanup errors
-    }
-  }
+  return distPath;
 };
 
 const formatProgressLine = (answered: number, total: number): string => {
@@ -102,19 +90,7 @@ const main = async (): Promise<void> => {
     process.exit(1);
   }
 
-  // Copy client bundle
-  copyClientBundle();
-
-  const cleanup = (): void => {
-    deleteClientBundle();
-  };
-
-  process.on('SIGINT', () => {
-    cleanup();
-    process.exit(0);
-  });
-
-  process.on('exit', cleanup);
+  const bundlePath = clientBundlePath();
 
   // Create registry and open session
   const registry = new SessionRegistry();
@@ -140,17 +116,17 @@ const main = async (): Promise<void> => {
     sessionId,
     token,
     handlers,
+    clientBundlePath: bundlePath,
     onListen: (origin) => {
       registry.setOrigin(sessionId, origin, [origin]);
 
-      const reviewUrl = `${origin}/__caliper__/client.js?s=${sessionId}&t=${token}`;
-      console.log(`Review URL: ${reviewUrl}`);
+      console.log(`Review URL: ${origin}`);
 
-      // Try to open browser
+      // Best effort: headless/WSL sessions still have the URL printed above.
       try {
-        open(reviewUrl);
+        open(origin);
       } catch {
-        // Silently fail if open fails
+        // ignored
       }
 
       // Print initial progress
@@ -187,12 +163,10 @@ const main = async (): Promise<void> => {
   console.log('--- agent receives ---\n');
 
   proxyServer.close();
-  cleanup();
   process.exit(0);
 };
 
 main().catch((error) => {
   console.error('Fatal error:', error);
-  deleteClientBundle();
   process.exit(1);
 });
