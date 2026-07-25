@@ -68,7 +68,12 @@ const CLEAN_LAUNCH_FLAGS = [
 export const launchReviewBrowser = async (url: string): Promise<void> => {
   const profileDir = createTempProfileDir();
   if (profileDir) {
-    const isolatedArgs = ['--new-window', `--user-data-dir=${profileDir}`, ...CLEAN_LAUNCH_FLAGS];
+    const isolatedArgs = [
+      '--new-window',
+      `--user-data-dir=${profileDir}`,
+      '--window-size=1440,900',
+      ...CLEAN_LAUNCH_FLAGS,
+    ];
     if (await tryOpen(url, apps.chrome, isolatedArgs)) return;
     if (await tryOpen(url, apps.edge, isolatedArgs)) return;
   }

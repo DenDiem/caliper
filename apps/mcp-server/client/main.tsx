@@ -18,6 +18,8 @@ const hostContainer = (host: OverlayHost): HTMLDivElement => {
 };
 
 const boot = async (): Promise<void> => {
+  document.title = `Caliper review — ${document.title}`;
+
   const host = createOverlayHost(reviewStyles, 'caliper-review-host');
   const container = hostContainer(host);
   const store = startController({tokens: collectTokens(document)});
@@ -45,6 +47,7 @@ const boot = async (): Promise<void> => {
   }
 
   store.hydrate(await fetchState());
+  store.autoActivateFirstZoneOnBoot();
 
   const stream = events();
   stream.addEventListener('state', (event: MessageEvent<string>) => {

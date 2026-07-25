@@ -6,29 +6,35 @@ import type {OverlayHandle} from '@caliper/overlay';
 import type {AnswerPopoverProps, HighlightBoxState} from '@caliper/overlay/review';
 import {postAnswers, postDraft, postResolve} from './sink';
 
-export interface ReviewOtherPageGroup {
-  readonly route: string;
-  readonly zones: readonly ReviewZoneState[];
+export interface PageLedgerRow {
+  readonly route: string | null;
+  readonly total: number;
+  readonly answeredCount: number;
+  readonly isCurrent: boolean;
 }
 
-export interface ReviewPageGroups {
-  readonly onPage: readonly ReviewZoneState[];
-  readonly otherPages: readonly ReviewOtherPageGroup[];
+export interface ReviewProgress {
+  readonly answered: number;
+  readonly total: number;
 }
 
 export interface ReviewClientStore {
   zones: () => ReviewZoneState[];
   boxes: () => HighlightBoxState[];
-  pageGroups: () => ReviewPageGroups;
+  onPageZones: () => ReviewZoneState[];
+  pageLedger: () => PageLedgerRow[];
+  progress: () => ReviewProgress;
   activeRef: () => string | null;
   hoverRef: () => string | null;
   activePopover: () => AnswerPopoverProps | null;
   draft: (ref: string) => string;
+  isAnswered: (ref: string) => boolean;
   isResolved: (ref: string) => boolean;
   isSubmitting: () => boolean;
   submitError: () => string | null;
   syncNotice: () => string | null;
   isCollapsed: () => boolean;
+  orientationDismissed: () => boolean;
   setSyncNotice: (message: string | null) => void;
   setActiveRef: (ref: string | null) => void;
   setHoverRef: (ref: string | null) => void;
@@ -37,6 +43,8 @@ export interface ReviewClientStore {
   saveDraft: (ref: string) => void;
   submit: () => Promise<void>;
   reanchor: (ref: string) => void;
+  dismissOrientation: () => void;
+  autoActivateFirstZoneOnBoot: () => void;
   hydrate: (state: ReviewSessionState) => void;
   onChange: (listener: () => void) => () => void;
 }
@@ -65,21 +73,26 @@ const boxOf = (element: Element): Box => {
 const isOtherPageZone = (zone: ReviewZoneState): zone is ReviewZoneState & {route: string} =>
   zone.route !== null && zone.route !== location.pathname;
 
-const groupOtherPages = (zones: readonly ReviewZoneState[]): ReviewOtherPageGroup[] => {
-  const routeOrder: string[] = [];
-  const zonesByRoute = new Map<string, ReviewZoneState[]>();
+const hasAnswer = (draft: string | undefined): boolean => (draft ?? '').trim().length > 0;
 
-  for (const zone of zones.filter(isOtherPageZone)) {
-    const bucket = zonesByRoute.get(zone.route);
-    if (bucket) {
-      bucket.push(zone);
-    } else {
-      zonesByRoute.set(zone.route, [zone]);
-      routeOrder.push(zone.route);
-    }
+const ORIENTATION_DISMISSED_KEY_PREFIX = 'caliper:orientation-dismissed:';
+
+const orientationDismissedKey = (): string => `${ORIENTATION_DISMISSED_KEY_PREFIX}${location.origin}`;
+
+const readOrientationDismissed = (): boolean => {
+  try {
+    return localStorage.getItem(orientationDismissedKey()) === '1';
+  } catch {
+    return false;
   }
+};
 
-  return routeOrder.map((route) => ({route, zones: zonesByRoute.get(route) ?? []}));
+const writeOrientationDismissed = (): void => {
+  try {
+    localStorage.setItem(orientationDismissedKey(), '1');
+  } catch {
+    // best-effort only — localStorage may be unavailable (private mode, quota)
+  }
 };
 
 const VIEWPORT_MARGIN_PX = 24;
@@ -106,10 +119,12 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const submittingSignal = signal(false);
   const submitErrorSignal = signal<string | null>(null);
   const syncNoticeSignal = signal<string | null>(null);
+  const orientationDismissedSignal = signal<boolean>(readOrientationDismissed());
 
   const resolvedElements = new Map<string, Element>();
   const seenPopoverRefs = new Set<string>();
   let pickerHandle: OverlayHandle | null = null;
+  let autoActivatedOnBoot = false;
 
   const setDraft = (ref: string, value: string): void => {
     draftsSignal.value = {...draftsSignal.value, [ref]: value};
@@ -165,18 +180,14 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   };
   requestAnimationFrame(trackPosition);
 
-  const pageGroupsSignal = computed<ReviewPageGroups>(() => {
-    const zones = zonesSignal.value;
-    return {
-      onPage: zones.filter((zone) => !isOtherPageZone(zone)),
-      otherPages: groupOtherPages(zones),
-    };
-  });
+  // Numbering must come from the on-page zones, not the flat zone list — a zone parked on another
+  // page has no rectangle here, so it can't consume a number that a visible zone needs.
+  const onPageZonesSignal = computed<ReviewZoneState[]>(() =>
+    zonesSignal.value.filter((zone) => !isOtherPageZone(zone)),
+  );
 
-  // Numbering must come from the on-page group, not the flat zone list — a zone parked under
-  // "Other pages" has no rectangle here, so it can't consume a number that a visible zone needs.
   const boxesSignal = computed<HighlightBoxState[]>(() =>
-    pageGroupsSignal.value.onPage.reduce<HighlightBoxState[]>((acc, zone, index) => {
+    onPageZonesSignal.value.reduce<HighlightBoxState[]>((acc, zone, index) => {
       const context = contextsSignal.value[zone.ref];
       if (context) {
         acc.push({
@@ -185,11 +196,68 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
           number: index + 1,
           active: zone.ref === activeRefSignal.value,
           hover: zone.ref === hoverRefSignal.value,
+          answered: hasAnswer(draftsSignal.value[zone.ref]),
         });
       }
       return acc;
     }, []),
   );
+
+  // One row per distinct route, ordered by first appearance in `zones` — never re-sorted when
+  // `location.pathname` changes, so navigating pages doesn't shuffle the ledger underneath the
+  // developer. Zones with no route apply to every page and are pinned last as "Anywhere".
+  const pageLedgerSignal = computed<PageLedgerRow[]>(() => {
+    const zones = zonesSignal.value;
+    const drafts = draftsSignal.value;
+
+    const routeOrder: string[] = [];
+    const zonesByRoute = new Map<string, ReviewZoneState[]>();
+    const anywhereZones: ReviewZoneState[] = [];
+
+    for (const zone of zones) {
+      if (zone.route === null) {
+        anywhereZones.push(zone);
+        continue;
+      }
+      const bucket = zonesByRoute.get(zone.route);
+      if (bucket) {
+        bucket.push(zone);
+      } else {
+        zonesByRoute.set(zone.route, [zone]);
+        routeOrder.push(zone.route);
+      }
+    }
+
+    const rows: PageLedgerRow[] = routeOrder.map((route) => {
+      const routeZones = zonesByRoute.get(route) ?? [];
+      return {
+        route,
+        total: routeZones.length,
+        answeredCount: routeZones.filter((zone) => hasAnswer(drafts[zone.ref])).length,
+        isCurrent: route === location.pathname,
+      };
+    });
+
+    if (anywhereZones.length > 0) {
+      rows.push({
+        route: null,
+        total: anywhereZones.length,
+        answeredCount: anywhereZones.filter((zone) => hasAnswer(drafts[zone.ref])).length,
+        isCurrent: false,
+      });
+    }
+
+    return rows;
+  });
+
+  const progressSignal = computed<ReviewProgress>(() => {
+    const zones = zonesSignal.value;
+    const drafts = draftsSignal.value;
+    return {
+      answered: zones.filter((zone) => hasAnswer(drafts[zone.ref])).length,
+      total: zones.length,
+    };
+  });
 
   // A click both opens the popover and (if off-screen) smooth-scrolls the element into view. The
   // question types out character-by-character only the first time a zone's popover opens in this
@@ -238,6 +306,14 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     if (draftsChanged) draftsSignal.value = nextDrafts;
 
     refresh();
+  };
+
+  const autoActivateFirstZoneOnBoot = (): void => {
+    if (autoActivatedOnBoot) return;
+    autoActivatedOnBoot = true;
+    if (seenPopoverRefs.size > 0) return;
+    const target = onPageZonesSignal.value.find((zone) => resolvedElements.has(zone.ref));
+    if (target) activate(target.ref);
   };
 
   const applyReanchor = (ref: string, context: ElementContext): void => {
@@ -289,16 +365,20 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   return {
     zones: () => zonesSignal.value,
     boxes: () => boxesSignal.value,
-    pageGroups: () => pageGroupsSignal.value,
+    onPageZones: () => onPageZonesSignal.value,
+    pageLedger: () => pageLedgerSignal.value,
+    progress: () => progressSignal.value,
     activeRef: () => activeRefSignal.value,
     hoverRef: () => hoverRefSignal.value,
     activePopover: () => activePopoverSignal.value,
     draft: (ref) => draftsSignal.value[ref] ?? '',
+    isAnswered: (ref) => hasAnswer(draftsSignal.value[ref]),
     isResolved: (ref) => Boolean(contextsSignal.value[ref]),
     isSubmitting: () => submittingSignal.value,
     submitError: () => submitErrorSignal.value,
     syncNotice: () => syncNoticeSignal.value,
     isCollapsed: () => collapsedSignal.value,
+    orientationDismissed: () => orientationDismissedSignal.value,
     setSyncNotice: (message) => {
       syncNoticeSignal.value = message;
     },
@@ -313,6 +393,11 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     saveDraft,
     submit,
     reanchor,
+    dismissOrientation: () => {
+      orientationDismissedSignal.value = true;
+      writeOrientationDismissed();
+    },
+    autoActivateFirstZoneOnBoot,
     hydrate,
     onChange: (listener) => effect(listener),
   };
