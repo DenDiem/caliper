@@ -28,7 +28,7 @@ const boot = async (): Promise<void> => {
       <>
         <HighlightLayer boxes={store.boxes()} />
         <Panel store={store} />
-        {popover ? <AnswerPopover {...popover} /> : null}
+        {popover ? <AnswerPopover key={popover.zoneRef} {...popover} /> : null}
       </>,
       container,
     );

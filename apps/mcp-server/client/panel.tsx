@@ -8,10 +8,11 @@ export interface PanelProps {
 
 interface PanelItemProps {
   zone: ReviewZoneState;
+  number: number;
   store: ReviewClientStore;
 }
 
-const PanelItem = ({zone, store}: PanelItemProps) => {
+const PanelItem = ({zone, number, store}: PanelItemProps) => {
   const resolved = store.isResolved(zone.ref);
   const active = store.activeRef() === zone.ref;
 
@@ -28,7 +29,11 @@ const PanelItem = ({zone, store}: PanelItemProps) => {
   };
 
   return (
-    <li class={active ? 'caliper-panel__item caliper-panel__item--active' : 'caliper-panel__item'}>
+    <li
+      class={active ? 'caliper-panel__item caliper-panel__item--active' : 'caliper-panel__item'}
+      onMouseEnter={() => store.setHoverRef(zone.ref)}
+      onMouseLeave={() => store.setHoverRef(null)}
+    >
       <div
         class="caliper-panel__item-header"
         role="button"
@@ -36,16 +41,19 @@ const PanelItem = ({zone, store}: PanelItemProps) => {
         onClick={locate}
         onKeyDown={onHeaderKeyDown}
       >
-        <span class="caliper-panel__question">{zone.question}</span>
-        <span
-          class={
-            resolved
-              ? 'caliper-panel__badge caliper-panel__badge--resolved'
-              : 'caliper-panel__badge caliper-panel__badge--unresolved'
-          }
-        >
-          {resolved ? 'Resolved' : 'Not found on this route'}
-        </span>
+        <span class="caliper-panel__badge-number">{number}</span>
+        <div class="caliper-panel__item-body">
+          <span class="caliper-panel__question">{zone.question}</span>
+          <span
+            class={
+              resolved
+                ? 'caliper-panel__badge caliper-panel__badge--resolved'
+                : 'caliper-panel__badge caliper-panel__badge--unresolved'
+            }
+          >
+            {resolved ? 'Resolved' : 'Not found on this route'}
+          </span>
+        </div>
       </div>
 
       {resolved ? null : (
@@ -67,21 +75,47 @@ const PanelItem = ({zone, store}: PanelItemProps) => {
   );
 };
 
+const CollapsedTab = ({store}: PanelProps) => {
+  const unansweredCount = store.zones().filter((zone) => !zone.answered).length;
+
+  return (
+    <button type="button" class="caliper-panel-tab" onClick={() => store.setCollapsed(false)}>
+      <span class="caliper-panel-tab__icon" aria-hidden="true">
+        «
+      </span>
+      <span class="caliper-panel-tab__name">Caliper</span>
+      <span class="caliper-panel-tab__count">{unansweredCount}</span>
+    </button>
+  );
+};
+
 export const Panel = ({store}: PanelProps) => {
+  if (store.isCollapsed()) return <CollapsedTab store={store} />;
+
   const zones = store.zones();
 
   return (
     <div class="caliper-panel">
       <div class="caliper-panel__header">
         <span class="caliper-panel__title">Caliper review</span>
-        <span class="caliper-panel__count">{zones.length}</span>
+        <div class="caliper-panel__header-actions">
+          <span class="caliper-panel__count">{zones.length}</span>
+          <button
+            type="button"
+            class="caliper-panel__collapse"
+            onClick={() => store.setCollapsed(true)}
+            aria-label="Collapse panel"
+          >
+            »
+          </button>
+        </div>
       </div>
 
       {store.syncNotice() ? <p class="caliper-panel__notice">{store.syncNotice()}</p> : null}
 
       <ul class="caliper-panel__list">
-        {zones.map((zone) => (
-          <PanelItem key={zone.ref} zone={zone} store={store} />
+        {zones.map((zone, index) => (
+          <PanelItem key={zone.ref} zone={zone} number={index + 1} store={store} />
         ))}
       </ul>
 

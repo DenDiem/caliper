@@ -12,42 +12,52 @@ const DEMO_TARGET = 'http://127.0.0.1:5599';
 const BROWSER_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 const PROGRESS_INTERVAL_MS = 3000; // 3 seconds
 
+// Anchored by ordinary CSS selectors of the demo page, not `data-caliper-ref` — these `ref` ids are
+// deliberately distinct from the page's existing `data-caliper-ref` values, so resolution can only
+// go through the selector fallback in `locateElement` (apps/mcp-server/client/review-controller.ts).
+// This doubles as proof that selector-only anchoring works against real markup with zero page edits.
 const zones = [
   {
-    ref: 'z-price',
+    ref: 'price-block',
     route: '/',
-    selector: '[data-caliper-ref="z-price"]',
+    selector: '.price-block',
     question: 'Should the price show USD only, or all three currencies inline?',
   },
   {
-    ref: 'z-cta-phone',
+    ref: 'price-info',
     route: '/',
-    selector: '[data-caliper-ref="z-cta-phone"]',
-    question: 'Should the phone stay masked until the user clicks, or reveal on load?',
+    selector: '.price-info',
+    question: 'What should the price-info icon reveal on click — a tooltip, or a full breakdown modal?',
   },
   {
-    ref: 'z-badge',
+    ref: 'seller-card',
     route: '/',
-    selector: '[data-caliper-ref="z-badge"]',
-    question: "Is 'In stock' the right label, or should it say 'Available to order'?",
+    selector: '.seller-card',
+    question: "Should the seller card show a rating, or does 'Official dealer' plus the verified badge cover trust?",
   },
   {
-    ref: 'z-similar',
+    ref: 'cta-phone',
     route: '/',
-    selector: '[data-caliper-ref="z-similar"]',
-    question: 'How many similar offers should this block show?',
+    selector: '.cta-phone',
+    question: 'Should the phone number stay masked until the user clicks, or reveal on load?',
   },
   {
-    ref: 'z-chat-input',
+    ref: 'gallery-main',
     route: '/',
-    selector: '[data-caliper-ref="z-chat-input"]',
-    question: 'Should the chat box be prefilled with the listing title?',
+    selector: '.gallery-main',
+    question: 'Should the gallery auto-advance photos, or stay static until the user interacts?',
   },
   {
-    ref: 'z-footer-note',
+    ref: 'write-chat-link',
     route: '/',
-    selector: null,
-    question: 'Where should the disclaimer go?',
+    selector: '.write-chat-link',
+    question: "Should 'Write in chat' open inline like it does now, or navigate to a full chat page?",
+  },
+  {
+    ref: 'promo-banner',
+    route: '/',
+    selector: '.promo-banner',
+    question: 'Where should the seasonal promo banner go once one is added to this page?',
   },
 ];
 

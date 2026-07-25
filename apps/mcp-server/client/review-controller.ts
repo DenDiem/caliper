@@ -1,23 +1,27 @@
-import {computed, effect, signal} from '@preact/signals';
+import {batch, computed, effect, signal} from '@preact/signals';
 import {extractContext} from '@caliper/core';
 import type {Box, ElementContext, ReviewSessionState, ReviewZoneState, TokenMap} from '@caliper/core';
 import {mountOverlay} from '@caliper/overlay';
 import type {OverlayHandle} from '@caliper/overlay';
-import type {AnswerPopoverProps} from '@caliper/overlay/review';
+import type {AnswerPopoverProps, HighlightBoxState} from '@caliper/overlay/review';
 import {postAnswers, postDraft, postResolve} from './sink';
 
 export interface ReviewClientStore {
   zones: () => ReviewZoneState[];
-  boxes: () => {ref: string; box: Box; active: boolean}[];
+  boxes: () => HighlightBoxState[];
   activeRef: () => string | null;
+  hoverRef: () => string | null;
   activePopover: () => AnswerPopoverProps | null;
   draft: (ref: string) => string;
   isResolved: (ref: string) => boolean;
   isSubmitting: () => boolean;
   submitError: () => string | null;
   syncNotice: () => string | null;
+  isCollapsed: () => boolean;
   setSyncNotice: (message: string | null) => void;
   setActiveRef: (ref: string | null) => void;
+  setHoverRef: (ref: string | null) => void;
+  setCollapsed: (collapsed: boolean) => void;
   setDraft: (ref: string, value: string) => void;
   saveDraft: (ref: string) => void;
   submit: () => Promise<void>;
@@ -47,18 +51,34 @@ const boxOf = (element: Element): Box => {
   };
 };
 
+const VIEWPORT_MARGIN_PX = 24;
+
+const isFullyVisible = (rect: DOMRect): boolean =>
+  rect.top >= VIEWPORT_MARGIN_PX &&
+  rect.left >= VIEWPORT_MARGIN_PX &&
+  rect.bottom <= window.innerHeight - VIEWPORT_MARGIN_PX &&
+  rect.right <= window.innerWidth - VIEWPORT_MARGIN_PX;
+
+const scrollIntoViewIfNeeded = (element: Element): void => {
+  if (isFullyVisible(element.getBoundingClientRect())) return;
+  element.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'nearest'});
+};
+
 export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore => {
   const zonesSignal = signal<ReviewZoneState[]>([]);
   const contextsSignal = signal<Record<string, ElementContext>>({});
   const draftsSignal = signal<Record<string, string>>({});
   const activeRefSignal = signal<string | null>(null);
+  const hoverRefSignal = signal<string | null>(null);
+  const animateQuestionSignal = signal(false);
+  const collapsedSignal = signal(false);
   const submittingSignal = signal(false);
   const submitErrorSignal = signal<string | null>(null);
   const syncNoticeSignal = signal<string | null>(null);
 
   const resolvedElements = new Map<string, Element>();
+  const seenPopoverRefs = new Set<string>();
   let pickerHandle: OverlayHandle | null = null;
-  let refreshScheduled = false;
 
   const setDraft = (ref: string, value: string): void => {
     draftsSignal.value = {...draftsSignal.value, [ref]: value};
@@ -70,6 +90,8 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
 
   const resolveUnresolvedZones = (): void => {
     for (const zone of zonesSignal.value) {
+      const cached = resolvedElements.get(zone.ref);
+      if (cached && !cached.isConnected) resolvedElements.delete(zone.ref);
       if (resolvedElements.has(zone.ref)) continue;
       const element = locateElement(zone);
       if (!element) continue;
@@ -80,13 +102,18 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     }
   };
 
+  const boxChanged = (a: Box, b: Box): boolean =>
+    a.x !== b.x || a.y !== b.y || a.width !== b.width || a.height !== b.height;
+
   const refreshBoxes = (): void => {
     const next = {...contextsSignal.value};
     let changed = false;
     for (const [ref, element] of resolvedElements) {
       const existing = next[ref];
       if (!existing) continue;
-      next[ref] = {...existing, box: boxOf(element)};
+      const box = boxOf(element);
+      if (!boxChanged(existing.box, box)) continue;
+      next[ref] = {...existing, box};
       changed = true;
     }
     if (changed) contextsSignal.value = next;
@@ -97,27 +124,47 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     refreshBoxes();
   };
 
-  const scheduleRefresh = (): void => {
-    if (refreshScheduled) return;
-    refreshScheduled = true;
-    requestAnimationFrame(() => {
-      refreshScheduled = false;
-      refresh();
-    });
+  // Elements can move without firing a `scroll`/`resize`/mutation event we'd catch (compositor-driven
+  // smooth/momentum scrolling dispatches `scroll` a frame or more after the visual position already
+  // moved). Re-measuring every animation frame reads the layout the browser is about to paint, so the
+  // overlay never trails behind — the same technique libraries like Floating UI use for `autoUpdate`.
+  const trackPosition = (): void => {
+    refresh();
+    requestAnimationFrame(trackPosition);
   };
+  requestAnimationFrame(trackPosition);
 
-  const observer = new MutationObserver(() => scheduleRefresh());
-  observer.observe(document.documentElement, {subtree: true, childList: true, attributes: true});
-  document.addEventListener('scroll', scheduleRefresh, true);
-  window.addEventListener('resize', scheduleRefresh);
-
-  const boxesSignal = computed(() =>
-    zonesSignal.value.reduce<{ref: string; box: Box; active: boolean}[]>((acc, zone) => {
+  const boxesSignal = computed<HighlightBoxState[]>(() =>
+    zonesSignal.value.reduce<HighlightBoxState[]>((acc, zone, index) => {
       const context = contextsSignal.value[zone.ref];
-      if (context) acc.push({ref: zone.ref, box: context.box, active: zone.ref === activeRefSignal.value});
+      if (context) {
+        acc.push({
+          ref: zone.ref,
+          box: context.box,
+          number: index + 1,
+          active: zone.ref === activeRefSignal.value,
+          hover: zone.ref === hoverRefSignal.value,
+        });
+      }
       return acc;
     }, []),
   );
+
+  // A click both opens the popover and (if off-screen) smooth-scrolls the element into view. The
+  // question types out character-by-character only the first time a zone's popover opens in this
+  // session — `seenPopoverRefs` remembers which refs already played the animation.
+  const activate = (ref: string | null): void => {
+    batch(() => {
+      activeRefSignal.value = ref;
+      if (ref) {
+        animateQuestionSignal.value = !seenPopoverRefs.has(ref);
+        seenPopoverRefs.add(ref);
+      }
+    });
+    if (!ref) return;
+    const element = resolvedElements.get(ref);
+    if (element) scrollIntoViewIfNeeded(element);
+  };
 
   const activePopoverSignal = computed<AnswerPopoverProps | null>(() => {
     const ref = activeRefSignal.value;
@@ -126,14 +173,13 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     const context = contextsSignal.value[ref];
     if (!zone || !context) return null;
     return {
-      ref,
+      zoneRef: ref,
       question: zone.question,
       box: context.box,
       answer: draftsSignal.value[ref] ?? '',
+      animateQuestion: animateQuestionSignal.value,
       onInput: (value: string) => setDraft(ref, value),
-      onClose: () => {
-        activeRefSignal.value = null;
-      },
+      onClose: () => activate(null),
     };
   });
 
@@ -203,17 +249,23 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     zones: () => zonesSignal.value,
     boxes: () => boxesSignal.value,
     activeRef: () => activeRefSignal.value,
+    hoverRef: () => hoverRefSignal.value,
     activePopover: () => activePopoverSignal.value,
     draft: (ref) => draftsSignal.value[ref] ?? '',
     isResolved: (ref) => Boolean(contextsSignal.value[ref]),
     isSubmitting: () => submittingSignal.value,
     submitError: () => submitErrorSignal.value,
     syncNotice: () => syncNoticeSignal.value,
+    isCollapsed: () => collapsedSignal.value,
     setSyncNotice: (message) => {
       syncNoticeSignal.value = message;
     },
-    setActiveRef: (ref) => {
-      activeRefSignal.value = ref;
+    setActiveRef: activate,
+    setHoverRef: (ref) => {
+      hoverRefSignal.value = ref;
+    },
+    setCollapsed: (collapsed) => {
+      collapsedSignal.value = collapsed;
     },
     setDraft,
     saveDraft,
