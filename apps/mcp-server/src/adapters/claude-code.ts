@@ -19,12 +19,12 @@ const mcpConfigPath = (global: boolean): string =>
 
 const skillTargetDir = (global: boolean): string =>
   global
-    ? join(homedir(), '.claude', 'skills', 'ask')
-    : join(process.cwd(), '.claude', 'skills', 'ask');
+    ? join(homedir(), '.claude', 'skills', 'caliper-ask')
+    : join(process.cwd(), '.claude', 'skills', 'caliper-ask');
 
 const skillSourcePath = (): string => {
   const distDir = dirname(fileURLToPath(import.meta.url));
-  return join(distDir, '..', 'skills', 'ask', 'SKILL.md');
+  return join(distDir, '..', 'skills', 'caliper-ask', 'SKILL.md');
 };
 
 const readJsonRecord = (path: string): Record<string, unknown> => {
