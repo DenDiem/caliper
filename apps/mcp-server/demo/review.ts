@@ -2,15 +2,20 @@ import {request} from 'node:http';
 import {existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {spawn, spawnSync} from 'node:child_process';
+import type {ChildProcess} from 'node:child_process';
+import {setTimeout as delay} from 'node:timers/promises';
 import {SessionRegistry} from '../src/session/registry';
 import {startProxyServer} from '../src/http/proxy-server';
 import {makeApiHandlers} from '../src/http/api';
+import {launchReviewBrowser} from '../src/browser/launch';
 import {toReviewToon} from '@caliper/core';
-import open from 'open';
 
 const DEMO_TARGET = 'http://127.0.0.1:5599';
 const BROWSER_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 const PROGRESS_INTERVAL_MS = 3000; // 3 seconds
+const DEMO_SERVER_START_TIMEOUT_MS = 8000;
+const DEMO_SERVER_POLL_INTERVAL_MS = 300;
 
 // Anchored by ordinary CSS selectors of the demo page, not `data-caliper-ref` — these `ref` ids are
 // deliberately distinct from the page's existing `data-caliper-ref` values, so resolution can only
@@ -73,6 +78,31 @@ const checkDemoTarget = async (): Promise<boolean> => {
   });
 };
 
+const waitForDemoTarget = async (timeoutMs: number): Promise<boolean> => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await checkDemoTarget()) return true;
+    await delay(DEMO_SERVER_POLL_INTERVAL_MS);
+  }
+  return checkDemoTarget();
+};
+
+const mcpServerRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// Spawned via a shell so `tsx`'s .cmd shim resolves on Windows; `killDemoServer` below accounts
+// for the resulting process tree (cmd.exe -> node) when tearing it down on that platform.
+const startDemoServer = (): ChildProcess =>
+  spawn('tsx', ['demo/server.ts'], {cwd: mcpServerRoot(), shell: true, stdio: 'ignore'});
+
+const killDemoServer = (child: ChildProcess): void => {
+  if (child.pid === undefined) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f']);
+    return;
+  }
+  child.kill();
+};
+
 const clientBundlePath = (): string => {
   const distPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'client.js');
 
@@ -91,13 +121,25 @@ const formatProgressLine = (answered: number, total: number): string => {
 };
 
 const main = async (): Promise<void> => {
-  // Check if demo target is reachable
-  const targetReachable = await checkDemoTarget();
+  // Check if demo target is reachable; if not, start it ourselves so `demo:review` is one command.
+  let demoServerChild: ChildProcess | null = null;
+  let targetReachable = await checkDemoTarget();
   if (!targetReachable) {
-    console.error('Error: demo target not reachable');
-    console.error('Please run in another terminal:');
-    console.error('  pnpm --filter @caliper/mcp-server demo');
-    process.exit(1);
+    console.log(`Demo target not reachable on ${DEMO_TARGET} — starting it now...`);
+    demoServerChild = startDemoServer();
+    process.once('exit', () => {
+      if (demoServerChild) killDemoServer(demoServerChild);
+    });
+    process.once('SIGINT', () => process.exit(130));
+
+    targetReachable = await waitForDemoTarget(DEMO_SERVER_START_TIMEOUT_MS);
+    if (!targetReachable) {
+      console.error('Error: demo target not reachable');
+      console.error('Please run in another terminal:');
+      console.error('  pnpm --filter @caliper/mcp-server demo');
+      process.exit(1);
+    }
+    console.log('Demo target is up.');
   }
 
   const bundlePath = clientBundlePath();
@@ -127,17 +169,12 @@ const main = async (): Promise<void> => {
     token,
     handlers,
     clientBundlePath: bundlePath,
-    onListen: (origin) => {
+    onListen: async (origin) => {
       registry.setOrigin(sessionId, origin, [origin]);
 
       console.log(`Review URL: ${origin}`);
 
-      // Best effort: headless/WSL sessions still have the URL printed above.
-      try {
-        open(origin);
-      } catch {
-        // ignored
-      }
+      await launchReviewBrowser(origin);
 
       // Print initial progress
       const currentState = registry.get(sessionId);

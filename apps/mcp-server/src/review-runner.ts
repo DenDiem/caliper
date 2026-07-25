@@ -1,6 +1,6 @@
-import open from 'open';
 import {allAnswered, pendingRefs, toReviewToon} from '@caliper/core';
 import type {AskPayload} from '@caliper/core';
+import {launchReviewBrowser} from './browser/launch';
 import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
 import {startSnippetServer} from './http/snippet-server';
@@ -113,11 +113,7 @@ export class ReviewRunner {
     if (!this.starting) {
       this.starting = this.startSession(target)
         .then(async (session) => {
-          try {
-            await open(session.reviewUrl);
-          } catch {
-            // Browser launch is best-effort: headless/WSL/container sessions still get the URL in the result.
-          }
+          await launchReviewBrowser(session.reviewUrl);
           return session;
         })
         .finally(() => {
