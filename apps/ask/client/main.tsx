@@ -4,6 +4,7 @@ import type {ReviewSessionState} from '@caliper/core';
 import {AnswerPopover, createOverlayHost, HighlightLayer} from '@caliper/overlay/review';
 import type {OverlayHost} from '@caliper/overlay/review';
 import {CompletionCard} from './completion-card';
+import {startDock} from './dock';
 import {Panel} from './panel';
 import {startController} from './review-controller';
 import {bootstrap, events, fetchState} from './sink';
@@ -24,6 +25,11 @@ const boot = async (): Promise<void> => {
   const host = createOverlayHost(reviewStyles, 'caliper-review-host');
   const container = hostContainer(host);
   const store = startController({tokens: collectTokens(document)});
+  const dock = startDock({
+    target: document.documentElement,
+    isCollapsed: () => store.isCollapsed(),
+    getPanelElement: () => container.querySelector<HTMLElement>('.caliper-panel'),
+  });
 
   const paint = (): void => {
     const popover = store.activePopover();
@@ -35,6 +41,7 @@ const boot = async (): Promise<void> => {
       </>,
       container,
     );
+    dock.update();
   };
 
   store.onChange(paint);
