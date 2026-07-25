@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import type {ReviewSessionState} from '@caliper/core';
 
 const dir = () => {
-  const path = join(tmpdir(), 'caliper-review');
+  const path = join(tmpdir(), 'caliper-ask');
   mkdirSync(path, {recursive: true});
   return path;
 };

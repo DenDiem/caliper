@@ -43,7 +43,7 @@ jobs:
         run: pnpm exec tsc --noEmit -p apps/mcp-server/client/tsconfig.json
 
       - name: Build mcp-server
-        run: pnpm --filter @caliper/mcp-server build
+        run: pnpm --filter @caliper/ask build
 
       - name: Build extension
         run: pnpm --filter @caliper/qa-extension build

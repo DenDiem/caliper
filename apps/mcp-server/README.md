@@ -1,4 +1,4 @@
-# @caliper/mcp-server
+# @caliper/ask
 
 An MCP server that lets a coding agent stop guessing about ambiguous UI regions. While
 implementing a design, the agent marks the elements it is unsure about, calls a tool, and a
@@ -8,10 +8,10 @@ You answer them in place; the answers flow straight back to the agent as structu
 ## Install
 
 ```bash
-npx @caliper/mcp-server init
+npx @caliper/ask init
 ```
 
-This registers the MCP server with your coding agent and installs the `caliper-review` skill so
+This registers the MCP server with your coding agent and installs the `ask` skill so
 the agent knows when and how to use it.
 
 Flags:
@@ -36,7 +36,7 @@ CORS checks, an OAuth redirect, Next.js `allowedDevOrigins`. Re-run with `--mode
 add the one line `caliper snippet` prints to your app's root HTML (e.g. `index.html`):
 
 ```bash
-npx @caliper/mcp-server snippet
+npx @caliper/ask snippet
 ```
 
 Remove the tag once the review is done.
@@ -52,7 +52,7 @@ Remove the tag once the review is done.
 3. If the result contains `status: PENDING`, not every zone was answered within the wait window.
    Call `caliper_wait` with the returned `ticket` to keep waiting.
 
-The full contract and a worked example ship as the `caliper-review` skill, installed by `init`.
+The full contract and a worked example ship as the `ask` skill, installed by `init`.
 
 ## Remote / containers
 

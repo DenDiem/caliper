@@ -35,7 +35,7 @@ jobs:
           pnpm exec tsc --noEmit -p apps/mcp-server/client/tsconfig.json
 
       - name: Build
-        run: pnpm --filter @caliper/mcp-server build
+        run: pnpm --filter @caliper/ask build
 
       - name: Publish to npm
         working-directory: apps/mcp-server

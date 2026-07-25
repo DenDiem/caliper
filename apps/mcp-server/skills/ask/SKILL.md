@@ -1,5 +1,5 @@
 ---
-name: caliper-review
+name: ask
 description: Use when implementing a design and you are genuinely unsure what a specific UI region should do or look like — anchor the region with a CSS selector and call caliper_ask to get the developer's answer, without editing the app's source.
 ---
 

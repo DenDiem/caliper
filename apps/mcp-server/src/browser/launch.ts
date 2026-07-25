@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import open, {apps} from 'open';
 
 const LAUNCH_ERROR_TIMEOUT_MS = 3000;
-const TEMP_PROFILE_PREFIX = 'caliper-review-profile-';
+const TEMP_PROFILE_PREFIX = 'caliper-ask-profile-';
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
