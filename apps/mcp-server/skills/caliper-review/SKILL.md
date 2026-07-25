@@ -1,6 +1,6 @@
 ---
 name: caliper-review
-description: Use when implementing a design and you are genuinely unsure what a specific UI region should do or look like — stamp data-caliper-ref on the element, then call caliper_ask to get the developer's answer.
+description: Use when implementing a design and you are genuinely unsure what a specific UI region should do or look like — anchor the region with a CSS selector and call caliper_ask to get the developer's answer, without editing the app's source.
 ---
 
 # Caliper review
