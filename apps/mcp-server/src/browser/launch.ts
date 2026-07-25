@@ -54,10 +54,21 @@ const createTempProfileDir = (): string | null => {
 // Opens the review URL in an isolated browser window — a throwaway Chrome/Edge profile with no
 // extensions, tabs, or logged-in state, never the developer's default browser/profile. Falls back
 // through progressively less-isolated options. Best-effort: never rejects, a failure only logs.
+// Suppress the first-run experience a fresh Chrome/Edge profile otherwise shows — the sign-in
+// nudge, "make default" prompt, sync opt-in, EU search-engine picker, and what's-new tab — so the
+// review page appears immediately with no interstitial to click through.
+const CLEAN_LAUNCH_FLAGS = [
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-sync',
+  '--disable-search-engine-choice-screen',
+  '--disable-features=ChromeWhatsNewUI',
+] as const;
+
 export const launchReviewBrowser = async (url: string): Promise<void> => {
   const profileDir = createTempProfileDir();
   if (profileDir) {
-    const isolatedArgs = ['--new-window', `--user-data-dir=${profileDir}`];
+    const isolatedArgs = ['--new-window', `--user-data-dir=${profileDir}`, ...CLEAN_LAUNCH_FLAGS];
     if (await tryOpen(url, apps.chrome, isolatedArgs)) return;
     if (await tryOpen(url, apps.edge, isolatedArgs)) return;
   }
