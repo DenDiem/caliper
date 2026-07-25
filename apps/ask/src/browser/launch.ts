@@ -71,7 +71,7 @@ export const launchReviewBrowser = async (url: string): Promise<void> => {
     const isolatedArgs = [
       '--new-window',
       `--user-data-dir=${profileDir}`,
-      '--window-size=1440,900',
+      '--start-maximized',
       ...CLEAN_LAUNCH_FLAGS,
     ];
     if (await tryOpen(url, apps.chrome, isolatedArgs)) return;
