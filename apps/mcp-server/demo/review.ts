@@ -64,6 +64,18 @@ const zones = [
     selector: '.promo-banner',
     question: 'Where should the seasonal promo banner go once one is added to this page?',
   },
+  {
+    ref: 'search-results-count',
+    route: '/search',
+    selector: '.results-count',
+    question: 'Should the results count update live as filters change, or only after pressing "Apply"?',
+  },
+  {
+    ref: 'search-result-card',
+    route: '/search',
+    selector: '.result-card',
+    question: 'Should each result card show the seller name, or just price and title?',
+  },
 ];
 
 const checkDemoTarget = async (): Promise<boolean> => {

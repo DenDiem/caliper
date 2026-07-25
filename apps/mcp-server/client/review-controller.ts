@@ -6,9 +6,20 @@ import type {OverlayHandle} from '@caliper/overlay';
 import type {AnswerPopoverProps, HighlightBoxState} from '@caliper/overlay/review';
 import {postAnswers, postDraft, postResolve} from './sink';
 
+export interface ReviewOtherPageGroup {
+  readonly route: string;
+  readonly zones: readonly ReviewZoneState[];
+}
+
+export interface ReviewPageGroups {
+  readonly onPage: readonly ReviewZoneState[];
+  readonly otherPages: readonly ReviewOtherPageGroup[];
+}
+
 export interface ReviewClientStore {
   zones: () => ReviewZoneState[];
   boxes: () => HighlightBoxState[];
+  pageGroups: () => ReviewPageGroups;
   activeRef: () => string | null;
   hoverRef: () => string | null;
   activePopover: () => AnswerPopoverProps | null;
@@ -49,6 +60,26 @@ const boxOf = (element: Element): Box => {
     width: Math.round(rect.width),
     height: Math.round(rect.height),
   };
+};
+
+const isOtherPageZone = (zone: ReviewZoneState): zone is ReviewZoneState & {route: string} =>
+  zone.route !== null && zone.route !== location.pathname;
+
+const groupOtherPages = (zones: readonly ReviewZoneState[]): ReviewOtherPageGroup[] => {
+  const routeOrder: string[] = [];
+  const zonesByRoute = new Map<string, ReviewZoneState[]>();
+
+  for (const zone of zones.filter(isOtherPageZone)) {
+    const bucket = zonesByRoute.get(zone.route);
+    if (bucket) {
+      bucket.push(zone);
+    } else {
+      zonesByRoute.set(zone.route, [zone]);
+      routeOrder.push(zone.route);
+    }
+  }
+
+  return routeOrder.map((route) => ({route, zones: zonesByRoute.get(route) ?? []}));
 };
 
 const VIEWPORT_MARGIN_PX = 24;
@@ -134,8 +165,18 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   };
   requestAnimationFrame(trackPosition);
 
+  const pageGroupsSignal = computed<ReviewPageGroups>(() => {
+    const zones = zonesSignal.value;
+    return {
+      onPage: zones.filter((zone) => !isOtherPageZone(zone)),
+      otherPages: groupOtherPages(zones),
+    };
+  });
+
+  // Numbering must come from the on-page group, not the flat zone list — a zone parked under
+  // "Other pages" has no rectangle here, so it can't consume a number that a visible zone needs.
   const boxesSignal = computed<HighlightBoxState[]>(() =>
-    zonesSignal.value.reduce<HighlightBoxState[]>((acc, zone, index) => {
+    pageGroupsSignal.value.onPage.reduce<HighlightBoxState[]>((acc, zone, index) => {
       const context = contextsSignal.value[zone.ref];
       if (context) {
         acc.push({
@@ -248,6 +289,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   return {
     zones: () => zonesSignal.value,
     boxes: () => boxesSignal.value,
+    pageGroups: () => pageGroupsSignal.value,
     activeRef: () => activeRefSignal.value,
     hoverRef: () => hoverRefSignal.value,
     activePopover: () => activePopoverSignal.value,
