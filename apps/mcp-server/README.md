@@ -43,8 +43,10 @@ Remove the tag once the review is done.
 
 ## Using it from an agent
 
-1. Before asking, stamp `data-caliper-ref="<ref>"` on each element in question, in the code you
-   just wrote — the review page resolves every zone by that attribute.
+1. Anchor each zone with an ordinary CSS selector for an element already on the page — never
+   edit the app's source to add anchors. Include the zone's `route` (the path that element is
+   on); no reliable selector yet (region not built, or you're unsure)? Ask anyway — the developer
+   can click the region to point at it.
 2. Call `caliper_ask` with the zones (ref, selector, route, question). It opens (or reuses) a
    browser session and returns the developer's answers keyed by `ref`.
 3. If the result contains `status: PENDING`, not every zone was answered within the wait window.

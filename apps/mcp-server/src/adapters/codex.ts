@@ -87,9 +87,14 @@ const buildCaliperSection = (config: InstallConfig): string =>
     '## Caliper review',
     '',
     'When you are implementing a design and are genuinely unsure what a UI region should do or ' +
-      'look like, stamp `data-caliper-ref="<ref>"` on the element in the code you just wrote, then ' +
-      'call the `caliper_ask` MCP tool so the developer can answer directly in the running page.',
+      'look like, call the `caliper_ask` MCP tool so the developer can answer directly in the ' +
+      'running page. Anchor each zone with an ordinary CSS selector for an element already on the ' +
+      "page — do not edit the app's source to add anchors. Include each zone's route (the path " +
+      'that element is on). A review can span multiple pages: the developer navigates the real ' +
+      'app, including logging in or working through a flow to reach gated pages, and the ' +
+      'questions for each page light up as the developer gets there.',
     `Pinned review target: ${config.target}.`,
+    'No reliable selector yet? Ask anyway — the developer can click the region to point at it.',
     'If the result contains status: PENDING, call `caliper_wait` with the returned ticket to keep waiting.',
     '',
     'Default is proxy mode: nothing to change in the app. If the review page looks broken — ' +

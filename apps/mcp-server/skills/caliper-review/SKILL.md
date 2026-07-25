@@ -23,16 +23,28 @@ project rules — just build it. Do not use `caliper_ask` as a substitute for re
 and do not batch trivial/obvious questions into a review just because the tool is available.
 Each call interrupts the developer; only ask what you actually cannot resolve yourself.
 
-## MUST: stamp `data-caliper-ref` before asking
+## Anchor with a selector — never edit the app to add one
 
-Before calling `caliper_ask`, add `data-caliper-ref="<ref>"` to each element you're asking
-about, in the code you just wrote. The review page resolves every zone by that attribute — a
-zone whose ref isn't present on the page shows up as unresolved and the developer can't see
-what you mean.
+Anchor each zone with an ordinary CSS `selector` for an element that already exists on the
+page. Do not modify the app's source to place an anchor — no new attributes, no new classes,
+no markup changes just to make a zone resolvable. Use whatever already identifies the element:
+a class, a tag + `:nth-of-type`, an existing `id` or `data-testid`, anything stable.
+
+Mark each zone's `route` (the path that element is on). A review can span multiple pages — the
+developer drives the real app to get there, including logging in or working through a flow to
+reach gated pages — and each page's questions light up in the panel as the developer arrives.
+
+If you can't give a reliable selector — the region isn't built yet, or you're not sure which
+element you mean — ask anyway. Leave `selector` off or best-effort it; the developer can click
+the real element on the page to point at it.
+
+`data-caliper-ref="<ref>"` is still supported, but only as an optional convenience: use it only
+when you're already authoring brand-new markup from scratch and want a guaranteed-stable anchor
+for it. Never add it to existing elements solely to satisfy Caliper.
 
 ```html
-<div class="empty-state" data-caliper-ref="orders-empty-state">...</div>
-<button class="bulk-delete" data-caliper-ref="bulk-delete-cta">...</button>
+<div class="empty-state">...</div>
+<button class="bulk-delete" type="button">...</button>
 ```
 
 ## Worked example
@@ -42,13 +54,13 @@ what you mean.
   "zones": [
     {
       "ref": "orders-empty-state",
-      "selector": "[data-caliper-ref=\"orders-empty-state\"]",
+      "selector": ".orders-empty-state",
       "route": "/orders",
       "question": "No orders yet: show an illustration + CTA, or just plain text?"
     },
     {
       "ref": "bulk-delete-cta",
-      "selector": "[data-caliper-ref=\"bulk-delete-cta\"]",
+      "selector": "[data-testid=\"bulk-delete\"]",
       "route": "/orders",
       "question": "Should bulk delete require a confirm modal, or is inline undo enough?"
     }

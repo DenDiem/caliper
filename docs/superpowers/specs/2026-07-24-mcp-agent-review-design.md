@@ -4,6 +4,8 @@
 **Status:** design approved in brainstorm; awaiting spec sign-off before the implementation plan.
 **Reviewed by:** two independent Fable 5 critiques (one with repo access, one judging from quoted
 signatures). Both are folded in; where they conflicted, §16 records the resolution.
+**Amended 2026-07-25:** the anchoring decision reversed — see §17. `data-caliper-ref` stamping is no longer
+a MUST; anchoring is selector-based and non-invasive throughout.
 
 ## 1. Goal
 
@@ -145,11 +147,13 @@ navigation + batch Submit** — product-specific review chrome — lives in `app
     loopback targets**, never an arbitrary origin (SSRF / injection guard, §8).
   - Creates/merges a `ReviewSession`, ensures proxy + browser are up, waits ≤ the bounded window (§D3).
   - Returns completed answers (`toReviewToon`) or `{ status:'pending', ticket, answered:[...] }`.
-  - **Tool description states a MUST:** *stamp `data-caliper-ref="<zone-ref>"` on the element in the code
-    you just wrote, before calling this tool.* The agent authors the code, so it stamps its own anchor —
-    near-deterministic, survives generated class names, does not overload app `data-testid` semantics. The
-    client resolves a zone by `[data-caliper-ref="<ref>"]` first, then `zone.selector`, then leaves it
-    unanchored.
+  - **Tool description guidance (revised — see §17):** anchor each zone with an ordinary CSS `selector`
+    for an element that already exists on the page; never modify the app's source to place an anchor.
+    Include `route` for every zone. No reliable selector (region not built, or the agent is unsure)? Ask
+    anyway — the developer can click the real element to point at it. The client resolves a zone by
+    `[data-caliper-ref="<ref>"]` first, then `zone.selector`, then leaves it unanchored — `data-caliper-ref`
+    remains supported only as an optional convenience for markup the agent is authoring from scratch, never
+    a requirement.
 - `caliper_wait({ ticket })` — bounded, repeatable, idempotent; returns answers or still-pending.
 - **Concurrency.** A second `caliper_ask` from the same agent **merges** its zones into the open session
   and pushes them to the page over SSE (§7); each zone's answer resolves the await that owns it. Two
@@ -186,12 +190,18 @@ Verified against a named matrix — **Vite, Next app-router, Angular CLI** — a
 - **Client orchestration (`apps/mcp-server/client`):** the **right-hand question panel** (click a question
   → navigate to its `route`, same-origin, focus its highlight), rectangles synced to the panel, the hover
   answer-popover, and one **Submit** (bottom-right) batching all answers.
-- **Anchoring.** On mount, resolve each zone by `[data-caliper-ref]` then `selector`; on hit,
-  `extractContext(el, tokens)` enriches to a full `ElementContext`. A **MutationObserver** re-resolves zones
-  that render late (modals, tabs, `@if`). Unresolved zones render in the panel (labelled "not found on this
-  route") and can be **re-anchored by clicking the real element** (reuses the picker). Genuinely unanchored
-  zones (nothing built) stay answerable in the panel, optionally as a **droppable marker** the developer
-  places on the page.
+- **Anchoring (non-invasive — revised, see §17).** The agent anchors with an ordinary CSS `selector` over an
+  existing element; it never edits the app's source to place an anchor. On mount, resolve each zone by
+  `[data-caliper-ref]` then `selector` — the ref lookup only ever hits when the agent opted to stamp one on
+  markup it authored from scratch, so in practice resolution is selector-driven. On hit, `extractContext(el,
+  tokens)` enriches to a full `ElementContext`. A **MutationObserver** re-resolves zones that render late
+  (modals, tabs, `@if`). Unresolved zones render in the panel (labelled "not found on this route") and can be
+  **re-anchored by clicking the real element** (reuses the picker). Genuinely unanchored zones (nothing
+  built) stay answerable in the panel, optionally as a **droppable marker** the developer places on the page.
+- **Multi-page reviews are developer-driven.** A zone's `route` marks which page it belongs to; the review
+  can span the whole app. The developer navigates the real app to reach each `route` — including logging in
+  or working through a gated flow — the panel is not expected to deep-link past auth or app state it does
+  not control. Each page's questions resolve and light up as the developer arrives there.
 - **The page is a stateless view; the MCP server owns the session.** Full-page navigations (route clicks in
   an MPA, or dev-server reloads) remount the injected script — so the client **rehydrates from
   `GET /__caliper__/state`** on every load and **never** holds session state in page memory. Answer drafts
@@ -290,3 +300,37 @@ from scratch, not mirrored. Treat that handoff's "read these first" list with th
   stays required (no nullability creep into the tested `toToon`).
 - **Answer field name.** `answer` (this spec) vs `reply` (Review B) — same additive field; `answer` chosen.
 - **Pure code into core (Review B, MEDIUM-7).** Adopted wholesale — see §3, §11.
+
+## 17. Amendment (2026-07-25) — anchoring reversed to non-invasive, selector-based
+
+**This supersedes the `data-caliper-ref` stamping MUST in §5 and §7 as originally written.** The original
+design (§D1, §5, §7) required the agent to stamp `data-caliper-ref="<ref>"` on the element in the code it
+just wrote, before calling `caliper_ask`, and framed the client's `[data-caliper-ref]` lookup as the primary
+resolution path. In practice this meant the agent edited the app's own source — even a throwaway
+attribute — purely to satisfy the review tool. That is reversed:
+
+- **Anchoring is an ordinary CSS `selector` over an existing element, full stop.** The agent never modifies
+  the app's source to place an anchor. It uses whatever already identifies the element — a class, a tag +
+  structural selector, an existing `id`/`data-testid` — exactly as `@caliper/overlay`'s QA-side picker
+  already does for a human. This is the non-invasive posture the rest of the design already assumes for
+  everything except this one MUST; the amendment removes the inconsistency.
+- **`data-caliper-ref` is demoted to an optional convenience**, useful only when the agent is already
+  authoring brand-new markup from scratch in the same change and wants a guaranteed-stable anchor for it.
+  It is never required, and is never added to pre-existing elements solely for Caliper's benefit.
+- **The resolver is unchanged** (`[data-caliper-ref]` first, then `selector`, per §5/§7) — this already
+  supports selector-first behavior with the ref as an optional fallback, since the ref lookup simply misses
+  when no such attribute exists. No packages/client code changes were needed to realize the reversal; it was
+  purely a guidance/spec correction (tool descriptions, the `caliper-review` skill, the Codex `AGENTS.md`
+  section).
+- **`route` is mandatory-in-practice for every zone**, and reviews are explicitly expected to span multiple
+  pages: the developer drives the real running app to reach each zone's route, including authenticating or
+  walking through a gated flow the tool cannot and should not try to script around. Each page's questions
+  resolve and light up in the panel as the developer navigates there — this was implicit in §7's "route"
+  field and MutationObserver re-resolution but is now stated as an explicit expectation for multi-page work.
+- **Why the reversal:** stamping source attributes for a review tool is exactly the kind of app-touching
+  side effect the proxy/snippet injection model (§D2, §6) works hard to avoid everywhere else — injecting a
+  script rather than requiring app changes, auto-detecting CSP/origin failures rather than asking the
+  developer to alter their app. Requiring a source edit to *ask a question* broke that non-invasiveness for
+  no compensating benefit: a plain selector is already near-deterministic for a freshly-authored region (the
+  agent knows its own class names), and existing elements already carry stable selectors the agent can read
+  off the DOM/template it just looked at.

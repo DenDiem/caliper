@@ -10,10 +10,12 @@ const errorMessage = (error: unknown): string => (error instanceof Error ? error
 
 const ASK_DESCRIPTION =
   'Ask the developer to review UI regions you are unsure how to build while implementing a design. ' +
-  'MUST: before calling, stamp data-caliper-ref="<ref>" on each element in the code you just wrote — ' +
-  'the review page resolves each zone by that attribute. Opens a browser where the developer answers; ' +
-  'returns their answers keyed by ref as a TOON table. If the result text contains "status: PENDING", ' +
-  'not every zone was answered in time — call caliper_wait with the returned ticket to keep waiting.';
+  'Anchor each zone with an ordinary CSS selector for an element already on the page — do not edit ' +
+  'the app source to add anchors. Include the route (the path that element is on) for every zone. ' +
+  "No reliable selector yet (region not built, or you're unsure)? Ask anyway — the developer can " +
+  'click the region to point at it. Opens a browser where the developer answers; returns their ' +
+  'answers keyed by ref as a TOON table. If the result text contains "status: PENDING", not every ' +
+  'zone was answered in time — call caliper_wait with the returned ticket to keep waiting.';
 
 const WAIT_DESCRIPTION =
   'Resume waiting for developer answers to a pending caliper_ask review. Call with the ticket ' +
