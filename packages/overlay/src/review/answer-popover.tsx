@@ -8,13 +8,24 @@ export interface AnswerPopoverProps {
   box: Box;
   answer: string;
   animateQuestion: boolean;
+  isLast: boolean;
   onInput: (value: string) => void;
   onClose: () => void;
+  onDone: () => void;
 }
 
 const TYPEWRITER_INTERVAL_MS = 20;
 
-export const AnswerPopover = ({question, box, answer, animateQuestion, onInput, onClose}: AnswerPopoverProps) => {
+export const AnswerPopover = ({
+  question,
+  box,
+  answer,
+  animateQuestion,
+  isLast,
+  onInput,
+  onClose,
+  onDone,
+}: AnswerPopoverProps) => {
   const [revealedLength, setRevealedLength] = useState(animateQuestion ? 0 : question.length);
 
   useEffect(() => {
@@ -34,6 +45,14 @@ export const AnswerPopover = ({question, box, answer, animateQuestion, onInput, 
     return () => window.clearInterval(timer);
   }, [question, animateQuestion]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const skipTypewriter = (): void => setRevealedLength(question.length);
   const typing = animateQuestion && revealedLength < question.length;
 
@@ -42,6 +61,9 @@ export const AnswerPopover = ({question, box, answer, animateQuestion, onInput, 
       class="caliper-answer-popover"
       style={{position: 'fixed', left: `${box.x}px`, top: `${box.y + box.height}px`, pointerEvents: 'auto'}}
     >
+      <button type="button" class="caliper-answer-popover__x" onClick={onClose} aria-label="Close">
+        ×
+      </button>
       <p class="caliper-answer-popover__q" onClick={skipTypewriter}>
         {question.slice(0, revealedLength)}
         {typing ? <span class="caliper-answer-popover__cursor" /> : null}
@@ -52,8 +74,8 @@ export const AnswerPopover = ({question, box, answer, animateQuestion, onInput, 
         onInput={(event: preact.JSX.TargetedEvent<HTMLTextAreaElement>) => onInput(event.currentTarget.value)}
         placeholder="Answer…"
       />
-      <button type="button" class="caliper-answer-popover__close" onClick={onClose}>
-        Done
+      <button type="button" class="caliper-answer-popover__action" onClick={onDone}>
+        {isLast ? 'Done' : 'Next →'}
       </button>
     </div>
   );
