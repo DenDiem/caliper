@@ -1,0 +1,198 @@
+import {request} from 'node:http';
+import {copyFileSync, existsSync, unlinkSync} from 'node:fs';
+import {dirname, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {SessionRegistry} from '../src/session/registry';
+import {startProxyServer} from '../src/http/proxy-server';
+import {makeApiHandlers} from '../src/http/api';
+import {toReviewToon} from '@caliper/core';
+import open from 'open';
+
+const DEMO_TARGET = 'http://127.0.0.1:5599';
+const BROWSER_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+const PROGRESS_INTERVAL_MS = 3000; // 3 seconds
+
+const zones = [
+  {
+    ref: 'z-price',
+    route: '/',
+    selector: '[data-caliper-ref="z-price"]',
+    question: 'Should the price show USD only, or all three currencies inline?',
+  },
+  {
+    ref: 'z-cta-phone',
+    route: '/',
+    selector: '[data-caliper-ref="z-cta-phone"]',
+    question: 'Should the phone stay masked until the user clicks, or reveal on load?',
+  },
+  {
+    ref: 'z-badge',
+    route: '/',
+    selector: '[data-caliper-ref="z-badge"]',
+    question: "Is 'In stock' the right label, or should it say 'Available to order'?",
+  },
+  {
+    ref: 'z-similar',
+    route: '/',
+    selector: '[data-caliper-ref="z-similar"]',
+    question: 'How many similar offers should this block show?',
+  },
+  {
+    ref: 'z-chat-input',
+    route: '/',
+    selector: '[data-caliper-ref="z-chat-input"]',
+    question: 'Should the chat box be prefilled with the listing title?',
+  },
+  {
+    ref: 'z-footer-note',
+    route: '/',
+    selector: null,
+    question: 'Where should the disclaimer go?',
+  },
+];
+
+const checkDemoTarget = async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const req = request(DEMO_TARGET, (res) => {
+      resolve(res.statusCode === 200 || res.statusCode === 404);
+      res.resume();
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(2000, () => resolve(false));
+    req.end();
+  });
+};
+
+const copyClientBundle = (): void => {
+  const distPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'client.js');
+  const demoPath = join(dirname(fileURLToPath(import.meta.url)), 'client.js');
+
+  if (!existsSync(distPath)) {
+    console.error('Error: dist/client.js not found');
+    console.error('Please run: pnpm --filter @caliper/mcp-server build:client');
+    process.exit(1);
+  }
+
+  copyFileSync(distPath, demoPath);
+};
+
+const deleteClientBundle = (): void => {
+  const demoPath = join(dirname(fileURLToPath(import.meta.url)), 'client.js');
+  if (existsSync(demoPath)) {
+    try {
+      unlinkSync(demoPath);
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+};
+
+const formatProgressLine = (answered: number, total: number): string => {
+  const remaining = total - answered;
+  return `Progress: ${answered}/${total} answered${remaining > 0 ? `, ${remaining} pending` : ' — ready to submit'}`;
+};
+
+const main = async (): Promise<void> => {
+  // Check if demo target is reachable
+  const targetReachable = await checkDemoTarget();
+  if (!targetReachable) {
+    console.error('Error: demo target not reachable');
+    console.error('Please run in another terminal:');
+    console.error('  pnpm --filter @caliper/mcp-server demo');
+    process.exit(1);
+  }
+
+  // Copy client bundle
+  copyClientBundle();
+
+  const cleanup = (): void => {
+    deleteClientBundle();
+  };
+
+  process.on('SIGINT', () => {
+    cleanup();
+    process.exit(0);
+  });
+
+  process.on('exit', cleanup);
+
+  // Create registry and open session
+  const registry = new SessionRegistry();
+  const state = registry.open(DEMO_TARGET);
+  const sessionId = state.id;
+  const token = state.token;
+
+  // Merge zones with proper route handling
+  registry.merge(
+    sessionId,
+    zones.map((zone) => ({
+      ref: zone.ref,
+      route: zone.route,
+      selector: zone.selector,
+      question: zone.question,
+    })),
+  );
+
+  // Start proxy server
+  const handlers = makeApiHandlers(registry, sessionId);
+  const proxyServer = startProxyServer({
+    target: DEMO_TARGET,
+    sessionId,
+    token,
+    handlers,
+    onListen: (origin) => {
+      registry.setOrigin(sessionId, origin, [origin]);
+
+      const reviewUrl = `${origin}/__caliper__/client.js?s=${sessionId}&t=${token}`;
+      console.log(`Review URL: ${reviewUrl}`);
+
+      // Try to open browser
+      try {
+        open(reviewUrl);
+      } catch {
+        // Silently fail if open fails
+      }
+
+      // Print initial progress
+      const currentState = registry.get(sessionId);
+      if (currentState) {
+        const answered = currentState.zones.filter((z) => z.answered).length;
+        console.log(formatProgressLine(answered, currentState.zones.length));
+      }
+    },
+  });
+
+  // Start progress monitor
+  let lastPrintTime = Date.now();
+  const progressInterval = setInterval(() => {
+    const now = Date.now();
+    if (now - lastPrintTime >= PROGRESS_INTERVAL_MS) {
+      const currentState = registry.get(sessionId);
+      if (currentState) {
+        const answered = currentState.zones.filter((z) => z.answered).length;
+        console.log(formatProgressLine(answered, currentState.zones.length));
+      }
+      lastPrintTime = now;
+    }
+  }, 1000);
+
+  // Wait for all answers with timeout
+  const finalState = await registry.wait(sessionId, BROWSER_TIMEOUT_MS);
+
+  clearInterval(progressInterval);
+
+  // Print results
+  console.log('\n--- agent receives ---');
+  console.log(toReviewToon(finalState));
+  console.log('--- agent receives ---\n');
+
+  proxyServer.close();
+  cleanup();
+  process.exit(0);
+};
+
+main().catch((error) => {
+  console.error('Fatal error:', error);
+  deleteClientBundle();
+  process.exit(1);
+});

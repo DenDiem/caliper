@@ -22,6 +22,7 @@
     "build": "tsup && pnpm run build:client",
     "build:client": "vite build -c client/vite.config.ts",
     "demo": "tsx demo/server.ts",
+    "demo:review": "tsx demo/review.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
