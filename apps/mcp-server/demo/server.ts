@@ -1,15 +1,32 @@
 import {createServer} from 'node:http';
+import {renderListingPage} from './listing-page';
+import {renderSearchPage} from './search-page';
 
-const page = (route: string): string =>
-  `<!doctype html><html><head><title>Caliper demo — ${route}</title></head>
-<body>
-  <h1>Demo (${route})</h1>
-  <button data-caliper-ref="z-cta">Primary action</button>
-  <aside data-caliper-ref="z-sidebar" style="width:220px;height:140px;border:1px solid #ccc">sidebar</aside>
-  <nav><a href="/">home</a> <a href="/orders">orders</a></nav>
-</body></html>`;
+const PORT = 5599;
+const HOST = '127.0.0.1';
+
+const routes: Record<string, () => string> = {
+  '/': renderListingPage,
+  '/search': renderSearchPage,
+};
 
 createServer((req, res) => {
+  const {pathname} = new URL(req.url ?? '/', `http://${HOST}:${PORT}`);
+
+  if (pathname === '/favicon.ico') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const render = routes[pathname];
+
+  if (!render) {
+    res.writeHead(404, {'content-type': 'text/plain; charset=utf-8'});
+    res.end('Not found');
+    return;
+  }
+
   res.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
-  res.end(page(req.url ?? '/'));
-}).listen(5599, '127.0.0.1', () => process.stdout.write('demo target: http://127.0.0.1:5599\n'));
+  res.end(render());
+}).listen(PORT, HOST, () => process.stdout.write(`demo target: http://${HOST}:${PORT}\n`));
