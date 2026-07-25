@@ -18,6 +18,8 @@ export interface ReviewProgress {
   readonly total: number;
 }
 
+export type CompletionCardState = {kind: 'page'; route: string; remaining: number} | {kind: 'all'} | null;
+
 export interface ReviewClientStore {
   zones: () => ReviewZoneState[];
   boxes: () => HighlightBoxState[];
@@ -27,6 +29,7 @@ export interface ReviewClientStore {
   activeRef: () => string | null;
   hoverRef: () => string | null;
   activePopover: () => AnswerPopoverProps | null;
+  completionCard: () => CompletionCardState;
   draft: (ref: string) => string;
   isAnswered: (ref: string) => boolean;
   isResolved: (ref: string) => boolean;
@@ -41,6 +44,8 @@ export interface ReviewClientStore {
   setCollapsed: (collapsed: boolean) => void;
   setDraft: (ref: string, value: string) => void;
   saveDraft: (ref: string) => void;
+  answerAndAdvance: (ref: string) => void;
+  dismissCompletionCard: () => void;
   submit: () => Promise<void>;
   reanchor: (ref: string) => void;
   dismissOrientation: () => void;
@@ -120,6 +125,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const submitErrorSignal = signal<string | null>(null);
   const syncNoticeSignal = signal<string | null>(null);
   const orientationDismissedSignal = signal<boolean>(readOrientationDismissed());
+  const completionCardSignal = signal<CompletionCardState>(null);
 
   const resolvedElements = new Map<string, Element>();
   const seenPopoverRefs = new Set<string>();
@@ -179,6 +185,28 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     requestAnimationFrame(trackPosition);
   };
   requestAnimationFrame(trackPosition);
+
+  // Capture phase, so this runs before any bubble-phase click handler on the panel/popover itself —
+  // a click that lands on our own chrome is excluded outright and never reaches this far down the
+  // list of concerns. `composedPath()` (not `event.target`) is required here: the panel and popover
+  // render inside a shadow root, and a plain `target.closest(...)` would see only the shadow host
+  // once the event is observed from `document`, misreporting every in-popover click as "outside".
+  const onDocumentClick = (event: MouseEvent): void => {
+    const ref = activeRefSignal.value;
+    if (!ref) return;
+    const insideChrome = event
+      .composedPath()
+      .some(
+        (node) =>
+          node instanceof Element &&
+          (node.matches('.caliper-answer-popover') ||
+            node.matches('.caliper-panel') ||
+            node.matches('.caliper-panel-tab')),
+      );
+    if (insideChrome) return;
+    closePopover(ref);
+  };
+  document.addEventListener('click', onDocumentClick, true);
 
   // Numbering must come from the on-page zones, not the flat zone list — a zone parked on another
   // page has no rectangle here, so it can't consume a number that a visible zone needs.
@@ -259,10 +287,16 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     };
   });
 
+  const saveDraft = (ref: string): void => {
+    void postDraft(ref, draftsSignal.value[ref] ?? '');
+  };
+
   // A click both opens the popover and (if off-screen) smooth-scrolls the element into view. The
   // question types out character-by-character only the first time a zone's popover opens in this
-  // session — `seenPopoverRefs` remembers which refs already played the animation.
+  // session — `seenPopoverRefs` remembers which refs already played the animation. Activating any
+  // zone (including the one the guided flow lands on next) retires a lingering completion card.
   const activate = (ref: string | null): void => {
+    if (ref) completionCardSignal.value = null;
     batch(() => {
       activeRefSignal.value = ref;
       if (ref) {
@@ -273,6 +307,52 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     if (!ref) return;
     const element = resolvedElements.get(ref);
     if (element) scrollIntoViewIfNeeded(element);
+  };
+
+  // Candidates are restricted to zones already resolved on screen — an unresolved zone (e.g. one
+  // whose selector matches nothing on this page yet) has no box to scroll to or glow, so the guided
+  // flow can never land on it. Search forward from `afterRef` in zone order first, then wrap to the
+  // start of the page — so repeatedly advancing cycles through every answerable zone exactly once.
+  const nextUnansweredOnCurrentPage = (afterRef: string): string | null => {
+    const pageZones = onPageZonesSignal.value;
+    const isCandidate = (zone: ReviewZoneState): boolean =>
+      zone.ref !== afterRef && Boolean(contextsSignal.value[zone.ref]) && !hasAnswer(draftsSignal.value[zone.ref]);
+
+    const afterIndex = pageZones.findIndex((zone) => zone.ref === afterRef);
+    const tail = pageZones.slice(afterIndex + 1);
+    const head = afterIndex === -1 ? [] : pageZones.slice(0, afterIndex);
+
+    return (tail.find(isCandidate) ?? head.find(isCandidate))?.ref ?? null;
+  };
+
+  const buildCompletionCard = (): CompletionCardState => {
+    const nextPendingRow = pageLedgerSignal.value.find(
+      (row) => row.route !== null && !row.isCurrent && row.answeredCount < row.total,
+    );
+    if (nextPendingRow && nextPendingRow.route !== null) {
+      return {
+        kind: 'page',
+        route: nextPendingRow.route,
+        remaining: nextPendingRow.total - nextPendingRow.answeredCount,
+      };
+    }
+    return {kind: 'all'};
+  };
+
+  const closePopover = (ref: string): void => {
+    saveDraft(ref);
+    activate(null);
+  };
+
+  const answerAndAdvance = (ref: string): void => {
+    saveDraft(ref);
+    const next = nextUnansweredOnCurrentPage(ref);
+    if (next) {
+      activate(next);
+      return;
+    }
+    activate(null);
+    completionCardSignal.value = buildCompletionCard();
   };
 
   const activePopoverSignal = computed<AnswerPopoverProps | null>(() => {
@@ -287,8 +367,10 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
       box: context.box,
       answer: draftsSignal.value[ref] ?? '',
       animateQuestion: animateQuestionSignal.value,
+      isLast: nextUnansweredOnCurrentPage(ref) === null,
       onInput: (value: string) => setDraft(ref, value),
-      onClose: () => activate(null),
+      onClose: () => closePopover(ref),
+      onDone: () => answerAndAdvance(ref),
     };
   });
 
@@ -336,10 +418,6 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     });
   };
 
-  const saveDraft = (ref: string): void => {
-    void postDraft(ref, draftsSignal.value[ref] ?? '');
-  };
-
   const submit = async (): Promise<void> => {
     submitErrorSignal.value = null;
 
@@ -371,6 +449,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     activeRef: () => activeRefSignal.value,
     hoverRef: () => hoverRefSignal.value,
     activePopover: () => activePopoverSignal.value,
+    completionCard: () => completionCardSignal.value,
     draft: (ref) => draftsSignal.value[ref] ?? '',
     isAnswered: (ref) => hasAnswer(draftsSignal.value[ref]),
     isResolved: (ref) => Boolean(contextsSignal.value[ref]),
@@ -391,6 +470,10 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     },
     setDraft,
     saveDraft,
+    answerAndAdvance,
+    dismissCompletionCard: () => {
+      completionCardSignal.value = null;
+    },
     submit,
     reanchor,
     dismissOrientation: () => {

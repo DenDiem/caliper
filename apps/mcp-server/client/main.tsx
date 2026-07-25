@@ -3,6 +3,7 @@ import {collectTokens} from '@caliper/core';
 import type {ReviewSessionState} from '@caliper/core';
 import {AnswerPopover, createOverlayHost, HighlightLayer} from '@caliper/overlay/review';
 import type {OverlayHost} from '@caliper/overlay/review';
+import {CompletionCard} from './completion-card';
 import {Panel} from './panel';
 import {startController} from './review-controller';
 import {bootstrap, events, fetchState} from './sink';
@@ -30,7 +31,7 @@ const boot = async (): Promise<void> => {
       <>
         <HighlightLayer boxes={store.boxes()} />
         <Panel store={store} />
-        {popover ? <AnswerPopover key={popover.zoneRef} {...popover} /> : null}
+        {popover ? <AnswerPopover key={popover.zoneRef} {...popover} /> : <CompletionCard store={store} />}
       </>,
       container,
     );
