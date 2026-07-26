@@ -4,7 +4,7 @@
 
 <h1 align="center">Caliper</h1>
 
-<p align="center">Turn a clicked DOM element into a machine-precise defect annotation for an AI coding agent.</p>
+<p align="center">Precise, element-pinned hand-offs between a developer and an AI coding agent — in both directions.</p>
 
 <p align="center">
   <a href="https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/biedcnpfkefnocikeonknogjcippdopm?label=chrome%20web%20store&labelColor=13161d&color=4f7cff&logo=googlechrome&logoColor=white"></a>
@@ -16,28 +16,41 @@
   <a href="https://www.linkedin.com/in/dendiem/"><img alt="LinkedIn" src="https://img.shields.io/badge/linkedin-dendiem-0A66C2?labelColor=13161d&logo=linkedin&logoColor=white"></a>
 </p>
 
-Visual bug reporters produce a screenshot and a sentence. Caliper produces a stable selector, the
-owning component name, and computed styles already matched against your design tokens — so an agent
-can go straight to the file and the variable instead of decoding a picture.
+Caliper is built on one idea: a clicked DOM element already carries a **stable selector**, its
+**owning component**, and **computed styles matched to your design tokens** — enough for an AI agent
+to act on without decoding a screenshot. Two products put that to work in opposite directions.
+
+## Two directions
+
+### 🐞 Human → agent — [`@caliper/qa-extension`](apps/qa-extension/README.md)
+
+A Chrome extension for manual QA. A reviewer marks broken UI on the live app; the export is a compact
+payload — selector, component, token-matched styles — an agent fixes straight from the file.
 
 ![Arming the picker, clicking an element, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
 
-## What is here
+### 💬 Agent → human — [`@caliper/ask`](apps/ask/README.md)
+
+An MCP server for the reverse flow. While a coding agent implements a UI and is unsure what a region
+should do, it asks *you* — questions pinned to the live elements, answered in place, sent straight
+back as structured data.
+
+![The agent asks about ambiguous UI, you answer on the live page](docs/media/ask/review-flow.gif)
+
+## What's inside
+
+Both products share the same element-picking core and in-page overlay:
 
 | Package | Description |
 | --- | --- |
 | `packages/core` | Element → annotation logic. No `chrome.*`, no UI framework, portable to any shell. |
 | `packages/overlay` | In-page picker UI rendered in a Shadow DOM. |
-| `apps/qa-extension` | Chrome MV3 extension for manual QA. |
-| `apps/ask` | MCP server that lets a coding agent ask the developer to review ambiguous UI regions live — see [its README](apps/ask/README.md). |
-
-## The reverse direction — `@caliper/ask`
-
-The extension is human→agent (a person marks a defect, an agent fixes it). [`@caliper/ask`](apps/ask/README.md) is agent→human: while a coding agent implements a UI and is unsure what a region should do, it asks *you* — questions pinned to the live elements, answered in place, sent straight back.
-
-![The agent asks about ambiguous UI, you answer on the live page](docs/media/ask/review-flow.gif)
+| `apps/qa-extension` | Chrome MV3 extension for manual QA — [README](apps/qa-extension/README.md). |
+| `apps/ask` | MCP server for live agent→developer UI review — [README](apps/ask/README.md). |
 
 ## Quick start
+
+**The extension** — [install from the Chrome Web Store](https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm), or build it locally:
 
 ```bash
 pnpm install
@@ -54,7 +67,13 @@ shortcut list shows `Alt+R — Reload the extension during development`, you are
 Click the toolbar icon to arm the picker, click an element, describe the defect, save. Open the side
 panel to review and export.
 
+**The MCP server** — see [`apps/ask`](apps/ask/README.md) for setup, the proxy/snippet modes, and the
+agent contract.
+
 ## Output
+
+The extension turns each marked defect into a compact record — this is the JSON export (TOON and a
+screenshot zip are available too):
 
 ```json
 {
@@ -81,7 +100,7 @@ panel to review and export.
 Screenshots live in a separate `assets` map keyed by `screenshotId`, and are omitted from
 `Copy JSON` by default.
 
-## Releasing
+## Releasing the extension
 
 Every tag matching `v*` builds, verifies, publishes to the Chrome Web Store and attaches the zip to
 a GitHub release:
