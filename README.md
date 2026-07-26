@@ -8,7 +8,7 @@ Visual bug reporters produce a screenshot and a sentence. Caliper produces a sta
 owning component name, and computed styles already matched against your design tokens — so an agent
 can go straight to the file and the variable instead of decoding a picture.
 
-![Arming the picker, clicking an element, describing the defect and watching it land in the session](docs/media/demo.gif)
+![Arming the picker, clicking an element, describing the defect and exporting it to an agent](docs/media/qa-extension/v2/mark-defect.gif)
 
 ## What is here
 
@@ -18,6 +18,12 @@ can go straight to the file and the variable instead of decoding a picture.
 | `packages/overlay` | In-page picker UI rendered in a Shadow DOM. |
 | `apps/qa-extension` | Chrome MV3 extension for manual QA. |
 | `apps/ask` | MCP server that lets a coding agent ask the developer to review ambiguous UI regions live — see [its README](apps/ask/README.md). |
+
+## The reverse direction — `@caliper/ask`
+
+The extension is human→agent (a person marks a defect, an agent fixes it). [`@caliper/ask`](apps/ask/README.md) is agent→human: while a coding agent implements a UI and is unsure what a region should do, it asks *you* — questions pinned to the live elements, answered in place, sent straight back.
+
+![The agent asks about ambiguous UI, you answer on the live page](docs/media/ask/v3/review-flow.gif)
 
 ## Quick start
 

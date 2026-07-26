@@ -1,6 +1,8 @@
 # @caliper/qa-extension
 
-Chrome MV3 shell around `@caliper/core` and `@caliper/overlay`, built with [WXT](https://wxt.dev).
+Chrome MV3 shell around `@caliper/core` and `@caliper/overlay`, built with [WXT](https://wxt.dev). A QA reviewer marks broken UI on the live app and exports it as a compact payload a coding agent fixes.
+
+![Mark a defect on the live app — comment and severity — then export it to your agent](../../docs/media/qa-extension/v2/mark-defect.gif)
 
 ## Develop
 

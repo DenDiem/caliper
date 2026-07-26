@@ -1,5 +1,7 @@
 node_modules/
 docs/media/*.mp4
+docs/media/**/*.mp4
+docs/media/**/*.webm
 dist/
 .output/
 .wxt/

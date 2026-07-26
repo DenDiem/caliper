@@ -5,13 +5,15 @@ implementing a design, the agent marks the elements it is unsure about, calls a 
 browser opens against your running dev preview with those questions pinned to the live elements.
 You answer them in place; the answers flow straight back to the agent as structured data.
 
+![The agent asks about ambiguous UI, you answer on the live page, the answers flow back as a compact table](../../docs/media/ask/v3/review-flow.gif)
+
 ## Install
 
 ```bash
 npx @caliper/ask init
 ```
 
-This registers the MCP server with your coding agent and installs the `ask` skill so
+This registers the MCP server with your coding agent and installs the `caliper-ask` skill so
 the agent knows when and how to use it.
 
 Flags:
@@ -52,7 +54,7 @@ Remove the tag once the review is done.
 3. If the result contains `status: PENDING`, not every zone was answered within the wait window.
    Call `caliper_wait` with the returned `ticket` to keep waiting.
 
-The full contract and a worked example ship as the `ask` skill, installed by `init`.
+The full contract and a worked example ship as the `caliper-ask` skill, installed by `init`.
 
 ## Remote / containers
 
