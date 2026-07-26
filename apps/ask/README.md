@@ -5,7 +5,7 @@ implementing a design, the agent marks the elements it is unsure about, calls a 
 browser opens against your running dev preview with those questions pinned to the live elements.
 You answer them in place; the answers flow straight back to the agent as structured data.
 
-![The agent asks about ambiguous UI, you answer on the live page, the answers flow back as a compact table](../../docs/media/ask/v3/review-flow.gif)
+![The agent asks about ambiguous UI, you answer on the live page, the answers flow back as a compact table](../../docs/media/ask/review-flow.gif)
 
 ## Install
 
