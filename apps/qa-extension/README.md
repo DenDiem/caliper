@@ -68,3 +68,18 @@ caliper-<id>/
 
 The JSON points at the PNGs by path instead of carrying base64, so an agent reads the structure
 cheaply and opens an image only when the structure was not enough.
+
+## Send to Jira
+
+Hand defects straight into a ticket instead of pasting text. One-time setup: open the extension's
+**options** (right-click the toolbar icon → Options, or `chrome://extensions` → Details → Extension
+options), enter your Jira **site**, **email** and an **API token** (create one at
+id.atlassian.com → Security → API tokens), and press **Connect**. Credentials stay in
+`chrome.storage.local` and are used to reach your Jira directly — no Caliper server is involved.
+
+Then, from the side panel, press **Send to Jira**, pick the target issue (type a key or paste an
+issue URL), choose whether to add the defects as a **comment** or the issue **description**, and
+send. Each screenshot is uploaded as an attachment, and one structured comment lists every defect
+(severity · component · `selector` · your note).
+
+Screenshots land in the issue's **Attachments** panel — not inline in the comment body.
