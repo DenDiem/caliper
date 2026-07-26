@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** 22 July 2026
+**Last updated:** 27 July 2026
 
 Caliper is a QA tool that turns a clicked page element into a structured defect annotation. This
 policy describes exactly what it stores and where.
@@ -21,13 +21,30 @@ Caliper does not run until you arm the picker, and it records nothing while idle
 
 ## Where the data goes
 
-**Nowhere.** Everything is written to `chrome.storage.local` on your own machine.
+**By default, nowhere.** Everything is written to `chrome.storage.local` on your own machine.
 
-Caliper has no backend, makes no network requests, and contains no analytics, telemetry, tracking or
-advertising code. Nothing is transmitted to the author or to any third party.
+Caliper has no backend of its own, and contains no analytics, telemetry, tracking or advertising
+code. Nothing is transmitted to the author.
 
-Data leaves your machine only when you choose to export it — **Copy TOON**, **Copy JSON** or **zip**
-— and then only to the destination you pick yourself (your clipboard, your Downloads folder).
+Data leaves your machine only when you choose to send it:
+
+- **Copy TOON**, **Copy JSON** or **zip** — to the destination you pick yourself (your clipboard,
+  your Downloads folder).
+- **Send to Jira** (optional, off until you connect it) — directly to your own Jira site, described
+  below.
+
+## Jira integration (optional)
+
+Connecting Jira is entirely opt-in and off until you set it up. When you connect it in the
+extension's options, your Jira **site URL, account email and API token** are stored in
+`chrome.storage.local` on your machine — the API token in plain text, like any locally stored
+credential.
+
+When you press **Send to Jira**, the extension talks **directly** to your own
+`https://<your-site>.atlassian.net` to attach the screenshots and post the defect comment (or set
+the description). It routes nothing through any Caliper-operated server — there is none — and nothing
+to any third party. The Atlassian API token carries your own account's permissions, so treat it like
+a password. **Disconnect** in the options erases the stored token, email and site.
 
 ## Retention and deletion
 
@@ -44,7 +61,7 @@ everything Chrome stored for it.
 | `scripting` | Inject the picker into tabs that were already open when the extension was installed or reloaded. |
 | `sidePanel` | Show the recorded defects. |
 | `downloads` | Save the exported archive to your Downloads folder. |
-| `<all_urls>` | QA happens on arbitrary staging and production sites, so the picker cannot be limited to a fixed list of hosts. Access is used only on the tab where you arm it. |
+| `<all_urls>` | QA happens on arbitrary staging and production sites, so the picker cannot be limited to a fixed list of hosts. Access is used only on the tab where you arm it, and — if you connect Jira — to reach your own `*.atlassian.net` site. |
 
 ## Source code
 

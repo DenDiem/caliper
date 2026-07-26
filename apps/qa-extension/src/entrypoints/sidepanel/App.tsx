@@ -1,18 +1,21 @@
-import type {CaliperSession} from '@caliper/core';
 import {toToon} from '@caliper/core';
 import {useEffect, useState} from 'preact/hooks';
 import {copyToClipboard, downloadSessionArchive, exportSession} from '../../export/export-session';
-import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
+import {chromeStorageSink, type CaliperStore} from '../../sinks/chrome-storage.sink';
 import {Controls} from './Controls';
+import {JiraBar} from './JiraBar';
+import {JiraSheet} from './JiraSheet';
+import {TaskBar} from './TaskBar';
 
 const index = (position: number): string => String(position + 1).padStart(2, '0');
 
 export const App = () => {
-  const [session, setSession] = useState<CaliperSession | null>(null);
+  const [store, setStore] = useState<CaliperStore | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);
 
   const refresh = () => {
-    void chromeStorageSink.read().then(setSession);
+    void chromeStorageSink.readStore().then(setStore);
   };
 
   const copy = (label: string, text: string) => {
@@ -29,8 +32,9 @@ export const App = () => {
     return () => chrome.storage.local.onChanged.removeListener(listener);
   }, []);
 
-  if (!session) return <div class="panel" />;
+  if (!store) return <div class="panel" />;
 
+  const session = store.sessions.find((item) => item.id === store.activeId) ?? store.sessions[0];
   const {annotations} = session;
 
   return (
@@ -38,17 +42,11 @@ export const App = () => {
       <header class="head">
         <div class="head__count">
           <span class="head__number">{String(annotations.length).padStart(2, '0')}</span>
-          <span class="head__unit">
-            defect{annotations.length === 1 ? '' : 's'}
-          </span>
+          <span class="head__unit">defect{annotations.length === 1 ? '' : 's'}</span>
         </div>
 
         <div class="head__actions">
-          <button
-            class="btn"
-            disabled={annotations.length === 0}
-            onClick={() => copy('toon', toToon(session))}
-          >
+          <button class="btn" disabled={annotations.length === 0} onClick={() => copy('toon', toToon(session))}>
             {copied === 'toon' ? 'copied' : 'TOON'}
           </button>
           <button
@@ -58,11 +56,7 @@ export const App = () => {
           >
             {copied === 'json' ? 'copied' : 'JSON'}
           </button>
-          <button
-            class="btn"
-            disabled={annotations.length === 0}
-            onClick={() => void downloadSessionArchive(session)}
-          >
+          <button class="btn" disabled={annotations.length === 0} onClick={() => void downloadSessionArchive(session)}>
             zip
           </button>
           <button
@@ -74,6 +68,10 @@ export const App = () => {
           </button>
         </div>
       </header>
+
+      <TaskBar store={store} onChange={refresh} />
+
+      <JiraBar session={session} onSend={() => setSheet(true)} />
 
       {annotations.length === 0 ? (
         <div class="blank">
@@ -122,6 +120,8 @@ export const App = () => {
       )}
 
       <Controls />
+
+      {sheet ? <JiraSheet session={session} onClose={() => setSheet(false)} /> : null}
     </div>
   );
 };

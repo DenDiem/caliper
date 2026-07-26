@@ -3,6 +3,8 @@ import {captureElement} from '../screenshot/capture';
 import {chromeStorageSink} from '../sinks/chrome-storage.sink';
 
 const CONTENT_SCRIPT = 'content-scripts/content.js';
+const PANEL = 'sidepanel.html';
+const OWNER_KEY = 'caliper.ownerTab';
 
 const togglePicker = async (tabId: number): Promise<void> => {
   try {
@@ -13,7 +15,45 @@ const togglePicker = async (tabId: number): Promise<void> => {
   }
 };
 
+const getOwner = async (): Promise<number | undefined> =>
+  (await chrome.storage.session.get(OWNER_KEY))[OWNER_KEY];
+
+const claimOwner = async (tabId: number): Promise<void> => {
+  const previous = await getOwner();
+  if (typeof previous === 'number' && previous !== tabId) {
+    await chrome.sidePanel.setOptions({tabId: previous, enabled: false}).catch(() => undefined);
+  }
+  await chrome.storage.session.set({[OWNER_KEY]: tabId});
+};
+
+const openPanel = (tabId: number): void => {
+  void chrome.sidePanel.setOptions({tabId, path: PANEL, enabled: true});
+  void chrome.sidePanel.open({tabId});
+  void claimOwner(tabId);
+};
+
 export default defineBackground(() => {
+  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
+
+  chrome.action.onClicked.addListener((tab) => {
+    if (typeof tab.id === 'number') openPanel(tab.id);
+  });
+
+  chrome.tabs.onActivated.addListener(({tabId}) => {
+    void getOwner().then((owner) => {
+      if (typeof owner !== 'number') return;
+      void chrome.sidePanel
+        .setOptions({tabId, path: PANEL, enabled: tabId === owner})
+        .catch(() => undefined);
+    });
+  });
+
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    void getOwner().then((owner) => {
+      if (owner === tabId) void chrome.storage.session.remove(OWNER_KEY);
+    });
+  });
+
   chrome.commands.onCommand.addListener((command, tab) => {
     if (typeof tab?.id !== 'number') return;
     const tabId = tab.id;
@@ -24,7 +64,7 @@ export default defineBackground(() => {
     }
 
     if (command === 'open-panel') {
-      void chrome.sidePanel.open({tabId});
+      openPanel(tabId);
     }
   });
 
@@ -54,6 +94,4 @@ export default defineBackground(() => {
 
     return false;
   });
-
-  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true}).catch(() => undefined);
 });
