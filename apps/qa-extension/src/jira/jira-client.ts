@@ -26,7 +26,7 @@ export const searchIssues = async (query: string): Promise<IssueHit[]> => {
     .map((issue) => ({key: issue.key, summary: issue.summaryText}));
 };
 
-export const uploadAttachment = async (issueKey: string, filename: string, blob: Blob): Promise<void> => {
+export const uploadAttachment = async (issueKey: string, filename: string, blob: Blob): Promise<string> => {
   const form = new FormData();
   form.append('file', blob, filename);
 
@@ -36,15 +36,32 @@ export const uploadAttachment = async (issueKey: string, filename: string, blob:
     body: form,
   });
   if (!response.ok) throw new Error(`attachment upload failed: ${response.status}`);
+
+  const attached: {id: string}[] = await response.json();
+  const id = attached[0]?.id;
+  if (!id) throw new Error('attachment upload returned no id');
+  return id;
 };
 
-export const postComment = async (issueKey: string, body: AdfDoc): Promise<void> => {
+export const postComment = async (issueKey: string, body: AdfDoc): Promise<string> => {
   const response = await fetch(`${await apiBase()}/issue/${issueKey}/comment`, {
     method: 'POST',
     headers: {Authorization: await authHeader(), 'Content-Type': 'application/json', Accept: 'application/json'},
     body: JSON.stringify({body}),
   });
   if (!response.ok) throw new Error(`comment failed: ${response.status}`);
+
+  const created: {id: string} = await response.json();
+  return created.id;
+};
+
+export const updateComment = async (issueKey: string, commentId: string, body: AdfDoc): Promise<void> => {
+  const response = await fetch(`${await apiBase()}/issue/${issueKey}/comment/${commentId}`, {
+    method: 'PUT',
+    headers: {Authorization: await authHeader(), 'Content-Type': 'application/json', Accept: 'application/json'},
+    body: JSON.stringify({body}),
+  });
+  if (!response.ok) throw new Error(`comment update failed: ${response.status}`);
 };
 
 export const setDescription = async (issueKey: string, body: AdfDoc): Promise<void> => {
