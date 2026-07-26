@@ -129,4 +129,24 @@ describe('buildSelector', () => {
     expect(result.confidence).toBe('low');
     expect(document.querySelector(result.selector)?.textContent).toBe('b');
   });
+
+  it('recognizes data-caliper-ref as a high-confidence testid attribute', () => {
+    render('<button data-caliper-ref="z-cta">Click</button>');
+    const result = buildSelector(query('[data-caliper-ref="z-cta"]'));
+    expect(result).toEqual({
+      selector: '[data-caliper-ref="z-cta"]',
+      strategy: 'testid',
+      confidence: 'high',
+    });
+  });
+
+  it('prioritizes data-testid over data-caliper-ref when both are present', () => {
+    render('<button data-testid="submit" data-caliper-ref="z-cta">Click</button>');
+    const result = buildSelector(query('button'));
+    expect(result).toEqual({
+      selector: '[data-testid="submit"]',
+      strategy: 'testid',
+      confidence: 'high',
+    });
+  });
 });

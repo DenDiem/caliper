@@ -1,15 +1,15 @@
-const HOST_ID = 'caliper-overlay-host';
+const DEFAULT_HOST_ID = 'caliper-overlay-host';
 
 export interface OverlayHost {
   root: ShadowRoot;
   destroy(): void;
 }
 
-export const createOverlayHost = (styles: string): OverlayHost => {
-  document.getElementById(HOST_ID)?.remove();
+export const createOverlayHost = (styles: string, hostId: string = DEFAULT_HOST_ID): OverlayHost => {
+  document.getElementById(hostId)?.remove();
 
   const host = document.createElement('div');
-  host.id = HOST_ID;
+  host.id = hostId;
   host.style.position = 'fixed';
   host.style.inset = '0';
   host.style.zIndex = '2147483647';

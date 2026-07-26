@@ -1,14 +1,26 @@
-<img src="docs/media/icon.png" width="88" alt="" />
+<p align="center">
+  <img src="docs/media/icon.png" width="96" alt="Caliper" />
+</p>
 
-# Caliper
+<h1 align="center">Caliper</h1>
 
-Turn a clicked DOM element into a machine-precise defect annotation for an AI coding agent.
+<p align="center">Turn a clicked DOM element into a machine-precise defect annotation for an AI coding agent.</p>
+
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/biedcnpfkefnocikeonknogjcippdopm?label=chrome%20web%20store&labelColor=13161d&color=4f7cff&logo=googlechrome&logoColor=white"></a>
+  <a href="https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm"><img alt="Users" src="https://img.shields.io/chrome-web-store/users/biedcnpfkefnocikeonknogjcippdopm?label=users&labelColor=13161d&color=2f9e58"></a>
+  <a href="https://github.com/DenDiem/caliper/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/DenDiem/caliper/ci.yml?branch=main&label=ci&labelColor=13161d&logo=githubactions&logoColor=white"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/DenDiem/caliper?label=license&labelColor=13161d&color=blue"></a>
+  <a href="https://discord.gg/gVgasNbNc"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?labelColor=13161d&logo=discord&logoColor=white"></a>
+  <a href="https://t.me/dendiem"><img alt="Telegram" src="https://img.shields.io/badge/telegram-%40dendiem-26A5E4?labelColor=13161d&logo=telegram&logoColor=white"></a>
+  <a href="https://www.linkedin.com/in/dendiem/"><img alt="LinkedIn" src="https://img.shields.io/badge/linkedin-dendiem-0A66C2?labelColor=13161d&logo=linkedin&logoColor=white"></a>
+</p>
 
 Visual bug reporters produce a screenshot and a sentence. Caliper produces a stable selector, the
 owning component name, and computed styles already matched against your design tokens — so an agent
 can go straight to the file and the variable instead of decoding a picture.
 
-![Arming the picker, clicking an element, describing the defect and watching it land in the session](docs/media/demo.gif)
+![Arming the picker, clicking an element, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
 
 ## What is here
 
@@ -17,6 +29,13 @@ can go straight to the file and the variable instead of decoding a picture.
 | `packages/core` | Element → annotation logic. No `chrome.*`, no UI framework, portable to any shell. |
 | `packages/overlay` | In-page picker UI rendered in a Shadow DOM. |
 | `apps/qa-extension` | Chrome MV3 extension for manual QA. |
+| `apps/ask` | MCP server that lets a coding agent ask the developer to review ambiguous UI regions live — see [its README](apps/ask/README.md). |
+
+## The reverse direction — `@caliper/ask`
+
+The extension is human→agent (a person marks a defect, an agent fixes it). [`@caliper/ask`](apps/ask/README.md) is agent→human: while a coding agent implements a UI and is unsure what a region should do, it asks *you* — questions pinned to the live elements, answered in place, sent straight back.
+
+![The agent asks about ambiguous UI, you answer on the live page](docs/media/ask/review-flow.gif)
 
 ## Quick start
 

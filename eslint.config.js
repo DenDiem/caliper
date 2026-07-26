@@ -10,6 +10,8 @@ export default tseslint.config(
         'error',
         {name: 'chrome', message: 'packages/* must stay shell-agnostic. Move this to apps/*.'},
         {name: 'browser', message: 'packages/* must stay shell-agnostic. Move this to apps/*.'},
+        {name: 'fetch', message: 'packages/* is pure/DOM-only shared code. Network APIs belong in apps/*.'},
+        {name: 'process', message: 'packages/* is pure/DOM-only shared code. Node APIs belong in apps/*.'},
       ],
       '@typescript-eslint/consistent-type-assertions': ['error', {assertionStyle: 'never'}],
     },

@@ -8,7 +8,7 @@ export interface SelectorResult {
   confidence: SelectorConfidence;
 }
 
-const TESTID_ATTRIBUTES = ['data-testid', 'data-test', 'data-qa'] as const;
+const TESTID_ATTRIBUTES = ['data-testid', 'data-test', 'data-qa', 'data-caliper-ref'] as const;
 const UTILITY_CLASS_PATTERN = /^(ng-|mat-|cdk-|is-|has-)|\d{3,}/;
 
 const stableClass = (element: Element): string | null => {
