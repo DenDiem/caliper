@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import type {CaliperAnnotation, CaliperSession} from '../schema/annotation.schema';
-import {sessionToJiraComment} from './to-jira-adf';
+import {screenshotFilename, sessionToJiraComment} from './to-jira-adf';
 
 const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotation => ({
   id: '09216b54-a595-43f6-baa6-63fc998ab770',
@@ -53,28 +53,59 @@ describe('sessionToJiraComment', () => {
     expect(JSON.stringify(doc.content[0])).toContain('2 defects');
   });
 
-  it('emits one bullet per annotation with severity, component, comment and a selector code mark', () => {
+  it('numbers each bullet and keeps severity, component, comment and a selector code mark', () => {
     const list = sessionToJiraComment(session([annotation()])).content[1];
     expect(list.type).toBe('bulletList');
     expect(list.content).toHaveLength(1);
 
     const serialized = JSON.stringify(list);
-    expect(serialized).toContain('[minor] PriceTag: ');
+    expect(serialized).toContain('#01 [minor] PriceTag: ');
     expect(serialized).toContain('Padding is too small');
     expect(serialized).toContain('.price-block > b');
     expect(serialized).toContain('{"type":"code"}');
+  });
+
+  it('embeds an inline media node in the bullet when a media ref is provided', () => {
+    const list = sessionToJiraComment(session([annotation({screenshotId: 'shot-1'})]), {
+      0: {id: 'att-42'},
+    }).content[1];
+    const item = list.content?.[0];
+
+    expect(item?.content).toHaveLength(2);
+    expect(item?.content?.[1]).toMatchObject({
+      type: 'mediaSingle',
+      content: [{type: 'media', attrs: {type: 'file', id: 'att-42', collection: ''}}],
+    });
+  });
+
+  it('omits media when no ref is provided for the bullet', () => {
+    const list = sessionToJiraComment(session([annotation({screenshotId: 'shot-1'})])).content[1];
+    expect(JSON.stringify(list)).not.toContain('mediaSingle');
   });
 
   it('falls back to the tag name when the component is unknown', () => {
     const list = sessionToJiraComment(
       session([annotation({target: {...annotation().target, componentName: null}})]),
     ).content[1];
-    expect(JSON.stringify(list)).toContain('[minor] b: ');
+    expect(JSON.stringify(list)).toContain('#01 [minor] b: ');
   });
 
   it('produces an empty bullet list for a session with no annotations', () => {
     const doc = sessionToJiraComment(session([]));
     expect(doc.content[1]).toMatchObject({type: 'bulletList', content: []});
     expect(JSON.stringify(doc.content[0])).toContain('0 defects');
+  });
+});
+
+describe('screenshotFilename', () => {
+  it('pairs a 1-based ordinal with a component slug so it maps to the bullet number', () => {
+    expect(screenshotFilename(0, annotation())).toBe('caliper-01-pricetag.png');
+    expect(screenshotFilename(11, annotation())).toBe('caliper-12-pricetag.png');
+  });
+
+  it('slugifies the tag name when the component is unknown', () => {
+    expect(screenshotFilename(0, annotation({target: {...annotation().target, componentName: null}}))).toBe(
+      'caliper-01-b.png',
+    );
   });
 });
