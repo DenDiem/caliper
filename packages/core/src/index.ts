@@ -15,5 +15,6 @@ export * from './tokens/color';
 export * from './tokens/match-token';
 export * from './context/extract-context';
 export * from './export/to-toon';
+export * from './export/to-jira-adf';
 export * from './picker/pick-target';
 export * from './session/sink';
