@@ -3,7 +3,7 @@
     "caliper": {
       "command": "node",
       "args": [
-        "C:\\Users\\365de\\Documents\\Work\\CarpeDiem\\caliper\\apps\\mcp-server\\dist\\server.js"
+        "C:\\Users\\365de\\Documents\\Work\\CarpeDiem\\caliper\\apps\\ask\\dist\\server.js"
       ],
       "env": {
         "CALIPER_TARGET": "http://127.0.0.1:5599",
