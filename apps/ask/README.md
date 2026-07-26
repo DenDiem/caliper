@@ -1,5 +1,14 @@
 # @caliper/ask
 
+<p align="center">
+  <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-4f7cff?labelColor=13161d">
+  <a href="https://github.com/DenDiem/caliper/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/DenDiem/caliper/ci.yml?branch=main&label=ci&labelColor=13161d&logo=githubactions&logoColor=white"></a>
+  <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/DenDiem/caliper?label=license&labelColor=13161d&color=blue"></a>
+  <a href="https://discord.gg/gVgasNbNc"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?labelColor=13161d&logo=discord&logoColor=white"></a>
+  <a href="https://t.me/dendiem"><img alt="Telegram" src="https://img.shields.io/badge/telegram-%40dendiem-26A5E4?labelColor=13161d&logo=telegram&logoColor=white"></a>
+  <a href="https://www.linkedin.com/in/dendiem/"><img alt="LinkedIn" src="https://img.shields.io/badge/linkedin-dendiem-0A66C2?labelColor=13161d&logo=linkedin&logoColor=white"></a>
+</p>
+
 An MCP server that lets a coding agent stop guessing about ambiguous UI regions. While
 implementing a design, the agent marks the elements it is unsure about, calls a tool, and a
 browser opens against your running dev preview with those questions pinned to the live elements.
