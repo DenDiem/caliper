@@ -2,7 +2,7 @@ import type {CaliperSession} from '@caliper/core';
 import {useEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {getConnection, issueUrl, JiraNotConnectedError, type JiraConnection} from '../../jira/jira-auth';
 import {resolveIssueKey, searchIssues, type IssueHit} from '../../jira/jira-client';
-import {findCommentSend} from '../../jira/jira-history';
+import {findCommentSend, getSends} from '../../jira/jira-history';
 import {sendSessionToJira, type JiraTarget} from '../../jira/send-to-jira';
 
 interface Props {
@@ -41,7 +41,16 @@ export const JiraSheet = ({session, onClose}: Props) => {
     [session],
   );
 
-  useEffect(() => void getConnection().then(setConnection), []);
+  useEffect(() => {
+    void getConnection().then(setConnection);
+    void getSends(session.id).then((records) => {
+      const last = records.at(-1);
+      if (last) {
+        setIssueKey(last.issueKey);
+        setQuery(last.issueKey);
+      }
+    });
+  }, [session.id]);
 
   useEffect(() => {
     if (!issueKey) {

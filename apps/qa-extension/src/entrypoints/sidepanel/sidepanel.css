@@ -424,6 +424,15 @@ body {
   text-transform: uppercase;
 }
 
+.jira-sent__link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.jira-sent__link:hover {
+  text-decoration: underline;
+}
+
 .jira-cta {
   padding: 9px;
   border: 0;

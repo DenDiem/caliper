@@ -42,7 +42,24 @@ export const JiraBar = ({session, onSend}: Props) => {
 
   return (
     <div class="jira-zone">
-      {issues.length > 0 ? <p class="jira-sent">Sent · {issues.join(', ')}</p> : null}
+      {issues.length > 0 ? (
+        <p class="jira-sent">
+          Sent ·{' '}
+          {issues.map((key, position) => (
+            <span key={key}>
+              {position > 0 ? ', ' : ''}
+              <a
+                class="jira-sent__link"
+                href={`${connection.siteUrl}/browse/${key}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {key}
+              </a>
+            </span>
+          ))}
+        </p>
+      ) : null}
 
       {hasDefects ? (
         <button class="jira-cta" onClick={onSend}>
