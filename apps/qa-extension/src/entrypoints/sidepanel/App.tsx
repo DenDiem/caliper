@@ -4,6 +4,7 @@ import {useEffect, useState} from 'preact/hooks';
 import {copyToClipboard, downloadSessionArchive, exportSession} from '../../export/export-session';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
 import {Controls} from './Controls';
+import {JiraBar} from './JiraBar';
 import {JiraSheet} from './JiraSheet';
 
 const index = (position: number): string => String(position + 1).padStart(2, '0');
@@ -77,11 +78,7 @@ export const App = () => {
         </div>
       </header>
 
-      {annotations.length > 0 ? (
-        <button class="jira-cta" onClick={() => setSheet(true)}>
-          Send to Jira →
-        </button>
-      ) : null}
+      <JiraBar session={session} onSend={() => setSheet(true)} />
 
       {annotations.length === 0 ? (
         <div class="blank">

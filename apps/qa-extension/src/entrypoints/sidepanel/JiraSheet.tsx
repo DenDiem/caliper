@@ -1,8 +1,8 @@
 import type {CaliperSession} from '@caliper/core';
 import {useEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {getConnection, issueUrl, JiraNotConnectedError, type JiraConnection} from '../../jira/jira-auth';
-import {STORAGE} from '../../jira/jira-config';
 import {resolveIssueKey, searchIssues, type IssueHit} from '../../jira/jira-client';
+import {findCommentSend} from '../../jira/jira-history';
 import {sendSessionToJira, type JiraTarget} from '../../jira/send-to-jira';
 
 interface Props {
@@ -22,9 +22,12 @@ export const JiraSheet = ({session, onClose}: Props) => {
   const [hits, setHits] = useState<IssueHit[]>([]);
   const [target, setTarget] = useState<JiraTarget>('comment');
   const [attach, setAttach] = useState(true);
+  const [existingCommentId, setExistingCommentId] = useState<string | null>(null);
+  const [updateExisting, setUpdateExisting] = useState(true);
   const [phase, setPhase] = useState<Phase>('form');
   const [progress, setProgress] = useState<{done: number; total: number} | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [wasUpdate, setWasUpdate] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const timer = useRef<number>();
@@ -38,16 +41,18 @@ export const JiraSheet = ({session, onClose}: Props) => {
     [session],
   );
 
+  useEffect(() => void getConnection().then(setConnection), []);
+
   useEffect(() => {
-    void getConnection().then(setConnection);
-    void chrome.storage.local.get(STORAGE.lastIssue).then((stored) => {
-      const last: unknown = stored[STORAGE.lastIssue];
-      if (typeof last === 'string') {
-        setQuery(last);
-        setIssueKey(last);
-      }
+    if (!issueKey) {
+      setExistingCommentId(null);
+      return;
+    }
+    void findCommentSend(session.id, issueKey).then((record) => {
+      setExistingCommentId(record?.commentId ?? null);
+      setUpdateExisting(record?.commentId != null);
     });
-  }, []);
+  }, [issueKey, session.id]);
 
   const scheduleSearch = (value: string) => {
     window.clearTimeout(timer.current);
@@ -71,14 +76,18 @@ export const JiraSheet = ({session, onClose}: Props) => {
     setHits([]);
   };
 
+  const willUpdate = target === 'comment' && updateExisting && existingCommentId !== null;
+
   const send = () => {
     setPhase('sending');
     setError(null);
     setProgress({done: 0, total: screenshotCount});
+    setWasUpdate(willUpdate);
     sendSessionToJira(session, {
       issueKey,
       target,
       attachScreenshots: attach,
+      updateCommentId: willUpdate ? existingCommentId : null,
       onProgress: (done, total) => setProgress({done, total}),
     })
       .then(() => issueUrl(issueKey))
@@ -114,7 +123,9 @@ export const JiraSheet = ({session, onClose}: Props) => {
     if (phase === 'done') {
       return (
         <div class="jira__notice">
-          <p class="jira__ok">Sent to {issueKey} ✓</p>
+          <p class="jira__ok">
+            {wasUpdate ? 'Updated' : 'Sent to'} {issueKey} ✓
+          </p>
           {resultUrl ? (
             <a class="jira__link" href={resultUrl} target="_blank" rel="noreferrer">
               Open {issueKey} ↗
@@ -129,6 +140,7 @@ export const JiraSheet = ({session, onClose}: Props) => {
 
     const sending = phase === 'sending';
     const uploading = progress !== null && progress.total > 0 && progress.done < progress.total;
+    const action = willUpdate ? `Update ${issueKey}` : `Send to ${issueKey || '…'}`;
 
     return (
       <>
@@ -179,6 +191,18 @@ export const JiraSheet = ({session, onClose}: Props) => {
           <p class="jira__note">Replaces the issue's current description.</p>
         ) : null}
 
+        {target === 'comment' && existingCommentId ? (
+          <label class="jira__check">
+            <input
+              type="checkbox"
+              checked={updateExisting}
+              disabled={sending}
+              onChange={(event) => setUpdateExisting(event.currentTarget.checked)}
+            />
+            Update the comment already sent to {issueKey}
+          </label>
+        ) : null}
+
         {screenshotCount > 0 ? (
           <label class="jira__check">
             <input
@@ -187,7 +211,7 @@ export const JiraSheet = ({session, onClose}: Props) => {
               disabled={sending}
               onChange={(event) => setAttach(event.currentTarget.checked)}
             />
-            Attach {screenshotCount} screenshot{screenshotCount === 1 ? '' : 's'}
+            Embed {screenshotCount} screenshot{screenshotCount === 1 ? '' : 's'}
           </label>
         ) : null}
 
@@ -197,7 +221,7 @@ export const JiraSheet = ({session, onClose}: Props) => {
         </p>
 
         <button class="jira__send" disabled={!issueKey || sending} onClick={send}>
-          {sending ? (uploading ? `Uploading ${progress.done}/${progress.total}…` : 'Posting…') : `Send to ${issueKey || '…'}`}
+          {sending ? (uploading ? `Uploading ${progress.done}/${progress.total}…` : 'Posting…') : action}
         </button>
         {phase === 'error' && error ? <p class="jira__error">{error}</p> : null}
       </>
@@ -207,7 +231,7 @@ export const JiraSheet = ({session, onClose}: Props) => {
   return (
     <div class="jira">
       <div class="jira__bar">
-        <span class="jira__title">Send to Jira</span>
+        <span class="jira__title">{willUpdate ? 'Update Jira' : 'Send to Jira'}</span>
         <button class="jira__close" title="Close" onClick={onClose}>
           ✕
         </button>

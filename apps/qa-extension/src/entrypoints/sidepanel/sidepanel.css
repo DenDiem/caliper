@@ -360,10 +360,24 @@ body {
   cursor: pointer;
 }
 
-/* jira cta */
+/* jira zone */
+
+.jira-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px 4px;
+}
+
+.jira-sent {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
 .jira-cta {
-  margin: 10px 14px 4px;
   padding: 9px;
   border: 0;
   border-radius: 2px;
@@ -377,6 +391,40 @@ body {
 
 .jira-cta:hover {
   filter: brightness(1.08);
+}
+
+.jira-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.jira-bar--connect {
+  padding: 8px;
+  border: 1px dashed var(--accent);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--accent);
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.jira-bar--connect:hover {
+  background: var(--line-soft);
+}
+
+.jira-bar--status {
+  color: var(--ink-faint);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.jira-bar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 /* jira sheet */
