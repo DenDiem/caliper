@@ -1,6 +1,6 @@
 import type {CaliperSession, MediaRef} from '@caliper/core';
 import {screenshotFilename, sessionToJiraComment} from '@caliper/core';
-import {postComment, setDescription, updateComment, uploadAttachment} from './jira-client';
+import {postComment, resolveMediaId, setDescription, updateComment, uploadAttachment} from './jira-client';
 import {STORAGE} from './jira-config';
 import {addSend, type SendRecord} from './jira-history';
 
@@ -37,7 +37,8 @@ const uploadScreenshots = async (
       screenshotFilename(item.index, item.annotation),
       await toBlob(item.dataUrl),
     );
-    media[item.index] = {id: attachmentId};
+    const mediaId = await resolveMediaId(attachmentId).catch(() => null);
+    if (mediaId) media[item.index] = {id: mediaId};
     onProgress?.(++done, pending.length);
   }
 

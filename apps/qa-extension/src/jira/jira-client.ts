@@ -43,6 +43,14 @@ export const uploadAttachment = async (issueKey: string, filename: string, blob:
   return id;
 };
 
+export const resolveMediaId = async (attachmentId: string): Promise<string | null> => {
+  const response = await fetch(`${await apiBase()}/attachment/content/${attachmentId}`, {
+    headers: {Authorization: await authHeader(), Range: 'bytes=0-0'},
+  });
+  const match = response.url.match(/\/file\/([^/?]+)\/binary/);
+  return match ? match[1] : null;
+};
+
 export const postComment = async (issueKey: string, body: AdfDoc): Promise<string> => {
   const response = await fetch(`${await apiBase()}/issue/${issueKey}/comment`, {
     method: 'POST',
