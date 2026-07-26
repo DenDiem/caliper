@@ -4,12 +4,14 @@ import {useEffect, useState} from 'preact/hooks';
 import {copyToClipboard, downloadSessionArchive, exportSession} from '../../export/export-session';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
 import {Controls} from './Controls';
+import {JiraSheet} from './JiraSheet';
 
 const index = (position: number): string => String(position + 1).padStart(2, '0');
 
 export const App = () => {
   const [session, setSession] = useState<CaliperSession | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);
 
   const refresh = () => {
     void chromeStorageSink.read().then(setSession);
@@ -75,6 +77,12 @@ export const App = () => {
         </div>
       </header>
 
+      {annotations.length > 0 ? (
+        <button class="jira-cta" onClick={() => setSheet(true)}>
+          Send to Jira →
+        </button>
+      ) : null}
+
       {annotations.length === 0 ? (
         <div class="blank">
           <p class="blank__title">No measurements yet</p>
@@ -122,6 +130,8 @@ export const App = () => {
       )}
 
       <Controls />
+
+      {sheet && session ? <JiraSheet session={session} onClose={() => setSheet(false)} /> : null}
     </div>
   );
 };

@@ -29,6 +29,7 @@ export default defineConfig({
       },
     },
     side_panel: {default_path: 'sidepanel.html'},
+    options_ui: {page: 'options.html', open_in_tab: true},
     commands: {
       'toggle-picker': {
         suggested_key: {default: 'Alt+Shift+C'},

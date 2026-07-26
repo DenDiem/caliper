@@ -360,6 +360,245 @@ body {
   cursor: pointer;
 }
 
+/* jira cta */
+
+.jira-cta {
+  margin: 10px 14px 4px;
+  padding: 9px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.jira-cta:hover {
+  filter: brightness(1.08);
+}
+
+/* jira sheet */
+
+.jira {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  animation: rise 180ms ease both;
+}
+
+.jira__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.jira__title {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.jira__close {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ink-faint);
+  font: 400 14px/1 var(--mono);
+  cursor: pointer;
+}
+
+.jira__close:hover {
+  color: var(--ink);
+}
+
+.jira__panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.jira__label {
+  display: block;
+  margin: 12px 0 5px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.jira__label:first-child {
+  margin-top: 0;
+}
+
+.jira__input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 400 12px/1.4 var(--mono);
+}
+
+.jira__input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.jira__hits {
+  margin: 4px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  list-style: none;
+  overflow: hidden;
+}
+
+.jira__hit {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--ink);
+  font: 400 11px/1.4 var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+
+.jira__hit:hover {
+  background: var(--paper);
+}
+
+.jira__hit-key {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.jira__hit-sum {
+  overflow: hidden;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jira__seg {
+  display: flex;
+  gap: 4px;
+}
+
+.jira__seg-opt {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 400 11px/1.4 var(--mono);
+  cursor: pointer;
+}
+
+.jira__seg-opt.is-on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.jira__note {
+  margin: 6px 0 0;
+  color: var(--major);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.jira__check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.jira__summary {
+  margin: 12px 0;
+  color: var(--ink-faint);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.jira__send {
+  width: 100%;
+  padding: 9px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.jira__send:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.jira__send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.jira__error {
+  margin: 10px 0 0;
+  color: var(--blocker);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.jira__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.jira__ok {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.jira__link {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.jira__ghost {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 400 11px/1.4 var(--mono);
+  cursor: pointer;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
