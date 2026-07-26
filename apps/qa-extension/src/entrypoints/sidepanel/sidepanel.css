@@ -360,6 +360,53 @@ body {
   cursor: pointer;
 }
 
+/* tasks */
+
+.tasks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 0;
+}
+
+.tasks__select {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 400 11px/1.4 var(--mono);
+  cursor: pointer;
+}
+
+.tasks__select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.tasks__btn {
+  flex: 0 0 auto;
+  width: 28px;
+  padding: 5px 0;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 400 13px/1 var(--mono);
+  cursor: pointer;
+}
+
+.tasks__btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tasks__btn--danger:hover {
+  border-color: var(--blocker);
+  color: var(--blocker);
+}
+
 /* jira zone */
 
 .jira-zone {
