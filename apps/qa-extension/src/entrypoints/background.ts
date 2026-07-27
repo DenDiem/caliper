@@ -15,25 +15,36 @@ const togglePicker = async (tabId: number): Promise<void> => {
   }
 };
 
-const getOwner = async (): Promise<number | undefined> =>
-  (await chrome.storage.session.get(OWNER_KEY))[OWNER_KEY];
-
-const claimOwner = async (tabId: number): Promise<void> => {
-  const previous = await getOwner();
-  if (typeof previous === 'number' && previous !== tabId) {
-    await chrome.sidePanel.setOptions({tabId: previous, enabled: false}).catch(() => undefined);
-  }
-  await chrome.storage.session.set({[OWNER_KEY]: tabId});
+const getOwner = async (): Promise<number | undefined> => {
+  const raw: unknown = (await chrome.storage.session.get(OWNER_KEY))[OWNER_KEY];
+  return typeof raw === 'number' ? raw : undefined;
 };
+
+const setOwner = (tabId: number | undefined): Promise<void> =>
+  tabId === undefined
+    ? chrome.storage.session.remove(OWNER_KEY)
+    : chrome.storage.session.set({[OWNER_KEY]: tabId});
 
 const openPanel = (tabId: number): void => {
   void chrome.sidePanel.setOptions({tabId, path: PANEL, enabled: true});
   void chrome.sidePanel.open({tabId});
-  void claimOwner(tabId);
+  void setOwner(tabId);
+};
+
+// Leaving the owner tab closes the panel and drops ownership, so returning does NOT auto-reopen —
+// the toolbar icon is the only way back.
+const closePanel = async (): Promise<void> => {
+  const owner = await getOwner();
+  if (typeof owner === 'number') {
+    await chrome.sidePanel.setOptions({tabId: owner, enabled: false}).catch(() => undefined);
+  }
+  await setOwner(undefined);
 };
 
 export default defineBackground(() => {
-  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
+  void chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
+  // Off by default: no tab shows the panel until the icon opens it on that specific (owner) tab.
+  void chrome.sidePanel.setOptions({enabled: false}).catch(() => undefined);
 
   chrome.action.onClicked.addListener((tab) => {
     if (typeof tab.id === 'number') openPanel(tab.id);
@@ -41,16 +52,13 @@ export default defineBackground(() => {
 
   chrome.tabs.onActivated.addListener(({tabId}) => {
     void getOwner().then((owner) => {
-      if (typeof owner !== 'number') return;
-      void chrome.sidePanel
-        .setOptions({tabId, path: PANEL, enabled: tabId === owner})
-        .catch(() => undefined);
+      if (typeof owner === 'number' && owner !== tabId) void closePanel();
     });
   });
 
   chrome.tabs.onRemoved.addListener((tabId) => {
     void getOwner().then((owner) => {
-      if (owner === tabId) void chrome.storage.session.remove(OWNER_KEY);
+      if (owner === tabId) void setOwner(undefined);
     });
   });
 
