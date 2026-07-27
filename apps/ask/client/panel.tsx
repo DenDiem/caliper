@@ -62,7 +62,7 @@ const PanelItem = ({zone, number, store}: PanelItemProps) => {
                 : 'caliper-panel__badge caliper-panel__badge--unresolved'
             }
           >
-            {resolved ? 'Resolved' : 'Not on screen yet'}
+            {resolved ? 'On screen' : 'Not on screen yet'}
           </span>
         </div>
       </div>
