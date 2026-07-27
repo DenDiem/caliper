@@ -21,11 +21,26 @@ export interface ToggleTabMessage {
   tabId: number;
 }
 
+export type StoreOp =
+  | {kind: 'push'; annotation: CaliperAnnotation; screenshot?: string}
+  | {kind: 'update'; id: string; patch: Partial<CaliperAnnotation>}
+  | {kind: 'removeAnnotation'; id: string}
+  | {kind: 'clear'}
+  | {kind: 'createSession'}
+  | {kind: 'activateSession'; id: string}
+  | {kind: 'removeSession'; id: string};
+
+export interface StoreOpMessage {
+  type: 'caliper/store-op';
+  op: StoreOp;
+}
+
 export type CaliperMessage =
   | ToggleMessage
   | AnnotationCreatedMessage
   | CaptureMessage
-  | ToggleTabMessage;
+  | ToggleTabMessage
+  | StoreOpMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
   if (typeof value !== 'object' || value === null) return false;
@@ -34,6 +49,7 @@ export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
     type === 'caliper/toggle' ||
     type === 'caliper/annotation-created' ||
     type === 'caliper/capture' ||
-    type === 'caliper/toggle-tab'
+    type === 'caliper/toggle-tab' ||
+    type === 'caliper/store-op'
   );
 };
