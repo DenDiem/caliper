@@ -1,6 +1,6 @@
 import {isCaliperMessage} from '../messaging/messages';
 import {captureElement} from '../screenshot/capture';
-import {chromeStorageSink} from '../sinks/chrome-storage.sink';
+import {runOp} from '../sinks/store';
 
 const CONTENT_SCRIPT = 'content-scripts/content.js';
 const PANEL = 'sidepanel.html';
@@ -72,9 +72,16 @@ export default defineBackground(() => {
     if (!isCaliperMessage(message)) return false;
 
     if (message.type === 'caliper/annotation-created') {
-      void chromeStorageSink
-        .push(message.annotation, message.screenshot)
-        .then(() => sendResponse(true));
+      void runOp({kind: 'push', annotation: message.annotation, screenshot: message.screenshot}).then(
+        () => sendResponse(true),
+      );
+      return true;
+    }
+
+    if (message.type === 'caliper/store-op') {
+      void runOp(message.op)
+        .then(() => sendResponse(true))
+        .catch(() => sendResponse(false));
       return true;
     }
 
