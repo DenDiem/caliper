@@ -948,3 +948,321 @@ body {
   font: 400 11px/1.4 var(--cal-font-mono);
   cursor: pointer;
 }
+
+/* ── jira flow (05/06/07) ──────────────────────────────── */
+
+.jira__bar {
+  gap: 10px;
+}
+
+.jira__title {
+  flex: 1;
+  font: 600 14px/1.2 var(--cal-font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-text-strong);
+}
+
+.jira__bar--ok {
+  background: var(--cal-teal-08);
+  border-bottom-color: var(--cal-teal-border-28);
+}
+
+.jira__bar--ok .jira__title {
+  color: var(--cal-teal);
+}
+
+.jira__back {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--cal-teal);
+  font: 400 16px/1 var(--cal-font-mono);
+  cursor: pointer;
+}
+
+.jira__site {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 10px/1 var(--cal-font-mono);
+  color: var(--cal-text-secondary);
+}
+
+.jira__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cal-teal);
+}
+
+.jira__head {
+  margin: 0 0 6px;
+  font: 600 16px/1.3 var(--cal-font-sans);
+  color: var(--cal-text-body-soft);
+}
+
+.jira__lead {
+  margin: 0 0 16px;
+  font: 400 12px/1.5 var(--cal-font-sans);
+  color: var(--cal-text-prose);
+}
+
+.jira__lead code,
+.jira__head code {
+  font: 400 11px/1 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+}
+
+.jira__helper {
+  margin: 4px 0 16px;
+  font: 400 11px/1.5 var(--cal-font-sans);
+  color: var(--cal-text-hint);
+}
+
+.jira__helper a {
+  color: var(--cal-teal);
+}
+
+.jira__waiting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--cal-border-structure);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+}
+
+.jira__waiting-label {
+  font: 400 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--cal-text-micro);
+}
+
+.jira__waiting-line {
+  font: 400 11px/1.4 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+}
+
+.jira__alt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font: 400 11px/1.4 var(--cal-font-sans);
+  color: var(--cal-text-secondary);
+}
+
+.jira__link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cal-teal);
+  font: inherit;
+  cursor: pointer;
+}
+
+.jira__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--cal-teal-border-35);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+}
+
+.jira__search-icon {
+  color: var(--cal-teal);
+  font-size: 13px;
+}
+
+.jira__search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--cal-text-strong);
+  font: 400 12px/1.4 var(--cal-font-mono);
+  outline: none;
+}
+
+.jira__search-input::placeholder {
+  color: var(--cal-text-hint);
+}
+
+.jira__group {
+  display: block;
+  margin: 16px 0 6px;
+  font: 400 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--cal-text-micro);
+}
+
+.jira__match {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--cal-teal-border-28);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-teal-08);
+  text-align: left;
+  cursor: pointer;
+}
+
+.jira__match-key {
+  font: 400 11px/1 var(--cal-font-mono);
+  color: var(--cal-teal);
+}
+
+.jira__match-sum {
+  font: 400 13px/1.4 var(--cal-font-sans);
+  color: var(--cal-text-body);
+}
+
+.jira__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--cal-radius-7);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.jira__row:hover {
+  border-color: var(--cal-border-control);
+  background: var(--cal-card);
+}
+
+.jira__row-title {
+  flex: 1;
+  overflow: hidden;
+  font: 400 12px/1.4 var(--cal-font-sans);
+  color: var(--cal-text-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jira__row-key {
+  font: 400 10px/1 var(--cal-font-mono);
+  color: var(--cal-text-hint);
+}
+
+.jira__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px 12px;
+  border-top: 1px solid var(--cal-border-structure);
+  background: var(--cal-footer);
+}
+
+.jira__foot-meta {
+  font: 400 10px/1 var(--cal-font-mono);
+  color: var(--cal-text-micro);
+  text-align: center;
+}
+
+.jira__progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font: 400 11px/1 var(--cal-font-mono);
+  color: var(--cal-text-secondary);
+}
+
+.jira__track {
+  height: 4px;
+  border-radius: var(--cal-radius-4);
+  background: var(--cal-divider);
+  overflow: hidden;
+}
+
+.jira__fill {
+  height: 100%;
+  background: var(--cal-teal);
+  border-radius: var(--cal-radius-4);
+  transition: width 200ms ease;
+}
+
+.jira__checklist {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.jira__check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font: 400 11px/1.4 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+}
+
+.jira__check--done {
+  color: var(--cal-teal);
+}
+.jira__check--now {
+  color: var(--cal-text-secondary);
+}
+.jira__check--wait {
+  color: var(--cal-text-micro);
+}
+
+.jira__receipt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  padding: 12px;
+  border: 1px solid var(--cal-border-structure);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+}
+
+.jira__receipt-k {
+  font: 400 9px/1.6 var(--cal-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--cal-text-micro);
+}
+
+.jira__receipt-v {
+  font: 400 11px/1.6 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+}
+
+.jira__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.jira__ghost {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-7);
+  background: transparent;
+  color: var(--cal-text-secondary);
+  font: 400 12px/1 var(--cal-font-mono);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.jira__ghost--teal {
+  border-color: var(--cal-teal-border-45);
+  background: var(--cal-teal-10);
+  color: var(--cal-teal);
+}
