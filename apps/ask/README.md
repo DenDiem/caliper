@@ -10,10 +10,11 @@
   <a href="https://secure.wayforpay.com/tips/t81c7016f0f4a"><img alt="Tips" src="https://img.shields.io/badge/tips-%E2%98%95_buy_me_a_coffee-ff813f?labelColor=13161d"></a>
 </p>
 
-An MCP server that lets a coding agent stop guessing about ambiguous UI regions. While
-implementing a design, the agent marks the elements it is unsure about, calls a tool, and a
-browser opens against your running dev preview with those questions pinned to the live elements.
-You answer them in place; the answers flow straight back to the agent as structured data.
+An MCP server that lets a coding agent — Claude Code, Codex, Cursor or any MCP client — stop
+guessing about ambiguous UI regions. While implementing a design, the agent marks the elements it
+is unsure about, calls a tool, and a browser opens against your running dev preview with those
+questions pinned to the live elements. You answer them in place; the answers flow straight back to
+the agent as structured data. It also ships a **design mode** for the reverse direction — see below.
 
 ![The agent asks about ambiguous UI, you answer on the live page, the answers flow back as a compact table](../../docs/media/ask/review-flow.gif)
 
@@ -28,13 +29,13 @@ the agent knows when and how to use it.
 
 Flags:
 
-| Flag | Default | Description |
-| --- | --- | --- |
-| `--agent claude-code\|codex` | every detected agent | Install for one agent only |
-| `--global` | project-local | Install into the user-global config instead of the current project |
-| `--target <url>` | `$CALIPER_TARGET` or `http://localhost:3000` | Loopback dev-server URL to review |
-| `--mode proxy\|snippet` | `proxy` | See Modes below |
-| `--port <n>` | `4599` | Snippet server port, snippet mode only |
+| Flag                         | Default                                      | Description                                                        |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| `--agent claude-code\|codex` | every detected agent                         | Install for one agent only                                         |
+| `--global`                   | project-local                                | Install into the user-global config instead of the current project |
+| `--target <url>`             | `$CALIPER_TARGET` or `http://localhost:3000` | Loopback dev-server URL to review                                  |
+| `--mode proxy\|snippet`      | `proxy`                                      | See Modes below                                                    |
+| `--port <n>`                 | `4599`                                       | Snippet server port, snippet mode only                             |
 
 `caliper uninstall [--global] [--agent <id>]` removes the registration and installed guidance.
 
@@ -65,6 +66,19 @@ Remove the tag once the review is done.
    Call `caliper_wait` with the returned `ticket` to keep waiting.
 
 The full contract and a worked example ship as the `caliper-ask` skill, installed by `init`.
+
+## Design mode
+
+The same server also ships a **design mode** for the opposite situation: instead of the agent asking
+pinned questions, _you_ freely mark up the running UI and hand the result back. The agent calls
+`caliper_design`, a browser opens against your dev preview, and you pick an element, strike one for
+removal, or lasso an area when no single element fits — then hit **Send to agent**. Your marks come
+back as a compact TOON work list keyed by selector, component and design-token-matched styles, and
+the window closes.
+
+It is the design-review loop Cursor's Design Mode popularised, but native to Claude Code, Codex and
+any MCP client — precise, element-pinned and text-first, so the agent fixes from the file rather than
+a screenshot.
 
 ## Remote / containers
 

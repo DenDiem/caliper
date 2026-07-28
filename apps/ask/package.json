@@ -12,12 +12,34 @@
   "bugs": {
     "url": "https://github.com/DenDiem/caliper/issues"
   },
-  "keywords": ["mcp", "claude-code", "codex", "design-review", "ui-review"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "cursor",
+    "codex",
+    "design-mode",
+    "ui-annotation",
+    "design-review",
+    "ui-review",
+    "visual-feedback",
+    "human-in-the-loop",
+    "ai-agents"
+  ],
   "type": "module",
-  "publishConfig": {"access": "public"},
-  "engines": {"node": ">=20"},
-  "bin": {"caliper": "./dist/cli.js"},
-  "files": ["dist", "skills"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "caliper": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
   "scripts": {
     "build": "tsup && pnpm run build:client",
     "build:client": "vite build -c client/vite.config.ts",
