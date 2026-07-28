@@ -518,3 +518,23 @@
     background-position: 200px 0;
   }
 }
+
+/* ── gesture ink trail ─────────────────────────────────── */
+
+.caliper-stroke {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.caliper-stroke__path {
+  fill: none;
+  stroke: var(--caliper-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.caliper-stroke__path--strike {
+  stroke: var(--caliper-danger);
+}
