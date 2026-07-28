@@ -81,6 +81,9 @@
   --cal-shadow-popover: 0 24px 60px rgba(5, 8, 12, 0.55);
   --cal-shadow-sheet: inset 0 8px 18px rgba(0, 0, 0, 0.45);
 
+  /* motion */
+  --cal-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
   /* screenshot-crop placeholder (real captureVisibleTab output replaces it) */
   --cal-crop-placeholder: repeating-linear-gradient(135deg, #1a222b 0 6px, #202a34 6px 12px);
 }
@@ -113,9 +116,12 @@
     --cal-teal-hover: #0b7c6c;
     --cal-on-teal: #ffffff;
 
-    --cal-blocker: #d0353d;
-    --cal-major: #c1721f;
-    --cal-minor: #3b6ae0;
+    --cal-blocker: #b32d36;
+    --cal-major: #9a5a14;
+    --cal-minor: #2f5bd0;
+    --cal-blocker-fill: rgba(179, 45, 54, 0.09);
+    --cal-major-fill: rgba(154, 90, 20, 0.09);
+    --cal-minor-fill: rgba(47, 91, 208, 0.09);
 
     --cal-crop-placeholder: repeating-linear-gradient(135deg, #e7ebf1 0 6px, #eef1f6 6px 12px);
   }
@@ -138,5 +144,35 @@
 @keyframes calDash {
   to {
     background-position: 200px 0, -200px 0, 0 -200px, 0 200px;
+  }
+}
+
+/* a mark lands in the list — rises 6px and overshoots 1.5% */
+@keyframes calLand {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* sheets translate up, never fade */
+@keyframes calSheet {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* the count rolls one digit up */
+@keyframes calTick {
+  to {
+    transform: translateY(-50%);
   }
 }

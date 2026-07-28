@@ -67,6 +67,9 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   let strokeFrame: number | null = null;
   let stroke: Point[] | null = null;
   let strokeStrike = false;
+  // The committed mark stays framed on the page (dashed frame + tag + held ink) through capture and
+  // the open popover, so the marked element reads as marked while the note is written.
+  let mark: {box: Box; variant: 'strike' | 'area'; stroke: Point[]} | null = null;
 
   const setCursor = (armed: boolean) => {
     document.documentElement.style.cursor = armed ? 'crosshair' : previousCursor;
@@ -82,6 +85,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     screenshot = null;
     stroke = null;
     strokeStrike = false;
+    mark = null;
     clearHover();
     paint();
   };
@@ -101,7 +105,15 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       <>
         {idle ? <Highlight box={hovered?.box ?? null} label={hovered?.label ?? null} /> : null}
         {strikeBox ? <Highlight box={strikeBox} label={null} variant="strike" /> : null}
+        {mark ? (
+          <Highlight
+            box={mark.box}
+            label={mark.variant === 'strike' ? 'REMOVE' : 'AREA'}
+            variant={mark.variant}
+          />
+        ) : null}
         {stroke ? <GestureStroke points={stroke} strike={strokeStrike} /> : null}
+        {mark ? <GestureStroke points={mark.stroke} strike={mark.variant === 'strike'} /> : null}
         {idle ? <Badge /> : null}
         {pending ? (
           <Popover
@@ -168,6 +180,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
 
   const finishGesture = (points: Point[]) => {
     const kind = gesturesEnabled ? classifyGesture(points) : 'pick';
+    mark = null;
 
     if (kind === 'pick') {
       const first = points[0] ?? {x: pointerX, y: pointerY};
@@ -186,8 +199,10 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     }
 
     if (kind === 'strike') {
+      mark = {box: toBox(anchor), variant: 'strike', stroke: points};
       void openPending(extractContext(anchor, tokens), 'remove', null);
     } else {
+      mark = {box, variant: 'area', stroke: points};
       void openPending(extractContext(anchor, tokens), 'change', {box, path: points, enclosedSelectors: []});
     }
   };
@@ -294,6 +309,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         screenshot = null;
         stroke = null;
         strokeStrike = false;
+        mark = null;
       }
       paint();
     },

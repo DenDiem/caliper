@@ -3,15 +3,26 @@ import type {Box} from '@caliper/core';
 interface HighlightProps {
   box: Box | null;
   label: string | null;
-  variant?: 'default' | 'strike';
+  variant?: 'default' | 'strike' | 'area';
 }
+
+const frameClass = (variant: 'default' | 'strike' | 'area'): string => {
+  if (variant === 'strike') return 'caliper-highlight caliper-highlight--strike';
+  if (variant === 'area') return 'caliper-highlight caliper-highlight--area';
+  return 'caliper-highlight';
+};
+
+const labelClass = (variant: 'default' | 'strike' | 'area'): string =>
+  variant === 'strike'
+    ? 'caliper-highlight__label caliper-highlight__label--remove'
+    : 'caliper-highlight__label';
 
 export const Highlight = ({box, label, variant = 'default'}: HighlightProps) => {
   if (!box) return null;
 
   return (
     <div
-      class={variant === 'strike' ? 'caliper-highlight caliper-highlight--strike' : 'caliper-highlight'}
+      class={frameClass(variant)}
       style={{
         left: `${box.x}px`,
         top: `${box.y}px`,
@@ -19,7 +30,7 @@ export const Highlight = ({box, label, variant = 'default'}: HighlightProps) => 
         height: `${box.height}px`,
       }}
     >
-      {label ? <span class="caliper-highlight__label">{label}</span> : null}
+      {label ? <span class={labelClass(variant)}>{label}</span> : null}
     </div>
   );
 };

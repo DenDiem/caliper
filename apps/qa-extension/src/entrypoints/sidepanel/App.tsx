@@ -14,13 +14,12 @@ import {PanelFooter} from './PanelFooter';
 import {TaskSheet} from './TaskSheet';
 import {TitleBar} from './TitleBar';
 
-const NEEDS_FIX = new Set(['blocker', 'major']);
-
 export const App = () => {
   const [store, setStore] = useState<CaliperStore | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [taskSheet, setTaskSheet] = useState(false);
   const [jiraSheet, setJiraSheet] = useState(false);
+  const [filter, setFilter] = useState<string | null>(null);
   const [connection, setConnection] = useState<JiraConnection | null>(null);
   const [issueKeys, setIssueKeys] = useState<string[]>([]);
 
@@ -79,11 +78,23 @@ export const App = () => {
   const shot = (annotation: CaliperAnnotation): string | undefined =>
     annotation.screenshotId ? session.assets[annotation.screenshotId] : undefined;
 
-  const severityCount = (severity: string): number =>
-    annotations.filter((annotation) => annotation.severity === severity).length;
+  const isRemove = (annotation: CaliperAnnotation): boolean => annotation.intent === 'remove';
+  const hueOf = (annotation: CaliperAnnotation): string =>
+    annotation.severity === 'blocker' || annotation.severity === 'major' ? annotation.severity : 'minor';
 
-  const needsFix = annotations.filter((annotation) => NEEDS_FIX.has(annotation.severity));
-  const polish = annotations.filter((annotation) => !NEEDS_FIX.has(annotation.severity));
+  const sevCount = (hue: string): number =>
+    annotations.filter((annotation) => !isRemove(annotation) && hueOf(annotation) === hue).length;
+  const removeCount = annotations.filter(isRemove).length;
+
+  const shown = annotations.filter((annotation) => {
+    if (!filter) return true;
+    if (filter === 'remove') return isRemove(annotation);
+    return !isRemove(annotation) && hueOf(annotation) === filter;
+  });
+
+  const toggleFilter = (value: string) => setFilter(filter === value ? null : value);
+  const chipClass = (value: string) =>
+    `count__chip count__chip--${value}${filter === value ? ' count__chip--on' : ''}`;
 
   const linkedKey = issueKeys.at(-1) ?? null;
   const jiraLabel = !connection ? 'CONNECT JIRA' : issueKeys.length > 0 ? 'UPDATE JIRA' : 'SEND JIRA';
@@ -131,18 +142,24 @@ export const App = () => {
               <span class="count__unit">defect{annotations.length === 1 ? '' : 's'}</span>
             </div>
             <div class="count__sev">
-              <span class="count__sev--blocker">{severityCount('blocker')}</span>
-              <span class="count__sev--major">{severityCount('major')}</span>
-              <span class="count__sev--minor">{severityCount('minor') + severityCount('nitpick')}</span>
+              <button class={chipClass('blocker')} onClick={() => toggleFilter('blocker')}>
+                {sevCount('blocker')}
+              </button>
+              <button class={chipClass('major')} onClick={() => toggleFilter('major')}>
+                {sevCount('major')}
+              </button>
+              <button class={chipClass('minor')} onClick={() => toggleFilter('minor')}>
+                {sevCount('minor')}
+              </button>
+              {removeCount > 0 ? (
+                <button class={chipClass('remove')} onClick={() => toggleFilter('remove')}>
+                  ✕ {removeCount}
+                </button>
+              ) : null}
             </div>
           </div>
 
-          <ul class="list">
-            {needsFix.length > 0 ? <li class="group">NEEDS FIX BEFORE RELEASE</li> : null}
-            {needsFix.map(card)}
-            {polish.length > 0 ? <li class="group">POLISH · {polish.length}</li> : null}
-            {polish.map(card)}
-          </ul>
+          <ul class="list">{shown.map(card)}</ul>
         </>
       )}
 

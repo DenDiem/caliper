@@ -16,6 +16,11 @@
   --caliper-tint: rgba(52, 216, 192, 0.1);
   --caliper-danger: #f2545b;
   --caliper-danger-tint: rgba(242, 84, 91, 0.16);
+  --caliper-danger-seg: rgba(242, 84, 91, 0.14);
+  --caliper-danger-bd: rgba(242, 84, 91, 0.6);
+  --caliper-on-danger: #ffffff;
+  --caliper-area-bd: rgba(52, 216, 192, 0.85);
+  --caliper-area-fill: rgba(52, 216, 192, 0.07);
   --caliper-blocker: #f2545b;
   --caliper-major: #f0913e;
   --caliper-minor: #7aa2ff;
@@ -43,17 +48,22 @@
     --caliper-field: #ffffff;
     --caliper-shadow: rgba(5, 8, 12, 0.18);
     --caliper-tint: rgba(15, 156, 136, 0.1);
-    --caliper-danger: #d0353d;
-    --caliper-danger-tint: rgba(208, 53, 61, 0.16);
-    --caliper-blocker: #d0353d;
-    --caliper-major: #c1721f;
-    --caliper-minor: #3b6ae0;
-    --caliper-blocker-seg: rgba(208, 53, 61, 0.12);
-    --caliper-major-seg: rgba(193, 114, 31, 0.12);
-    --caliper-minor-seg: rgba(59, 106, 224, 0.12);
-    --caliper-blocker-bd: rgba(208, 53, 61, 0.4);
-    --caliper-major-bd: rgba(193, 114, 31, 0.4);
-    --caliper-minor-bd: rgba(59, 106, 224, 0.4);
+    --caliper-danger: #b32d36;
+    --caliper-danger-tint: rgba(179, 45, 54, 0.14);
+    --caliper-danger-seg: rgba(179, 45, 54, 0.12);
+    --caliper-danger-bd: rgba(179, 45, 54, 0.55);
+    --caliper-on-danger: #ffffff;
+    --caliper-area-bd: rgba(15, 156, 136, 0.85);
+    --caliper-area-fill: rgba(15, 156, 136, 0.07);
+    --caliper-blocker: #b32d36;
+    --caliper-major: #9a5a14;
+    --caliper-minor: #2f5bd0;
+    --caliper-blocker-seg: rgba(179, 45, 54, 0.12);
+    --caliper-major-seg: rgba(154, 90, 20, 0.12);
+    --caliper-minor-seg: rgba(47, 91, 208, 0.12);
+    --caliper-blocker-bd: rgba(179, 45, 54, 0.4);
+    --caliper-major-bd: rgba(154, 90, 20, 0.4);
+    --caliper-minor-bd: rgba(47, 91, 208, 0.4);
     --caliper-mono: #46536a;
     --caliper-micro: #7c8798;
   }
@@ -85,18 +95,17 @@
 }
 
 .caliper-highlight--strike {
-  border: 1.5px solid var(--caliper-danger);
-  background-color: var(--caliper-danger-tint);
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 6px,
-    var(--caliper-danger-tint) 6px,
-    var(--caliper-danger-tint) 12px
-  );
-  background-repeat: repeat;
-  background-size: auto;
-  background-position: 0 0;
+  border: 1.5px dashed var(--caliper-danger);
+  background-color: var(--caliper-danger-seg);
+  background-image: none;
+  animation: none;
+}
+
+.caliper-highlight--area {
+  border: 1.5px dashed var(--caliper-area-bd);
+  border-radius: 14px;
+  background-color: var(--caliper-area-fill);
+  background-image: none;
   animation: none;
 }
 
@@ -109,7 +118,15 @@
   background: var(--caliper-accent);
   color: var(--caliper-on-accent);
   font: 500 11px/1.4 ui-monospace, monospace;
+  letter-spacing: 0.08em;
   white-space: nowrap;
+}
+
+.caliper-highlight__label--remove {
+  left: auto;
+  right: 0;
+  background: var(--caliper-danger);
+  color: var(--caliper-on-danger);
 }
 
 .caliper-toolbar {

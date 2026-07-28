@@ -148,19 +148,50 @@ body {
 
 .count__sev {
   display: flex;
-  gap: 10px;
-  font: 400 10px/1 var(--cal-font-mono);
-  font-variant-numeric: tabular-nums;
+  gap: 6px;
 }
 
-.count__sev--blocker {
+.count__chip {
+  cursor: pointer;
+  padding: 3px 9px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-20);
+  background: transparent;
+  font: 400 10px/1 var(--cal-font-mono);
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color 120ms var(--cal-ease),
+    background-color 120ms var(--cal-ease);
+}
+
+.count__chip--blocker {
   color: var(--cal-blocker);
 }
-.count__sev--major {
+.count__chip--major {
   color: var(--cal-major);
 }
-.count__sev--minor {
+.count__chip--minor {
   color: var(--cal-minor);
+}
+.count__chip--remove {
+  color: var(--cal-text-mono);
+}
+
+.count__chip--blocker.count__chip--on {
+  border-color: var(--cal-blocker-border);
+  background: var(--cal-blocker-fill);
+}
+.count__chip--major.count__chip--on {
+  border-color: var(--cal-major-border);
+  background: var(--cal-major-fill);
+}
+.count__chip--minor.count__chip--on {
+  border-color: var(--cal-minor-border);
+  background: var(--cal-minor-fill);
+}
+.count__chip--remove.count__chip--on {
+  border-color: var(--cal-blocker-border);
+  background: var(--cal-blocker-fill);
 }
 
 /* ── list ──────────────────────────────────────────────── */
@@ -186,17 +217,6 @@ body {
   border-radius: 4px;
 }
 
-.group {
-  margin-top: 3px;
-  font: 400 9px/1.4 var(--cal-font-mono);
-  letter-spacing: 0.14em;
-  color: var(--cal-text-micro);
-}
-
-.group:first-child {
-  margin-top: 0;
-}
-
 /* ── defect card (full) ────────────────────────────────── */
 
 .card {
@@ -209,12 +229,51 @@ body {
   border-left-color: var(--card-hue);
   border-radius: var(--cal-radius-8);
   background: var(--cal-card);
-  animation: rise 240ms ease both;
+  animation: calLand 180ms var(--cal-ease) both;
 }
 
 .card:hover {
   border-color: var(--cal-teal);
   border-left-color: var(--card-hue);
+}
+
+.card--remove {
+  border-left: 2px dashed var(--cal-blocker);
+}
+
+.card__tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card__top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card__tag {
+  padding: 2px 7px;
+  border-radius: var(--cal-radius-4);
+  font: 600 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.card__tag--remove {
+  color: var(--cal-blocker);
+  border: 1px dashed var(--cal-blocker-border);
+}
+
+.card__tag--area {
+  color: var(--cal-teal);
+  border: 1px solid var(--cal-teal-border-35);
+}
+
+.card__note--struck {
+  color: var(--cal-text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: var(--cal-blocker);
 }
 
 .card--blocker {
@@ -233,6 +292,7 @@ body {
 .card__top {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
@@ -582,15 +642,9 @@ body {
   color: var(--cal-text-hint);
 }
 
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .card,
+  .jira,
   .arm--on .arm__dot,
   .empty__arm-dot {
     animation: none;
@@ -738,7 +792,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--cal-panel);
-  animation: rise 180ms ease both;
+  animation: calSheet 220ms var(--cal-ease) both;
 }
 
 .jira__bar {
