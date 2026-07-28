@@ -4,8 +4,9 @@ export default defineConfig({
   srcDir: 'src',
   zip: {name: 'caliper'},
   manifest: {
-    name: 'Caliper',
-    description: 'Turn a clicked element into a machine-precise defect annotation.',
+    name: 'Caliper — Design Mode & UI Annotation for AI Coding Agents',
+    description:
+      'Mark up any web UI — click, strike, or lasso an element — and hand a precise defect to Claude Code, Cursor or any AI agent.',
     permissions: [
       'storage',
       'unlimitedStorage',
