@@ -68,8 +68,12 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   let stroke: Point[] | null = null;
   let strokeStrike = false;
   // The committed mark stays framed on the page (dashed frame + tag + held ink) through capture and
-  // the open popover, so the marked element reads as marked while the note is written.
-  let mark: {box: Box; variant: 'strike' | 'area'; stroke: Point[]} | null = null;
+  // the open popover. It re-anchors to its element on every paint (frame + ink shift by how far the
+  // element has moved since capture) so it tracks the page as you scroll, instead of floating in the
+  // viewport alongside the popover.
+  let mark:
+    | {el: Element; anchorBox: Box; frameBox: Box; variant: 'strike' | 'area'; stroke: Point[]}
+    | null = null;
 
   const setCursor = (armed: boolean) => {
     document.documentElement.style.cursor = armed ? 'crosshair' : previousCursor;
@@ -98,22 +102,40 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     return element ? toBox(element) : box;
   };
 
+  const markView = (): {box: Box; stroke: Point[]; variant: 'strike' | 'area'} | null => {
+    if (!mark) return null;
+    const current = toBox(mark.el);
+    const dx = current.x - mark.anchorBox.x;
+    const dy = current.y - mark.anchorBox.y;
+    return {
+      box: {
+        x: mark.frameBox.x + dx,
+        y: mark.frameBox.y + dy,
+        width: mark.frameBox.width,
+        height: mark.frameBox.height,
+      },
+      stroke: mark.stroke.map((point) => ({x: point.x + dx, y: point.y + dy})),
+      variant: mark.variant,
+    };
+  };
+
   const paint = () => {
     const idle = active && !pending && !capturing && stroke === null;
     const strikeBox = strikeHighlightBox();
+    const view = markView();
     render(
       <>
         {idle ? <Highlight box={hovered?.box ?? null} label={hovered?.label ?? null} /> : null}
         {strikeBox ? <Highlight box={strikeBox} label={null} variant="strike" /> : null}
-        {mark ? (
+        {view ? (
           <Highlight
-            box={mark.box}
-            label={mark.variant === 'strike' ? 'REMOVE' : 'AREA'}
-            variant={mark.variant}
+            box={view.box}
+            label={view.variant === 'strike' ? 'REMOVE' : 'AREA'}
+            variant={view.variant}
           />
         ) : null}
         {stroke ? <GestureStroke points={stroke} strike={strokeStrike} /> : null}
-        {mark ? <GestureStroke points={mark.stroke} strike={mark.variant === 'strike'} /> : null}
+        {view ? <GestureStroke points={view.stroke} strike={view.variant === 'strike'} /> : null}
         {idle ? <Badge /> : null}
         {pending ? (
           <Popover
@@ -198,11 +220,12 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       return;
     }
 
+    const anchorBox = toBox(anchor);
     if (kind === 'strike') {
-      mark = {box: toBox(anchor), variant: 'strike', stroke: points};
+      mark = {el: anchor, anchorBox, frameBox: anchorBox, variant: 'strike', stroke: points};
       void openPending(extractContext(anchor, tokens), 'remove', null);
     } else {
-      mark = {box, variant: 'area', stroke: points};
+      mark = {el: anchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
       void openPending(extractContext(anchor, tokens), 'change', {box, path: points, enclosedSelectors: []});
     }
   };
@@ -249,7 +272,13 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   };
 
   const onScroll = () => {
-    if (!active || pending || stroke !== null) return;
+    if (!active) return;
+    // A committed mark re-anchors to its element; the hover highlight re-derives from the pointer.
+    if (mark) {
+      scheduleStroke();
+      return;
+    }
+    if (pending || stroke !== null) return;
     schedule(true);
   };
 
