@@ -7,6 +7,7 @@ const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotati
   createdAt: '2026-07-27T10:00:00.000Z',
   comment: 'Padding is too small',
   severity: 'minor',
+  intent: 'change',
   author: 'human',
   concernType: null,
   verdict: null,

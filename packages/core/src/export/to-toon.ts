@@ -51,7 +51,7 @@ const styleRows = (annotation: CaliperAnnotation): string[][] =>
     cell(style.tokenMatch),
   ]);
 
-const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] => {
+const helpLines = (session: CaliperSession, hasScreenshots: boolean, hasIntent: boolean): string[] => {
   if (session.annotations.length === 0) {
     return ['Arm the picker with Alt+Shift+C, then click an element to record a defect'];
   }
@@ -60,6 +60,10 @@ const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] =
     'Fix each defect at `selector`; `confidence: low` means the selector may not survive a re-render',
     'Match `styles.token` against the design-token variable of the same name before hardcoding a value',
   ];
+
+  if (hasIntent) {
+    lines.push('`intent: remove` means delete the element, not restyle it');
+  }
 
   if (hasScreenshots) {
     lines.push(
@@ -88,18 +92,22 @@ export const toToon = (session: CaliperSession): string => {
     sessionEntries.push(['url', cell(url)]);
   }
 
-  const columns = ['id', 'severity', 'component', 'confidence', 'selector', 'comment'];
+  const hasIntent = session.annotations.some((annotation) => annotation.intent === 'remove');
+
+  const columns = ['id', 'severity'];
+  if (hasIntent) columns.push('intent');
+  columns.push('component', 'confidence', 'selector', 'comment');
   if (!url) columns.push('url');
 
   const rows = session.annotations.map((annotation) => {
-    const row = [
-      cell(shortId(annotation.id)),
-      annotation.severity,
+    const row = [cell(shortId(annotation.id)), annotation.severity];
+    if (hasIntent) row.push(annotation.intent);
+    row.push(
       cell(annotation.target.componentName),
       annotation.target.selectorConfidence,
       cell(annotation.target.selector),
       cell(annotation.comment),
-    ];
+    );
     if (!url) row.push(cell(annotation.page.url));
     return row;
   });
@@ -116,7 +124,7 @@ export const toToon = (session: CaliperSession): string => {
     sections.push(table('styles', ['annotation', 'property', 'value', 'token', 'match'], styles));
   }
 
-  sections.push(list('help', helpLines(session, hasScreenshots)));
+  sections.push(list('help', helpLines(session, hasScreenshots, hasIntent)));
 
   return sections.join('\n\n');
 };
