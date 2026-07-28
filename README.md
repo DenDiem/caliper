@@ -4,7 +4,7 @@
 
 <h1 align="center">Caliper</h1>
 
-<p align="center">Precise, element-pinned hand-offs between a developer and an AI coding agent — in both directions.</p>
+<p align="center">Design Mode &amp; UI annotation for AI coding agents — precise, element-pinned hand-offs between you and Claude Code / Cursor, in both directions.</p>
 
 <p align="center">
   <a href="https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/biedcnpfkefnocikeonknogjcippdopm?label=chrome%20web%20store&labelColor=13161d&color=4f7cff&logo=googlechrome&logoColor=white"></a>

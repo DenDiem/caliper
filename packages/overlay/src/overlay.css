@@ -10,6 +10,8 @@
   --caliper-field: #ffffff;
   --caliper-shadow: rgba(0, 0, 0, 0.18);
   --caliper-tint: rgba(79, 124, 255, 0.12);
+  --caliper-danger: #e5484d;
+  --caliper-danger-tint: rgba(229, 72, 77, 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +26,8 @@
     --caliper-field: #16171b;
     --caliper-shadow: rgba(0, 0, 0, 0.55);
     --caliper-tint: rgba(125, 155, 255, 0.16);
+    --caliper-danger: #ff6369;
+    --caliper-danger-tint: rgba(255, 99, 105, 0.2);
   }
 }
 
@@ -33,6 +37,18 @@
   background: var(--caliper-tint);
   pointer-events: none;
   box-sizing: border-box;
+}
+
+.caliper-highlight--strike {
+  border-color: var(--caliper-danger);
+  background: var(--caliper-danger-tint)
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      var(--caliper-danger-tint) 6px,
+      var(--caliper-danger-tint) 12px
+    );
 }
 
 .caliper-highlight__label {
@@ -45,6 +61,100 @@
   color: #ffffff;
   font: 500 11px/1.4 ui-monospace, monospace;
   white-space: nowrap;
+}
+
+.caliper-toolbar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 12px;
+  border-radius: 999px;
+  background: var(--caliper-surface);
+  border: 1px solid var(--caliper-border);
+  box-shadow: 0 4px 12px var(--caliper-shadow);
+  font: 400 12px/1.4 system-ui, sans-serif;
+  color: var(--caliper-text);
+  pointer-events: auto;
+}
+
+.caliper-toolbar__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--caliper-accent);
+}
+
+.caliper-toolbar__modes {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--caliper-field);
+}
+
+.caliper-toolbar__mode {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.caliper-toolbar__mode--active {
+  background: var(--caliper-accent);
+  color: #ffffff;
+}
+
+.caliper-toolbar__hint {
+  color: var(--caliper-muted);
+}
+
+.caliper-lasso {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.caliper-lasso__path {
+  fill: var(--caliper-tint);
+  stroke: var(--caliper-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.caliper-popover__intent {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--caliper-field);
+}
+
+.caliper-popover__intent-option {
+  flex: 1;
+  padding: 5px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.caliper-popover__intent-option--active {
+  background: var(--caliper-accent);
+  color: #ffffff;
+}
+
+.caliper-popover__intent-option--remove.caliper-popover__intent-option--active {
+  background: var(--caliper-danger);
 }
 
 .caliper-popover {

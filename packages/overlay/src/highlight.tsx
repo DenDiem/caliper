@@ -3,14 +3,15 @@ import type {Box} from '@caliper/core';
 interface HighlightProps {
   box: Box | null;
   label: string | null;
+  variant?: 'default' | 'strike';
 }
 
-export const Highlight = ({box, label}: HighlightProps) => {
+export const Highlight = ({box, label, variant = 'default'}: HighlightProps) => {
   if (!box) return null;
 
   return (
     <div
-      class="caliper-highlight"
+      class={variant === 'strike' ? 'caliper-highlight caliper-highlight--strike' : 'caliper-highlight'}
       style={{
         left: `${box.x}px`,
         top: `${box.y}px`,

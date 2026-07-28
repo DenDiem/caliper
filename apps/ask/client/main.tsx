@@ -4,10 +4,11 @@ import type {ReviewSessionState} from '@caliper/core';
 import {AnswerPopover, createOverlayHost, HighlightLayer} from '@caliper/overlay/review';
 import type {OverlayHost} from '@caliper/overlay/review';
 import {CompletionCard} from './completion-card';
+import {bootDesign} from './design';
 import {startDock} from './dock';
 import {Panel} from './panel';
 import {startController} from './review-controller';
-import {bootstrap, events, fetchState} from './sink';
+import {bootstrap, events, fetchState, mode} from './sink';
 import reviewStyles from './review.css?inline';
 
 const LIVE_SYNC_LOST_MESSAGE = 'Live sync lost — reload the page';
@@ -74,6 +75,10 @@ const boot = async (): Promise<void> => {
   });
 };
 
-void boot().catch((error: unknown) => {
-  console.error('Caliper review client failed to boot', error);
-});
+if (mode === 'design') {
+  bootDesign();
+} else {
+  void boot().catch((error: unknown) => {
+    console.error('Caliper review client failed to boot', error);
+  });
+}

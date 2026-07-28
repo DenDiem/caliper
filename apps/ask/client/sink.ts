@@ -7,6 +7,9 @@ const scriptUrl = new URL(scriptSrc());
 const queryToken = scriptUrl.searchParams.get('t');
 const querySession = scriptUrl.searchParams.get('s');
 
+// The proxy appends &mode=design for design sessions; absent for the default Q&A review flow.
+export const mode = scriptUrl.searchParams.get('mode');
+
 // Proxy mode: the proxy injected ?s=&t= into this very script tag, relative /__caliper__ paths work
 // same-origin. Snippet mode: no query params (a static snippet can't carry a per-session token) — the
 // API base is this script's own origin, and the token is fetched from /__caliper__/bootstrap first.
@@ -86,3 +89,13 @@ export const postResolve = (ref: string, target: ElementContext) =>
   }).then(assertOk);
 
 export const events = () => new EventSource(`${endpoint('/events')}?t=${token}`);
+
+export const postMark = (annotation: unknown) =>
+  fetch(`${endpoint('/marks')}?t=${token}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(annotation),
+  }).then(assertOk);
+
+export const postSubmit = () =>
+  fetch(`${endpoint('/submit')}?t=${token}`, {method: 'POST', headers: authHeaders()}).then(assertOk);

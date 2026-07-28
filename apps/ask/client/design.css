@@ -1,0 +1,52 @@
+:host {
+  all: initial;
+}
+
+.caliper-design-dock {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 999px;
+  background: #1e1f24;
+  color: #eaedf5;
+  border: 1px solid #3a3d46;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font: 500 13px/1.4 system-ui, sans-serif;
+  pointer-events: auto;
+}
+
+.caliper-design-dock__count {
+  color: #9aa0ae;
+}
+
+.caliper-design-dock button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.caliper-design-dock__arm {
+  background: #2a2c33;
+  color: #eaedf5;
+}
+
+.caliper-design-dock__send {
+  background: #4f7cff;
+  color: #ffffff;
+}
+
+.caliper-design-dock__send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.caliper-design-dock__done {
+  color: #4ade80;
+}

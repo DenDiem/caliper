@@ -9,8 +9,18 @@ export interface SendRecord {
   at: string;
 }
 
-const readAll = async (): Promise<SendRecord[]> =>
-  (await chrome.storage.local.get(STORAGE.sends))[STORAGE.sends] ?? [];
+const isSendRecord = (value: unknown): value is SendRecord =>
+  typeof value === 'object' &&
+  value !== null &&
+  'sessionId' in value &&
+  typeof value.sessionId === 'string' &&
+  'issueKey' in value &&
+  typeof value.issueKey === 'string';
+
+const readAll = async (): Promise<SendRecord[]> => {
+  const value = (await chrome.storage.local.get(STORAGE.sends))[STORAGE.sends];
+  return Array.isArray(value) ? value.filter(isSendRecord) : [];
+};
 
 export const getSends = async (sessionId: string): Promise<SendRecord[]> =>
   (await readAll()).filter((record) => record.sessionId === sessionId);

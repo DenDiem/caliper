@@ -14,9 +14,11 @@ export default defineContentScript({
       createdAt: new Date().toISOString(),
       comment: draft.comment,
       severity: draft.severity,
+      intent: draft.intent,
       author: 'human',
       concernType: null,
       verdict: null,
+      ...(draft.region ? {region: draft.region} : {}),
       ...(draft.figmaUrl ? {figmaUrl: draft.figmaUrl} : {}),
       page: {
         url: location.href,

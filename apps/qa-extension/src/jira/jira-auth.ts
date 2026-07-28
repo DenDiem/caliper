@@ -25,11 +25,33 @@ const normalizeSite = (input: string): string => {
 
 const basic = (email: string, apiToken: string): string => `Basic ${btoa(`${email}:${apiToken}`)}`;
 
-export const getCredentials = async (): Promise<JiraCredentials | null> =>
-  (await chrome.storage.local.get(STORAGE.credentials))[STORAGE.credentials] ?? null;
+const isJiraCredentials = (value: unknown): value is JiraCredentials =>
+  typeof value === 'object' &&
+  value !== null &&
+  'siteUrl' in value &&
+  typeof value.siteUrl === 'string' &&
+  'email' in value &&
+  typeof value.email === 'string' &&
+  'apiToken' in value &&
+  typeof value.apiToken === 'string';
 
-export const getConnection = async (): Promise<JiraConnection | null> =>
-  (await chrome.storage.local.get(STORAGE.connection))[STORAGE.connection] ?? null;
+const isJiraConnection = (value: unknown): value is JiraConnection =>
+  typeof value === 'object' &&
+  value !== null &&
+  'siteUrl' in value &&
+  typeof value.siteUrl === 'string' &&
+  'displayName' in value &&
+  typeof value.displayName === 'string';
+
+export const getCredentials = async (): Promise<JiraCredentials | null> => {
+  const value = (await chrome.storage.local.get(STORAGE.credentials))[STORAGE.credentials];
+  return isJiraCredentials(value) ? value : null;
+};
+
+export const getConnection = async (): Promise<JiraConnection | null> => {
+  const value = (await chrome.storage.local.get(STORAGE.connection))[STORAGE.connection];
+  return isJiraConnection(value) ? value : null;
+};
 
 export const clearCredentials = (): Promise<void> =>
   chrome.storage.local.remove([STORAGE.credentials, STORAGE.connection, STORAGE.lastIssue]);

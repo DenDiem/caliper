@@ -10,6 +10,7 @@ export const createOverlayHost = (styles: string, hostId: string = DEFAULT_HOST_
 
   const host = document.createElement('div');
   host.id = hostId;
+  host.setAttribute('data-caliper-overlay', '');
   host.style.position = 'fixed';
   host.style.inset = '0';
   host.style.zIndex = '2147483647';

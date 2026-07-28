@@ -2,7 +2,7 @@ import type {ChildProcess} from 'node:child_process';
 import {mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import open, {apps} from 'open';
+import open, {apps, openApp} from 'open';
 
 const LAUNCH_ERROR_TIMEOUT_MS = 3000;
 const TEMP_PROFILE_PREFIX = 'caliper-ask-profile-';
@@ -86,4 +86,39 @@ export const launchReviewBrowser = async (url: string): Promise<void> => {
   } catch (error) {
     console.error(`caliper: could not open a browser automatically (${errorMessage(error)}). Open the review url above manually.`);
   }
+};
+
+export interface BrowserWindow {
+  close: () => void;
+}
+
+const closer = (subprocess: ChildProcess): BrowserWindow => ({
+  close: () => {
+    try {
+      subprocess.kill();
+    } catch {
+      // best-effort — the design client also closes itself with window.close() on submit
+    }
+  },
+});
+
+// Design mode opens the review as a chromeless --app window in a throwaway profile and returns a
+// handle to close it when the developer submits. Falls back to a normal window (no close handle) when
+// an isolated Chrome/Edge app window isn't available.
+export const launchDesignBrowser = async (url: string): Promise<BrowserWindow> => {
+  const profileDir = createTempProfileDir();
+  if (profileDir) {
+    const appArgs = [`--app=${url}`, `--user-data-dir=${profileDir}`, ...CLEAN_LAUNCH_FLAGS];
+    for (const name of [apps.chrome, apps.edge]) {
+      try {
+        const subprocess = await openApp(name, {arguments: appArgs});
+        if (await survivedLaunch(subprocess)) return closer(subprocess);
+      } catch {
+        // try the next browser
+      }
+    }
+  }
+
+  await launchReviewBrowser(url);
+  return {close: () => undefined};
 };

@@ -7,6 +7,7 @@ const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotati
   createdAt: '2026-07-22T10:00:00.000Z',
   comment: 'Padding is too small',
   severity: 'minor',
+  intent: 'change',
   author: 'human',
   concernType: null,
   verdict: null,
@@ -105,6 +106,16 @@ describe('toToon', () => {
     expect(output).toContain(
       'annotations[2]{id,severity,component,confidence,selector,comment,url}:',
     );
+  });
+
+  it('adds an intent column only once an annotation asks for removal', () => {
+    const plain = toToon(session([annotation()]));
+    expect(plain).toContain('annotations[1]{id,severity,component,confidence,selector,comment}:');
+    expect(plain).not.toContain(',intent,');
+
+    const withRemove = toToon(session([annotation({intent: 'remove'})]));
+    expect(withRemove).toContain('annotations[1]{id,severity,intent,component,confidence,selector,comment}:');
+    expect(withRemove).toContain('minor,remove,');
   });
 
   it('states an empty session with context and suggests the next step', () => {

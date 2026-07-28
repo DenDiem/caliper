@@ -31,6 +31,7 @@ export const startProxyServer = (opts: {
   onError?: (error: Error) => void;
   onInjectionRisk?: (reason: string) => void;
   clientBundlePath?: string;
+  clientMode?: string;
 }): {close: () => void} => {
   const proxy = httpProxy.createProxyServer({target: opts.target, selfHandleResponse: true, ws: true, changeOrigin: false});
 
@@ -66,7 +67,8 @@ export const startProxyServer = (opts: {
       const risk = detectInjectionRisk(csp, `http://127.0.0.1:${port()}`);
       if (risk) opts.onInjectionRisk?.(risk);
 
-      const src = `${CLIENT_BUNDLE_PATH}?s=${opts.sessionId}&t=${opts.token}`;
+      const modeSuffix = opts.clientMode ? `&mode=${opts.clientMode}` : '';
+      const src = `${CLIENT_BUNDLE_PATH}?s=${opts.sessionId}&t=${opts.token}${modeSuffix}`;
       const body = injectScriptTag(Buffer.concat(chunks).toString('utf8'), src);
       res.writeHead(proxyRes.statusCode ?? 200, headers);
       res.end(body);

@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import type {CaliperAnnotation, CaliperSession} from '../schema/annotation.schema';
+import type {AdfDoc, AdfNode} from './to-jira-adf';
 import {screenshotFilename, sessionToJiraComment} from './to-jira-adf';
 
 const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotation => ({
@@ -7,6 +8,7 @@ const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotati
   createdAt: '2026-07-27T10:00:00.000Z',
   comment: 'Padding is too small',
   severity: 'minor',
+  intent: 'change',
   author: 'human',
   concernType: null,
   verdict: null,
@@ -37,6 +39,12 @@ const session = (annotations: CaliperAnnotation[]): CaliperSession => ({
   assets: {},
 });
 
+const bulletListOf = (doc: AdfDoc): AdfNode => {
+  const node = doc.content[1];
+  if (!node) throw new Error('expected a bullet list at content[1]');
+  return node;
+};
+
 describe('sessionToJiraComment', () => {
   it('builds a level-3 heading with the defect count', () => {
     const doc = sessionToJiraComment(session([annotation()]));
@@ -54,7 +62,7 @@ describe('sessionToJiraComment', () => {
   });
 
   it('numbers each bullet and keeps severity, component, comment and a selector code mark', () => {
-    const list = sessionToJiraComment(session([annotation()])).content[1];
+    const list = bulletListOf(sessionToJiraComment(session([annotation()])));
     expect(list.type).toBe('bulletList');
     expect(list.content).toHaveLength(1);
 
@@ -66,9 +74,9 @@ describe('sessionToJiraComment', () => {
   });
 
   it('embeds an inline media node in the bullet when a media ref is provided', () => {
-    const list = sessionToJiraComment(session([annotation({screenshotId: 'shot-1'})]), {
-      0: {id: 'att-42'},
-    }).content[1];
+    const list = bulletListOf(
+      sessionToJiraComment(session([annotation({screenshotId: 'shot-1'})]), {0: {id: 'att-42'}}),
+    );
     const item = list.content?.[0];
 
     expect(item?.content).toHaveLength(2);
@@ -79,14 +87,14 @@ describe('sessionToJiraComment', () => {
   });
 
   it('omits media when no ref is provided for the bullet', () => {
-    const list = sessionToJiraComment(session([annotation({screenshotId: 'shot-1'})])).content[1];
+    const list = bulletListOf(sessionToJiraComment(session([annotation({screenshotId: 'shot-1'})])));
     expect(JSON.stringify(list)).not.toContain('mediaSingle');
   });
 
   it('falls back to the tag name when the component is unknown', () => {
-    const list = sessionToJiraComment(
-      session([annotation({target: {...annotation().target, componentName: null}})]),
-    ).content[1];
+    const list = bulletListOf(
+      sessionToJiraComment(session([annotation({target: {...annotation().target, componentName: null}})])),
+    );
     expect(JSON.stringify(list)).toContain('#01 [minor] b: ');
   });
 
