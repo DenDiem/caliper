@@ -8,14 +8,16 @@ design (it appears in the store URL). This is the value the `CHROME_EXTENSION_ID
 ## Name
 
 ```
-Caliper — element-precise QA annotations
+Caliper — Design Mode & UI Annotation for AI Coding Agents
 ```
 
 ## Summary (132 characters max)
 
 ```
-Click an element, describe what is wrong, export a defect report an AI agent can act on.
+Mark up any web UI — click, strike, or lasso an element — and hand a precise, element-pinned defect to Claude Code, Cursor or any AI agent.
 ```
+
+> See `docs/seo.md` for the discoverability strategy behind this name/summary and the GitHub topics.
 
 ## Category
 
@@ -41,6 +43,9 @@ records:
 • the computed styles that the element actually sets, matched against your design tokens, so a
   padding of 20px is reported as --offset-20px rather than a bare number
 • a screenshot cropped to the element, captured at the moment you clicked it
+
+Three ways to mark what you mean: click an element to annotate it, strike one through to flag it
+for removal, or lasso an area when no single element is the right target.
 
 Export the session as TOON (a compact, token-efficient format built for AI agents), as JSON, or as
 a zip holding both plus the screenshots. Paste it into Claude Code, Cursor or any coding agent and
