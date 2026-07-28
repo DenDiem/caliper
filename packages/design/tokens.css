@@ -1,0 +1,142 @@
+/**
+ * Caliper design system — canonical tokens (Claude Design handoff "Caliper Refresh").
+ *
+ * This is the single source of truth for the palette, type, radii, shadows and animations shared by
+ * every Caliper surface. Light-DOM surfaces (side panel, options, ask review page) import this file
+ * so the `:root` custom properties cascade in. Shadow-DOM surfaces (overlay popover/highlight/
+ * toolbar, ask design dock) cannot inherit these — `:host { all: initial }` blocks them — so they
+ * mirror the SAME values in their own `:host` block. Keep those mirrors in sync with this file.
+ */
+
+:root {
+  /* surfaces */
+  --cal-ground: #0a0d11;
+  --cal-panel: #0b0f14;
+  --cal-chrome: #12171e;
+  --cal-card: #0f141a;
+  --cal-sheet: #0d1218;
+  --cal-footer: #0e131a;
+  --cal-input: #0a0e13;
+
+  /* borders */
+  --cal-border-structure: #1d242c;
+  --cal-border-control: #232c36;
+  --cal-divider: #1a212a;
+
+  /* text */
+  --cal-text-strong: #eaf0f5;
+  --cal-text-body: #e6edf4;
+  --cal-text-body-soft: #dde5ee;
+  --cal-text-mono: #a9b6c4;
+  --cal-text-secondary: #8b98a8;
+  --cal-text-prose: #77848f;
+  --cal-text-micro: #6b7a8b;
+  --cal-text-hint: #5f6d7e;
+  --cal-text-disabled: #46536a;
+
+  /* tool teal */
+  --cal-teal: #34d8c0;
+  --cal-teal-hover: #56e6d1;
+  --cal-on-teal: #06231e;
+  --cal-teal-06: rgba(52, 216, 192, 0.06);
+  --cal-teal-08: rgba(52, 216, 192, 0.08);
+  --cal-teal-10: rgba(52, 216, 192, 0.1);
+  --cal-teal-12: rgba(52, 216, 192, 0.12);
+  --cal-teal-20: rgba(52, 216, 192, 0.2);
+  --cal-teal-border-25: rgba(52, 216, 192, 0.25);
+  --cal-teal-border-28: rgba(52, 216, 192, 0.28);
+  --cal-teal-border-35: rgba(52, 216, 192, 0.35);
+  --cal-teal-border-40: rgba(52, 216, 192, 0.4);
+  --cal-teal-border-45: rgba(52, 216, 192, 0.45);
+
+  /* severity — each carries data */
+  --cal-blocker: #f2545b;
+  --cal-major: #f0913e;
+  --cal-minor: #7aa2ff;
+  --cal-blocker-fill: rgba(242, 84, 91, 0.12);
+  --cal-major-fill: rgba(240, 145, 62, 0.12);
+  --cal-minor-fill: rgba(122, 162, 255, 0.12);
+  --cal-blocker-seg: rgba(242, 84, 91, 0.14);
+  --cal-major-seg: rgba(240, 145, 62, 0.14);
+  --cal-minor-seg: rgba(122, 162, 255, 0.14);
+  --cal-blocker-border: rgba(242, 84, 91, 0.45);
+  --cal-major-border: rgba(240, 145, 62, 0.45);
+  --cal-minor-border: rgba(122, 162, 255, 0.45);
+
+  /* type */
+  --cal-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --cal-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+
+  /* radii */
+  --cal-radius-3: 3px;
+  --cal-radius-4: 4px;
+  --cal-radius-5: 5px;
+  --cal-radius-7: 7px;
+  --cal-radius-8: 8px;
+  --cal-radius-12: 12px;
+  --cal-radius-14: 14px;
+  --cal-radius-20: 20px;
+
+  /* shadows */
+  --cal-shadow-popover: 0 24px 60px rgba(5, 8, 12, 0.55);
+  --cal-shadow-sheet: inset 0 8px 18px rgba(0, 0, 0, 0.45);
+
+  /* screenshot-crop placeholder (real captureVisibleTab output replaces it) */
+  --cal-crop-placeholder: repeating-linear-gradient(135deg, #1a222b 0 6px, #202a34 6px 12px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --cal-ground: #fbfcfd;
+    --cal-panel: #ffffff;
+    --cal-chrome: #ffffff;
+    --cal-card: #ffffff;
+    --cal-sheet: #f4f6f9;
+    --cal-footer: #f4f6f9;
+    --cal-input: #ffffff;
+
+    --cal-border-structure: #e6ebf1;
+    --cal-border-control: #e2e8ef;
+    --cal-divider: #dde3ea;
+
+    --cal-text-strong: #141b25;
+    --cal-text-body: #1b2330;
+    --cal-text-body-soft: #1b2330;
+    --cal-text-mono: #46536a;
+    --cal-text-secondary: #46536a;
+    --cal-text-prose: #7c8798;
+    --cal-text-micro: #7c8798;
+    --cal-text-hint: #98a3b3;
+    --cal-text-disabled: #98a3b3;
+
+    --cal-teal: #0f9c88;
+    --cal-teal-hover: #0b7c6c;
+    --cal-on-teal: #ffffff;
+
+    --cal-blocker: #d0353d;
+    --cal-major: #c1721f;
+    --cal-minor: #3b6ae0;
+
+    --cal-crop-placeholder: repeating-linear-gradient(135deg, #e7ebf1 0 6px, #eef1f6 6px 12px);
+  }
+}
+
+/* armed picker dot */
+@keyframes calPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+}
+
+/* element-highlight dashed frame */
+@keyframes calDash {
+  to {
+    background-position: 200px 0, -200px 0, 0 -200px, 0 200px;
+  }
+}
