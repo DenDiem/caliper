@@ -63,6 +63,35 @@ describe('caliperAnnotationSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('defaults intent to change for an annotation stored before intent existed', () => {
+    expect(caliperAnnotationSchema.parse(validAnnotation).intent).toBe('change');
+  });
+
+  it('accepts a remove intent', () => {
+    expect(caliperAnnotationSchema.parse({...validAnnotation, intent: 'remove'}).intent).toBe('remove');
+  });
+
+  it('rejects an unknown intent', () => {
+    const result = caliperAnnotationSchema.safeParse({...validAnnotation, intent: 'rewrite'});
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a lassoed region alongside the anchor target', () => {
+    const parsed = caliperAnnotationSchema.parse({
+      ...validAnnotation,
+      region: {
+        box: {x: 5, y: 5, width: 200, height: 120},
+        path: [
+          {x: 5, y: 5},
+          {x: 205, y: 5},
+          {x: 205, y: 125},
+        ],
+      },
+    });
+    expect(parsed.region?.path).toHaveLength(3);
+    expect(parsed.region?.enclosedSelectors).toEqual([]);
+  });
+
   it('defaults an empty session to schemaVersion 1', () => {
     const session = caliperSessionSchema.parse({
       id: 's1',
