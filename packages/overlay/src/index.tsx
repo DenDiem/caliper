@@ -39,7 +39,7 @@ const toBox = (element: Element): Box => {
 };
 
 const isOverlayEvent = (event: Event): boolean =>
-  event.target instanceof Element && event.target.closest('#caliper-overlay-host') !== null;
+  event.target instanceof Element && event.target.closest('[data-caliper-overlay]') !== null;
 
 export const mountOverlay = ({onSubmit, capture, onPick}: OverlayOptions): OverlayHandle => {
   const host = createOverlayHost(overlayStyles);
