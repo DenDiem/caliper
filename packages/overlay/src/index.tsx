@@ -2,7 +2,9 @@ import {classifyGesture, collectTokens, elementAt, extractContext, pathBounds} f
 import type {AnnotationIntent, Box, ElementContext, Point, Region} from '@caliper/core';
 import {render} from 'preact';
 import {Badge} from './badge';
+import {FocusCursor} from './focus-cursor';
 import {Highlight} from './highlight';
+import {Hud} from './hud';
 import {createOverlayHost} from './overlay-host';
 import {placePopover} from './place-popover';
 import {Popover} from './popover';
@@ -78,6 +80,10 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   let mark:
     | {el: Element; anchorBox: Box; frameBox: Box; variant: 'strike' | 'area'; stroke: Point[]}
     | null = null;
+  // The keyboard-focused element (arrow-key navigation), independent of the mouse hover.
+  let focus:
+    | {el: Element; tag: string; selector: string; position: {index: number; total: number} | null}
+    | null = null;
 
   const setCursor = (armed: boolean) => {
     document.documentElement.style.cursor = armed ? 'crosshair' : previousCursor;
@@ -131,9 +137,18 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     const placement = pendingBox
       ? placePopover(pendingBox, POPOVER_SIZE, {width: window.innerWidth, height: window.innerHeight})
       : null;
+    const focusView = idle && focus ? {...focus, box: toBox(focus.el)} : null;
     render(
       <>
         {idle ? <Highlight box={hovered?.box ?? null} label={hovered?.label ?? null} /> : null}
+        {focusView ? (
+          <FocusCursor
+            box={focusView.box}
+            tag={focusView.tag}
+            selector={focusView.selector}
+            position={focusView.position}
+          />
+        ) : null}
         {strikeBox ? <Highlight box={strikeBox} label={null} variant="strike" /> : null}
         {view ? (
           <Highlight
@@ -145,6 +160,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         {stroke ? <GestureStroke points={stroke} strike={strokeStrike} /> : null}
         {view ? <GestureStroke points={view.stroke} strike={view.variant === 'strike'} /> : null}
         {idle ? <Badge /> : null}
+        {idle ? <Hud /> : null}
         {placement?.leader ? (
           <svg class="caliper-leader" width={window.innerWidth} height={window.innerHeight}>
             <line
@@ -264,6 +280,76 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     }
   };
 
+  const isCaliperEl = (element: Element | null): boolean =>
+    !!element && element.closest('[data-caliper-overlay]') !== null;
+
+  const editableFocused = (): boolean => {
+    const el = document.activeElement;
+    return (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      (el instanceof HTMLElement && el.isContentEditable)
+    );
+  };
+
+  const siblingPosition = (element: Element): {index: number; total: number} | null => {
+    const parent = element.parentElement;
+    if (!parent) return null;
+    const siblings = Array.from(parent.children).filter((child) => !isCaliperEl(child));
+    const index = siblings.indexOf(element);
+    return index >= 0 ? {index: index + 1, total: siblings.length} : null;
+  };
+
+  const focusOn = (element: Element) => {
+    focus = {
+      el: element,
+      tag: element.tagName.toLowerCase(),
+      selector: extractContext(element, tokens).selector,
+      position: siblingPosition(element),
+    };
+    element.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    paint();
+  };
+
+  const navigateFocus = (key: string) => {
+    const current = focus?.el ?? hoveredElement ?? document.body;
+    const next =
+      key === 'ArrowUp'
+        ? current.parentElement
+        : key === 'ArrowDown'
+          ? current.firstElementChild
+          : key === 'ArrowLeft'
+            ? current.previousElementSibling
+            : current.nextElementSibling;
+    if (next && !isCaliperEl(next)) focusOn(next);
+  };
+
+  // M / X / A mark the keyboard-focused element with the same three intents as click / scribble / loop.
+  const markFocused = (variant: 'change' | 'remove' | 'area') => {
+    if (!focus || pending) return;
+    const element = focus.el;
+    const context = extractContext(element, tokens);
+    const box = toBox(element);
+    focus = null;
+    mark = null;
+    if (variant === 'remove') {
+      mark = {el: element, anchorBox: box, frameBox: box, variant: 'strike', stroke: []};
+      void openPending(element, context, 'remove', null);
+    } else if (variant === 'area') {
+      const path: Point[] = [
+        {x: box.x, y: box.y},
+        {x: box.x + box.width, y: box.y},
+        {x: box.x + box.width, y: box.y + box.height},
+        {x: box.x, y: box.y + box.height},
+        {x: box.x, y: box.y},
+      ];
+      mark = {el: element, anchorBox: box, frameBox: box, variant: 'area', stroke: []};
+      void openPending(element, context, 'change', {box, path, enclosedSelectors: []});
+    } else {
+      void openPending(element, context, 'change', null);
+    }
+  };
+
   const onPointerMove = (event: PointerEvent) => {
     if (!active) return;
     if (stroke) {
@@ -323,22 +409,41 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return;
-    if (pending) {
-      reset();
-      return;
-    }
-    if (stroke) {
-      stroke = null;
-      strokeStrike = false;
+    if (event.key === 'Escape') {
+      if (pending) {
+        reset();
+        return;
+      }
+      if (stroke) {
+        stroke = null;
+        strokeStrike = false;
+        paint();
+        return;
+      }
+      active = false;
+      focus = null;
+      clearHover();
+      setCursor(false);
       paint();
+      onExit?.();
       return;
     }
-    active = false;
-    clearHover();
-    setCursor(false);
-    paint();
-    onExit?.();
+
+    // Keyboard marking: only while armed and idle, and never over the popover or a page input.
+    if (!gesturesEnabled || !active || pending || stroke !== null) return;
+    if (isOverlayEvent(event) || editableFocused()) return;
+
+    if (event.key.startsWith('Arrow')) {
+      event.preventDefault();
+      navigateFocus(event.key);
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    if ((key === 'm' || key === 'x' || key === 'a') && focus) {
+      event.preventDefault();
+      markFocused(key === 'x' ? 'remove' : key === 'a' ? 'area' : 'change');
+    }
   };
 
   document.addEventListener('pointermove', onPointerMove, true);
@@ -379,6 +484,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         stroke = null;
         strokeStrike = false;
         mark = null;
+        focus = null;
       }
       paint();
     },

@@ -14,6 +14,7 @@
   --caliper-field: #0a0e13;
   --caliper-shadow: rgba(5, 8, 12, 0.55);
   --caliper-tint: rgba(52, 216, 192, 0.1);
+  --caliper-halo: rgba(52, 216, 192, 0.16);
   --caliper-danger: #f2545b;
   --caliper-danger-tint: rgba(242, 84, 91, 0.16);
   --caliper-danger-seg: rgba(242, 84, 91, 0.14);
@@ -48,6 +49,7 @@
     --caliper-field: #ffffff;
     --caliper-shadow: rgba(5, 8, 12, 0.18);
     --caliper-tint: rgba(15, 156, 136, 0.1);
+    --caliper-halo: rgba(15, 156, 136, 0.16);
     --caliper-danger: #b32d36;
     --caliper-danger-tint: rgba(179, 45, 54, 0.14);
     --caliper-danger-seg: rgba(179, 45, 54, 0.12);
@@ -139,6 +141,88 @@
 .caliper-leader line {
   stroke: var(--caliper-accent);
   stroke-width: 1;
+}
+
+/* ── keyboard focus cursor (screen 16) ─────────────────── */
+
+.caliper-focus {
+  position: fixed;
+  pointer-events: none;
+  box-sizing: border-box;
+  border-radius: 6px;
+  outline: 2px solid var(--caliper-accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--caliper-halo);
+}
+
+.caliper-focus__label {
+  position: absolute;
+  top: -27px;
+  left: -2px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 340px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  background: var(--caliper-surface);
+  border: 1px solid var(--caliper-border);
+  box-shadow: 0 4px 12px var(--caliper-shadow);
+  font: 500 11px/1.4 ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+.caliper-focus__tag {
+  color: var(--caliper-accent);
+}
+
+.caliper-focus__sel {
+  overflow: hidden;
+  color: var(--caliper-mono);
+  text-overflow: ellipsis;
+}
+
+.caliper-focus__pos {
+  flex: 0 0 auto;
+  color: var(--caliper-micro);
+}
+
+/* ── keyboard HUD bar (screen 16) ──────────────────────── */
+
+.caliper-hud {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--caliper-surface);
+  border: 1px solid var(--caliper-border);
+  box-shadow: 0 4px 12px var(--caliper-shadow);
+  pointer-events: none;
+}
+
+.caliper-hud__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.caliper-hud__key {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--caliper-field);
+  border: 1px solid var(--caliper-border);
+  color: var(--caliper-text);
+  font: 600 10px/1.4 ui-monospace, monospace;
+}
+
+.caliper-hud__label {
+  color: var(--caliper-muted);
+  font: 400 11px/1.4 system-ui, sans-serif;
 }
 
 .caliper-toolbar {
