@@ -476,9 +476,21 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 24px;
   padding: 26px 20px;
+}
+
+.empty__body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.empty__foot {
+  margin-top: auto;
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .empty__title {
