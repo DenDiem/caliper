@@ -38,4 +38,13 @@ describe('classifyGesture', () => {
   it('detects a drawn loop as a lasso', () => {
     expect(classifyGesture(circle())).toBe('lasso');
   });
+
+  it('keeps a wobbly hand-drawn loop a lasso despite the jitter reversals', () => {
+    const wobbly: Point[] = Array.from({length: 28}, (_, index) => {
+      const angle = (index / 28) * Math.PI * 2;
+      const jitter = index % 2 === 0 ? 5 : -5;
+      return {x: 200 + Math.cos(angle) * 95 + jitter, y: 150 + Math.sin(angle) * 72 + jitter};
+    });
+    expect(classifyGesture(wobbly)).toBe('lasso');
+  });
 });
