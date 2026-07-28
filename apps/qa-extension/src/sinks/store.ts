@@ -25,10 +25,18 @@ const freshStore = (session: CaliperSession = emptySession()): CaliperStore => (
   activeId: session.id,
 });
 
+const isCaliperStore = (value: unknown): value is CaliperStore =>
+  typeof value === 'object' &&
+  value !== null &&
+  'sessions' in value &&
+  Array.isArray(value.sessions) &&
+  'activeId' in value &&
+  typeof value.activeId === 'string';
+
 export const readStore = async (): Promise<CaliperStore> => {
   const raw = await chrome.storage.local.get([STORE_KEY, LEGACY_KEY]);
-  const stored: CaliperStore | undefined = raw[STORE_KEY];
-  if (stored && Array.isArray(stored.sessions) && stored.sessions.length > 0) return stored;
+  const stored = raw[STORE_KEY];
+  if (isCaliperStore(stored) && stored.sessions.length > 0) return stored;
 
   const legacy = caliperSessionSchema.safeParse(raw[LEGACY_KEY]);
   const store = freshStore(legacy.success ? legacy.data : emptySession());
