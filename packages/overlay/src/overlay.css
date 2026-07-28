@@ -61,23 +61,43 @@
 
 .caliper-highlight {
   position: fixed;
-  border: 1.5px dashed var(--caliper-accent);
-  border-radius: 8px;
-  background: var(--caliper-tint);
   pointer-events: none;
   box-sizing: border-box;
+  border-radius: 8px;
+  background-color: var(--caliper-tint);
+  background-image:
+    linear-gradient(90deg, var(--caliper-accent) 50%, transparent 0),
+    linear-gradient(90deg, var(--caliper-accent) 50%, transparent 0),
+    linear-gradient(0deg, var(--caliper-accent) 50%, transparent 0),
+    linear-gradient(0deg, var(--caliper-accent) 50%, transparent 0);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size:
+    12px 1.5px,
+    12px 1.5px,
+    1.5px 12px,
+    1.5px 12px;
+  background-position:
+    0 0,
+    0 100%,
+    0 0,
+    100% 0;
+  animation: calDash 0.5s linear infinite;
 }
 
 .caliper-highlight--strike {
-  border-color: var(--caliper-danger);
-  background: var(--caliper-danger-tint)
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 6px,
-      var(--caliper-danger-tint) 6px,
-      var(--caliper-danger-tint) 12px
-    );
+  border: 1.5px solid var(--caliper-danger);
+  background-color: var(--caliper-danger-tint);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    var(--caliper-danger-tint) 6px,
+    var(--caliper-danger-tint) 12px
+  );
+  background-repeat: repeat;
+  background-size: auto;
+  background-position: 0 0;
+  animation: none;
 }
 
 .caliper-highlight__label {
@@ -515,7 +535,11 @@
 
 @keyframes calDash {
   to {
-    background-position: 200px 0;
+    background-position:
+      12px 0,
+      -12px 100%,
+      0 -12px,
+      100% 12px;
   }
 }
 
