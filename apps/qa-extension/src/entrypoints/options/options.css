@@ -1,42 +1,12 @@
-:root {
-  color-scheme: light dark;
-
-  --mono: ui-monospace, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
-
-  --ink: #10131a;
-  --ink-soft: #5c6472;
-  --ink-faint: #8a91a0;
-  --paper: #f7f8fa;
-  --panel: #ffffff;
-  --line: #dfe3ea;
-  --accent: #0f7d78;
-  --accent-ink: #ffffff;
-  --blocker: #c92a2a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #e7eaf0;
-    --ink-soft: #98a0b0;
-    --ink-faint: #666e7e;
-    --paper: #0d0f14;
-    --panel: #13161d;
-    --line: #262b35;
-    --accent: #4fd1c5;
-    --accent-ink: #08211f;
-    --blocker: #ff6b6b;
-  }
-}
-
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font: 400 13px/1.5 var(--mono);
+  background: var(--cal-ground);
+  color: var(--cal-text-strong);
+  font: 400 13px/1.5 var(--cal-font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -48,16 +18,16 @@ body {
 
 .opt__title {
   margin: 0 0 20px;
-  font-size: 18px;
-  font-weight: 600;
+  font: 600 18px/1.3 var(--cal-font-sans);
   letter-spacing: -0.01em;
+  color: var(--cal-text-strong);
 }
 
 .opt__card {
   padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
+  border: 1px solid var(--cal-border-structure);
+  border-radius: var(--cal-radius-12);
+  background: var(--cal-card);
 }
 
 .opt__field {
@@ -68,89 +38,85 @@ body {
 .opt__field span {
   display: block;
   margin-bottom: 5px;
-  color: var(--ink-soft);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font: 400 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--cal-text-micro);
 }
 
 .opt__field input {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 2px;
-  background: var(--paper);
-  color: var(--ink);
-  font: 400 13px/1.4 var(--mono);
+  padding: 10px 12px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-input);
+  color: var(--cal-text-strong);
+  font: 400 12px/1.4 var(--cal-font-mono);
 }
 
 .opt__field input:focus {
-  border-color: var(--accent);
+  border-color: var(--cal-teal);
   outline: none;
 }
 
 .opt__hint {
   margin: 4px 0 16px;
-  color: var(--ink-faint);
-  font-family: system-ui, sans-serif;
-  font-size: 12px;
-  line-height: 1.5;
+  font: 400 12px/1.5 var(--cal-font-sans);
+  color: var(--cal-text-prose);
 }
 
 .opt__hint a {
-  color: var(--accent);
+  color: var(--cal-teal);
 }
 
 .opt__submit {
   width: 100%;
-  padding: 9px;
+  padding: 11px;
   border: 0;
-  border-radius: 2px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font: 500 13px/1 var(--mono);
+  border-radius: var(--cal-radius-7);
+  background: var(--cal-teal);
+  color: var(--cal-on-teal);
+  font: 600 13px/1 var(--cal-font-mono);
   letter-spacing: 0.04em;
   cursor: pointer;
 }
 
 .opt__submit:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--cal-teal-hover);
 }
 
 .opt__submit:disabled {
-  opacity: 0.35;
+  opacity: 0.4;
   cursor: default;
 }
 
 .opt__connected {
   margin: 0 0 16px;
-  color: var(--ink-soft);
-  line-height: 1.5;
+  font: 400 13px/1.5 var(--cal-font-sans);
+  color: var(--cal-text-secondary);
 }
 
 .opt__connected strong {
-  color: var(--ink);
+  color: var(--cal-text-strong);
 }
 
 .opt__error {
   margin: 12px 0 0;
-  color: var(--blocker);
-  font-size: 12px;
-  line-height: 1.4;
+  font: 400 12px/1.4 var(--cal-font-sans);
+  color: var(--cal-blocker);
 }
 
 .btn {
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 2px;
+  padding: 8px 14px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-7);
   background: transparent;
-  color: var(--ink-soft);
-  font: 400 12px/1.4 var(--mono);
-  letter-spacing: 0.04em;
+  color: var(--cal-text-secondary);
+  font: 400 12px/1.4 var(--cal-font-mono);
   cursor: pointer;
 }
 
 .btn--danger:hover {
-  border-color: var(--blocker);
-  color: var(--blocker);
+  border-color: var(--cal-blocker);
+  color: var(--cal-blocker);
 }
