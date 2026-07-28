@@ -35,6 +35,14 @@ describe('classifyGesture', () => {
     expect(classifyGesture(scribble)).toBe('strike');
   });
 
+  it('reads a wavy sine-like scribble as a strike even with drift', () => {
+    const wavy: Point[] = Array.from({length: 40}, (_, index) => ({
+      x: 60 + index * 6,
+      y: 100 + Math.sin(index * 0.9) * 28,
+    }));
+    expect(classifyGesture(wavy)).toBe('strike');
+  });
+
   it('detects a drawn loop as a lasso', () => {
     expect(classifyGesture(circle())).toBe('lasso');
   });

@@ -4,10 +4,9 @@ export type Gesture = 'pick' | 'strike' | 'lasso';
 
 // Below this total path length a drag reads as a plain click → pick the element under it.
 const PICK_MAX_LENGTH = 16;
-// Net turning (radians) that marks an enclosing loop. A full loop winds ~2π; a hatch winds ~0.
-const LOOP_WINDING = 4.5;
-// A strike is a hatch, so it barely winds; above this the path is curving into a loop, not a scribble.
-const STRIKE_MAX_WINDING = 2;
+// Net turning (radians) that marks an enclosing loop. A full loop winds ~2π (6.28); a hatch drifts
+// only a little. Rule loops out by this first, so reversal count never turns a wobbly lasso red.
+const LOOP_WINDING = 4;
 // A hatch/scribble reverses direction many times; hand jitter on a loop reverses far fewer.
 const STRIKE_MIN_REVERSALS = 4;
 // Jitter smaller than this doesn't count as a direction change.
@@ -68,11 +67,11 @@ const winding = (points: readonly Point[]): number => {
 export const classifyGesture = (points: readonly Point[]): Gesture => {
   if (points.length < 3 || pathLength(points) < PICK_MAX_LENGTH) return 'pick';
 
-  const turn = Math.abs(winding(points));
-  if (turn >= LOOP_WINDING) return 'lasso';
+  // A loop winds most of the way around → lasso. Rule it out first so a wobbly loop's reversals
+  // never read as a strike.
+  if (Math.abs(winding(points)) >= LOOP_WINDING) return 'lasso';
 
+  // Not a loop: many direction reversals = a hatch/scribble = strike, whatever its net drift.
   const reversals = Math.max(axisReversals(points, 'x'), axisReversals(points, 'y'));
-  if (reversals >= STRIKE_MIN_REVERSALS && turn < STRIKE_MAX_WINDING) return 'strike';
-
-  return 'lasso';
+  return reversals >= STRIKE_MIN_REVERSALS ? 'strike' : 'lasso';
 };
