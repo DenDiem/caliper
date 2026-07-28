@@ -6,7 +6,7 @@ import {getConnection, type JiraConnection} from '../../jira/jira-auth';
 import {STORAGE} from '../../jira/jira-config';
 import {getSends} from '../../jira/jira-history';
 import {chromeStorageSink, type CaliperStore} from '../../sinks/chrome-storage.sink';
-import {armPicker} from './arm';
+import {armPicker, disarmPicker} from './arm';
 import {DefectCard} from './DefectCard';
 import {EmptyState} from './EmptyState';
 import {JiraSheet} from './JiraSheet';
@@ -56,6 +56,19 @@ export const App = () => {
     return () => chrome.storage.local.onChanged.removeListener(listener);
   }, [activeId]);
 
+  useEffect(() => {
+    const disarm = () => void disarmPicker();
+    const onVisibility = () => {
+      if (document.hidden) disarm();
+    };
+    window.addEventListener('pagehide', disarm);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', disarm);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
   if (!store) return <div class="panel" />;
 
   const session = store.sessions.find((item) => item.id === store.activeId) ?? store.sessions[0];
@@ -91,7 +104,7 @@ export const App = () => {
   );
 
   return (
-    <div class="panel">
+    <div class="panel" onPointerDown={() => void disarmPicker()}>
       <TitleBar jiraKey={linkedKey} />
 
       <button class={taskSheet ? 'chip chip--open' : 'chip'} onClick={() => setTaskSheet(!taskSheet)}>

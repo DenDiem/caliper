@@ -49,14 +49,30 @@ export default defineContentScript({
       });
     };
 
+    const ARMED_KEY = 'caliper.armed';
+    const setArmed = (value: boolean): void => void chrome.storage.local.set({[ARMED_KEY]: value});
+
+    const disarm = (): void => {
+      if (!handle) return;
+      handle.destroy();
+      handle = null;
+      setArmed(false);
+    };
+
+    const arm = (): void => {
+      if (handle) return;
+      handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft), onExit: disarm});
+      setArmed(true);
+    };
+
     chrome.runtime.onMessage.addListener((message: unknown) => {
-      if (!isCaliperMessage(message) || message.type !== 'caliper/toggle') return;
-      if (handle) {
-        handle.destroy();
-        handle = null;
-        return;
+      if (!isCaliperMessage(message)) return;
+      if (message.type === 'caliper/toggle') {
+        if (handle) disarm();
+        else arm();
+      } else if (message.type === 'caliper/disarm') {
+        disarm();
       }
-      handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft)});
     });
   },
 });

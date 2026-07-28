@@ -15,6 +15,12 @@ const togglePicker = async (tabId: number): Promise<void> => {
   }
 };
 
+const disarmTab = (tabId: number): Promise<void> =>
+  chrome.tabs
+    .sendMessage(tabId, {type: 'caliper/disarm'})
+    .then(() => undefined)
+    .catch(() => undefined);
+
 const getOwner = async (): Promise<number | undefined> => {
   const raw: unknown = (await chrome.storage.session.get(OWNER_KEY))[OWNER_KEY];
   return typeof raw === 'number' ? raw : undefined;
@@ -52,7 +58,10 @@ export default defineBackground(() => {
 
   chrome.tabs.onActivated.addListener(({tabId}) => {
     void getOwner().then((owner) => {
-      if (typeof owner === 'number' && owner !== tabId) void closePanel();
+      if (typeof owner === 'number' && owner !== tabId) {
+        void disarmTab(owner);
+        void closePanel();
+      }
     });
   });
 
@@ -97,6 +106,11 @@ export default defineBackground(() => {
       void togglePicker(message.tabId)
         .then(() => sendResponse(true))
         .catch(() => sendResponse(false));
+      return true;
+    }
+
+    if (message.type === 'caliper/disarm-tab') {
+      void disarmTab(message.tabId).then(() => sendResponse(true));
       return true;
     }
 

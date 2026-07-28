@@ -1,5 +1,7 @@
-import {useState} from 'preact/hooks';
+import {useEffect, useState} from 'preact/hooks';
 import {armPicker} from './arm';
+
+const ARMED_KEY = 'caliper.armed';
 
 interface Props {
   copied: string | null;
@@ -14,10 +16,15 @@ interface Props {
 export const PanelFooter = ({copied, jiraLabel, onCopyToon, onJira, onJson, onZip, onClear}: Props) => {
   const [armed, setArmed] = useState(false);
 
-  const arm = () => {
-    setArmed((value) => !value);
-    void armPicker();
-  };
+  useEffect(() => {
+    const read = () => void chrome.storage.local.get(ARMED_KEY).then((store) => setArmed(store[ARMED_KEY] === true));
+    read();
+    const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
+      if (ARMED_KEY in changes) read();
+    };
+    chrome.storage.local.onChanged.addListener(listener);
+    return () => chrome.storage.local.onChanged.removeListener(listener);
+  }, []);
 
   return (
     <footer class="foot">
@@ -43,7 +50,11 @@ export const PanelFooter = ({copied, jiraLabel, onCopyToon, onJira, onJson, onZi
           </button>
         </div>
 
-        <button class={armed ? 'arm arm--on' : 'arm'} onClick={arm}>
+        <button
+          class={armed ? 'arm arm--on' : 'arm'}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => void armPicker()}
+        >
           <span class="arm__dot" />
           {armed ? 'ARMED ⌥⇧C' : 'ARM PICKER'}
         </button>

@@ -16,6 +16,7 @@ export interface OverlayOptions {
   onSubmit: (draft: AnnotationDraft) => void;
   capture?: (box: Box) => Promise<string | null>;
   onPick?: (context: ElementContext) => void;
+  onExit?: () => void;
 }
 
 export interface OverlayHandle {
@@ -44,7 +45,7 @@ const isOverlayEvent = (event: Event): boolean =>
 
 // The gesture *is* the mode: a click marks the element, a scribble strikes it out (remove), a loop
 // lassos an area. The kind is classified from the drawn path — no mode toolbar to pick first.
-export const mountOverlay = ({onSubmit, capture, onPick}: OverlayOptions): OverlayHandle => {
+export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions): OverlayHandle => {
   const host = createOverlayHost(overlayStyles);
   const container = document.createElement('div');
   host.root.append(container);
@@ -253,6 +254,7 @@ export const mountOverlay = ({onSubmit, capture, onPick}: OverlayOptions): Overl
     clearHover();
     setCursor(false);
     paint();
+    onExit?.();
   };
 
   document.addEventListener('pointermove', onPointerMove, true);
