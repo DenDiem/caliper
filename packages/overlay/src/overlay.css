@@ -16,6 +16,17 @@
   --caliper-tint: rgba(52, 216, 192, 0.1);
   --caliper-danger: #f2545b;
   --caliper-danger-tint: rgba(242, 84, 91, 0.16);
+  --caliper-blocker: #f2545b;
+  --caliper-major: #f0913e;
+  --caliper-minor: #7aa2ff;
+  --caliper-blocker-seg: rgba(242, 84, 91, 0.14);
+  --caliper-major-seg: rgba(240, 145, 62, 0.14);
+  --caliper-minor-seg: rgba(122, 162, 255, 0.14);
+  --caliper-blocker-bd: rgba(242, 84, 91, 0.45);
+  --caliper-major-bd: rgba(240, 145, 62, 0.45);
+  --caliper-minor-bd: rgba(122, 162, 255, 0.45);
+  --caliper-mono: #a9b6c4;
+  --caliper-micro: #6b7a8b;
 }
 
 @media (prefers-color-scheme: light) {
@@ -34,12 +45,24 @@
     --caliper-tint: rgba(15, 156, 136, 0.1);
     --caliper-danger: #d0353d;
     --caliper-danger-tint: rgba(208, 53, 61, 0.16);
+    --caliper-blocker: #d0353d;
+    --caliper-major: #c1721f;
+    --caliper-minor: #3b6ae0;
+    --caliper-blocker-seg: rgba(208, 53, 61, 0.12);
+    --caliper-major-seg: rgba(193, 114, 31, 0.12);
+    --caliper-minor-seg: rgba(59, 106, 224, 0.12);
+    --caliper-blocker-bd: rgba(208, 53, 61, 0.4);
+    --caliper-major-bd: rgba(193, 114, 31, 0.4);
+    --caliper-minor-bd: rgba(59, 106, 224, 0.4);
+    --caliper-mono: #46536a;
+    --caliper-micro: #7c8798;
   }
 }
 
 .caliper-highlight {
   position: fixed;
-  border: 2px solid var(--caliper-accent);
+  border: 1.5px dashed var(--caliper-accent);
+  border-radius: 8px;
   background: var(--caliper-tint);
   pointer-events: none;
   box-sizing: border-box;
@@ -259,4 +282,239 @@
 .caliper-popover__button--ghost {
   background: transparent;
   color: var(--caliper-muted);
+}
+
+/* ── popover (screen 04) ───────────────────────────────── */
+
+.caliper-pop {
+  position: fixed;
+  width: 372px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--caliper-tint);
+  border-radius: 12px;
+  background: var(--caliper-surface);
+  box-shadow: 0 24px 60px var(--caliper-shadow);
+  color: var(--caliper-text);
+  font: 400 13px/1.5 system-ui, sans-serif;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.caliper-pop__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.caliper-pop__meta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  align-content: start;
+}
+
+.caliper-pop__key {
+  font: 400 9px/1.4 ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: var(--caliper-micro);
+}
+
+.caliper-pop__val {
+  overflow: hidden;
+  font: 400 10px/1.4 ui-monospace, monospace;
+  color: var(--caliper-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caliper-pop__val--ok {
+  color: var(--caliper-accent);
+}
+
+.caliper-pop__val--warn {
+  color: var(--caliper-major);
+}
+
+.caliper-pop__pill {
+  flex: 0 0 auto;
+  max-width: 45%;
+  overflow: hidden;
+  padding: 3px 9px;
+  border: 1px solid var(--caliper-tint);
+  border-radius: 20px;
+  background: var(--caliper-tint);
+  color: var(--caliper-accent);
+  font: 400 10px/1.4 ui-monospace, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caliper-pop__text {
+  height: 62px;
+  padding: 10px 12px;
+  border: 1px solid var(--caliper-border);
+  border-radius: 8px;
+  background: var(--caliper-field);
+  color: var(--caliper-text);
+  font: 400 13px/1.5 system-ui, sans-serif;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.caliper-pop__text::placeholder {
+  color: var(--caliper-muted);
+}
+
+.caliper-pop__text:focus-visible {
+  outline: 1px solid var(--caliper-accent);
+  outline-offset: -1px;
+}
+
+.caliper-pop__sev {
+  display: flex;
+  gap: 6px;
+}
+
+.caliper-pop__sev-opt {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid var(--caliper-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: 400 11px/1 ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.caliper-pop__sev-opt--active.caliper-pop__sev-opt--blocker {
+  color: var(--caliper-blocker);
+  background: var(--caliper-blocker-seg);
+  border-color: var(--caliper-blocker-bd);
+}
+
+.caliper-pop__sev-opt--active.caliper-pop__sev-opt--major {
+  color: var(--caliper-major);
+  background: var(--caliper-major-seg);
+  border-color: var(--caliper-major-bd);
+}
+
+.caliper-pop__sev-opt--active.caliper-pop__sev-opt--minor {
+  color: var(--caliper-minor);
+  background: var(--caliper-minor-seg);
+  border-color: var(--caliper-minor-bd);
+}
+
+.caliper-pop__secondary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.caliper-pop__intent {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--caliper-field);
+}
+
+.caliper-pop__intent-opt {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: 400 11px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.caliper-pop__intent-opt--active {
+  background: var(--caliper-accent);
+  color: var(--caliper-on-accent);
+}
+
+.caliper-pop__intent-opt--remove.caliper-pop__intent-opt--active {
+  background: var(--caliper-danger);
+  color: #ffffff;
+}
+
+.caliper-pop__figma-toggle {
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: var(--caliper-muted);
+  font: 400 11px/1.4 ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.caliper-pop__figma-toggle:hover {
+  color: var(--caliper-accent);
+}
+
+.caliper-pop__figma {
+  padding: 8px 12px;
+  border: 1px solid var(--caliper-border);
+  border-radius: 8px;
+  background: var(--caliper-field);
+  color: var(--caliper-text);
+  font: 400 12px/1.4 ui-monospace, monospace;
+  box-sizing: border-box;
+}
+
+.caliper-pop__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.caliper-pop__hint {
+  font: 400 10px/1.4 ui-monospace, monospace;
+  color: var(--caliper-muted);
+}
+
+.caliper-pop__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.caliper-pop__cancel {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: 400 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.caliper-pop__cancel:hover {
+  color: var(--caliper-text);
+}
+
+.caliper-pop__save {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--caliper-accent);
+  color: var(--caliper-on-accent);
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.caliper-pop__save:hover {
+  background: var(--caliper-accent-hover);
+}
+
+@keyframes calDash {
+  to {
+    background-position: 200px 0;
+  }
 }
