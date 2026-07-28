@@ -16,29 +16,26 @@ interface PopoverProps {
   region: Region | null;
   intent: AnnotationIntent;
   screenshot: string | null;
+  top: number;
+  left: number;
   onSubmit: (draft: AnnotationDraft) => void;
   onCancel: () => void;
 }
 
 const SEVERITIES: readonly Severity[] = ['blocker', 'major', 'minor'];
 
-const POPOVER_WIDTH = 372;
-const POPOVER_HEIGHT = 300;
-const EDGE_GAP = 8;
-
 const token = (context: ElementContext): {text: string; ok: boolean} => {
   const matched = Object.values(context.styles).find((style) => style.token);
   return matched ? {text: `${matched.token} ✓`, ok: true} : {text: 'no match ⚠', ok: false};
 };
 
-export const Popover = ({context, region, intent: initialIntent, onSubmit, onCancel}: PopoverProps) => {
+export const Popover = ({context, region, intent: initialIntent, top, left, onSubmit, onCancel}: PopoverProps) => {
   const [comment, setComment] = useState('');
   const [severity, setSeverity] = useState<Severity>('major');
   const [intent, setIntent] = useState<AnnotationIntent>(initialIntent);
   const [figmaUrl, setFigmaUrl] = useState('');
   const [figmaOpen, setFigmaOpen] = useState(false);
 
-  const box = region?.box ?? context.box;
   const tok = token(context);
   const component = context.componentName ?? context.tagName;
 
@@ -54,11 +51,6 @@ export const Popover = ({context, region, intent: initialIntent, onSubmit, onCan
       figmaUrl: figmaUrl.trim() || undefined,
     });
   };
-
-  const below = box.y + box.height + EDGE_GAP;
-  const fitsBelow = below + POPOVER_HEIGHT < window.innerHeight;
-  const top = fitsBelow ? below : Math.max(EDGE_GAP, box.y - POPOVER_HEIGHT - EDGE_GAP);
-  const left = Math.max(EDGE_GAP, Math.min(box.x, window.innerWidth - POPOVER_WIDTH - EDGE_GAP));
 
   return (
     <div class="caliper-pop" style={{top: `${top}px`, left: `${left}px`}}>

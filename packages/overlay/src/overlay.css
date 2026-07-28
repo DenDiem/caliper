@@ -30,8 +30,8 @@
   --caliper-blocker-bd: rgba(242, 84, 91, 0.45);
   --caliper-major-bd: rgba(240, 145, 62, 0.45);
   --caliper-minor-bd: rgba(122, 162, 255, 0.45);
-  --caliper-mono: #a9b6c4;
-  --caliper-micro: #6b7a8b;
+  --caliper-mono: #b8c4d1;
+  --caliper-micro: #7b8a9b;
 }
 
 @media (prefers-color-scheme: light) {
@@ -64,8 +64,8 @@
     --caliper-blocker-bd: rgba(179, 45, 54, 0.4);
     --caliper-major-bd: rgba(154, 90, 20, 0.4);
     --caliper-minor-bd: rgba(47, 91, 208, 0.4);
-    --caliper-mono: #46536a;
-    --caliper-micro: #7c8798;
+    --caliper-mono: #333e50;
+    --caliper-micro: #6b7789;
   }
 }
 
@@ -127,6 +127,18 @@
   right: 0;
   background: var(--caliper-danger);
   color: var(--caliper-on-danger);
+}
+
+/* leader line from a corner-docked popover back to its mark */
+.caliper-leader {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.caliper-leader line {
+  stroke: var(--caliper-accent);
+  stroke-width: 1;
 }
 
 .caliper-toolbar {

@@ -4,11 +4,14 @@ import {render} from 'preact';
 import {Badge} from './badge';
 import {Highlight} from './highlight';
 import {createOverlayHost} from './overlay-host';
+import {placePopover} from './place-popover';
 import {Popover} from './popover';
 import type {AnnotationDraft} from './popover';
 import {anchorForRegion} from './region';
 import {GestureStroke} from './stroke';
 import overlayStyles from './overlay.css?inline';
+
+const POPOVER_SIZE = {width: 372, height: 300};
 
 export type {AnnotationDraft};
 
@@ -25,6 +28,7 @@ export interface OverlayHandle {
 }
 
 interface Pending {
+  el: Element;
   context: ElementContext;
   intent: AnnotationIntent;
   region: Region | null;
@@ -123,6 +127,10 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     const idle = active && !pending && !capturing && stroke === null;
     const strikeBox = strikeHighlightBox();
     const view = markView();
+    const pendingBox = pending ? (view?.box ?? toBox(pending.el)) : null;
+    const placement = pendingBox
+      ? placePopover(pendingBox, POPOVER_SIZE, {width: window.innerWidth, height: window.innerHeight})
+      : null;
     render(
       <>
         {idle ? <Highlight box={hovered?.box ?? null} label={hovered?.label ?? null} /> : null}
@@ -137,12 +145,24 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         {stroke ? <GestureStroke points={stroke} strike={strokeStrike} /> : null}
         {view ? <GestureStroke points={view.stroke} strike={view.variant === 'strike'} /> : null}
         {idle ? <Badge /> : null}
-        {pending ? (
+        {placement?.leader ? (
+          <svg class="caliper-leader" width={window.innerWidth} height={window.innerHeight}>
+            <line
+              x1={placement.leader.x1}
+              y1={placement.leader.y1}
+              x2={placement.leader.x2}
+              y2={placement.leader.y2}
+            />
+          </svg>
+        ) : null}
+        {pending && placement ? (
           <Popover
             context={pending.context}
             region={pending.region}
             intent={pending.intent}
             screenshot={screenshot}
+            top={placement.top}
+            left={placement.left}
             onSubmit={(draft) => {
               onSubmit({...draft, screenshot});
               reset();
@@ -180,13 +200,18 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     });
   };
 
-  const openPending = async (context: ElementContext, intent: AnnotationIntent, region: Region | null) => {
+  const openPending = async (
+    el: Element,
+    context: ElementContext,
+    intent: AnnotationIntent,
+    region: Region | null,
+  ) => {
     if (onPick) {
       onPick(context);
       return;
     }
     if (!capture) {
-      pending = {context, intent, region};
+      pending = {el, context, intent, region};
       clearHover();
       paint();
       return;
@@ -194,9 +219,14 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     capturing = true;
     clearHover();
     paint();
+    // Hide the overlay for the capture frame so the mark's own frame/ink isn't baked into the crop;
+    // one rAF lets the hidden state paint before captureVisibleTab reads the pixels.
+    host.setHidden(true);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     screenshot = await capture(region?.box ?? context.box);
+    host.setHidden(false);
     capturing = false;
-    pending = {context, intent, region};
+    pending = {el, context, intent, region};
     paint();
   };
 
@@ -207,7 +237,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     if (kind === 'pick') {
       const first = points[0] ?? {x: pointerX, y: pointerY};
       const element = elementAt(document, first.x, first.y);
-      if (element) void openPending(extractContext(element, tokens), 'change', null);
+      if (element) void openPending(element, extractContext(element, tokens), 'change', null);
       else paint();
       return;
     }
@@ -223,10 +253,14 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     const anchorBox = toBox(anchor);
     if (kind === 'strike') {
       mark = {el: anchor, anchorBox, frameBox: anchorBox, variant: 'strike', stroke: points};
-      void openPending(extractContext(anchor, tokens), 'remove', null);
+      void openPending(anchor, extractContext(anchor, tokens), 'remove', null);
     } else {
       mark = {el: anchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
-      void openPending(extractContext(anchor, tokens), 'change', {box, path: points, enclosedSelectors: []});
+      void openPending(anchor, extractContext(anchor, tokens), 'change', {
+        box,
+        path: points,
+        enclosedSelectors: [],
+      });
     }
   };
 
@@ -271,14 +305,20 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     event.stopPropagation();
   };
 
+  const isTyping = (): boolean => {
+    const focused = host.root.activeElement;
+    return focused instanceof HTMLTextAreaElement || focused instanceof HTMLInputElement;
+  };
+
   const onScroll = () => {
     if (!active) return;
-    // A committed mark re-anchors to its element; the hover highlight re-derives from the pointer.
-    if (mark) {
-      scheduleStroke();
+    // Re-anchor the held mark and reposition the popover as the page moves — but freeze while the
+    // reviewer is typing a note so the popover never jumps out from under the cursor.
+    if (pending || mark) {
+      if (!isTyping()) scheduleStroke();
       return;
     }
-    if (pending || stroke !== null) return;
+    if (stroke !== null) return;
     schedule(true);
   };
 

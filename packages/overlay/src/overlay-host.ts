@@ -2,6 +2,7 @@ const DEFAULT_HOST_ID = 'caliper-overlay-host';
 
 export interface OverlayHost {
   root: ShadowRoot;
+  setHidden(hidden: boolean): void;
   destroy(): void;
 }
 
@@ -24,6 +25,11 @@ export const createOverlayHost = (styles: string, hostId: string = DEFAULT_HOST_
 
   return {
     root,
+    // Hide for a clean capture (visibility, not removal) so the overlay's own marks are never baked
+    // into the screenshot and the element doesn't reflow between being marked and being captured.
+    setHidden: (hidden: boolean) => {
+      host.style.visibility = hidden ? 'hidden' : '';
+    },
     destroy: () => host.remove(),
   };
 };
