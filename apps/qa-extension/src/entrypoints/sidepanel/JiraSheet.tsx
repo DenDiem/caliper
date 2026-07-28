@@ -57,6 +57,9 @@ export const JiraSheet = ({session, onClose}: Props) => {
 
   useEffect(() => {
     void getConnection().then(setConnection);
+    void chrome.storage.local.get('caliper.jira.attachAs').then((store) => {
+      if (store['caliper.jira.attachAs'] === 'description') setTarget('description');
+    });
     void getSends(session.id).then((records) => {
       const keys = Array.from(new Set(records.map((record) => record.issueKey)));
       setRecent(keys);

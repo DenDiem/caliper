@@ -120,3 +120,124 @@ body {
   border-color: var(--cal-blocker);
   color: var(--cal-blocker);
 }
+
+/* ── screen 08 extras ──────────────────────────────────── */
+
+.opt__hint code {
+  font: 400 11px/1 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+}
+
+.opt__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.opt__label {
+  display: block;
+  margin: 18px 0 6px;
+  font: 400 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-text-micro);
+}
+
+.opt__seg {
+  display: flex;
+  gap: 6px;
+}
+
+.opt__seg-opt {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-7);
+  background: transparent;
+  color: var(--cal-text-secondary);
+  font: 400 12px/1.4 var(--cal-font-sans);
+  cursor: pointer;
+}
+
+.opt__seg-opt.is-on {
+  border-color: var(--cal-teal-border-45);
+  background: var(--cal-teal-10);
+  color: var(--cal-teal);
+}
+
+.opt__keys {
+  margin: 0;
+}
+
+.opt__key-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.opt__key {
+  flex: 0 0 auto;
+  min-width: 96px;
+  padding: 3px 8px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-4);
+  font: 400 10px/1.4 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+  text-align: center;
+}
+
+.opt__key--unset {
+  border-style: dashed;
+  border-color: var(--cal-major-border);
+  color: var(--cal-major);
+}
+
+.opt__key-label {
+  margin: 0;
+  font: 400 12px/1.4 var(--cal-font-sans);
+  color: var(--cal-text-secondary);
+}
+
+.opt__linkbtn {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cal-teal);
+  font: 400 12px/1.4 var(--cal-font-sans);
+  cursor: pointer;
+}
+
+.opt__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 440px;
+  margin: 16px auto 0;
+}
+
+.opt__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 12px/1.4 var(--cal-font-sans);
+  color: var(--cal-text-secondary);
+}
+
+.opt__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cal-teal);
+}
+
+.opt__status-dot--off {
+  background: var(--cal-text-disabled);
+}
+
+.opt__submit--inline {
+  width: auto;
+  padding: 9px 20px;
+}

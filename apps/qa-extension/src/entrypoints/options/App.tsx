@@ -2,13 +2,39 @@ import {useEffect, useState} from 'preact/hooks';
 import {clearCredentials, getConnection, saveCredentials, type JiraConnection} from '../../jira/jira-auth';
 import {TOKEN_HELP_URL} from '../../jira/jira-config';
 
+const ATTACH_KEY = 'caliper.jira.attachAs';
+
+interface Shortcut {
+  name: string;
+  description: string;
+  shortcut: string;
+}
+
 export const App = () => {
   const [connection, setConnection] = useState<JiraConnection | null>(null);
   const [form, setForm] = useState({siteUrl: '', email: '', apiToken: ''});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachAs, setAttachAs] = useState<'comment' | 'description'>('comment');
+  const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
 
-  useEffect(() => void getConnection().then(setConnection), []);
+  useEffect(() => {
+    void getConnection().then(setConnection);
+    void chrome.storage.local.get(ATTACH_KEY).then((store) => {
+      if (store[ATTACH_KEY] === 'description') setAttachAs('description');
+    });
+    void chrome.commands.getAll().then((commands) =>
+      setShortcuts(
+        commands
+          .map((command) => ({
+            name: command.name ?? '',
+            description: command.description ?? '',
+            shortcut: command.shortcut ?? '',
+          }))
+          .filter((command) => command.description),
+      ),
+    );
+  }, []);
 
   const connect = () => {
     setBusy(true);
@@ -21,28 +47,30 @@ export const App = () => {
 
   const disconnect = () => void clearCredentials().then(() => setConnection(null));
 
+  const chooseAttach = (value: 'comment' | 'description') => {
+    setAttachAs(value);
+    void chrome.storage.local.set({[ATTACH_KEY]: value});
+  };
+
   const ready = Boolean(form.siteUrl.trim() && form.email.trim() && form.apiToken.trim());
+  const site = connection?.siteUrl.replace('https://', '') ?? '';
 
   return (
     <main class="opt">
       <h1 class="opt__title">Jira integration</h1>
 
-      {connection ? (
-        <section class="opt__card">
-          <p class="opt__connected">
-            Connected to <strong>{connection.siteUrl.replace('https://', '')}</strong> as {connection.displayName}
-          </p>
-          <button class="btn btn--danger" onClick={disconnect}>
-            Disconnect
-          </button>
-        </section>
-      ) : (
-        <section class="opt__card">
+      <section class="opt__card">
+        <p class="opt__hint">
+          Credentials stay in <code>chrome.storage.local</code> and reach Jira directly — no Caliper
+          server is involved.
+        </p>
+
+        <div class="opt__grid">
           <label class="opt__field">
             <span>Site</span>
             <input
               value={form.siteUrl}
-              placeholder="your-team  (or your-team.atlassian.net)"
+              placeholder="your-team"
               onInput={(event) => setForm({...form, siteUrl: event.currentTarget.value})}
             />
           </label>
@@ -55,30 +83,73 @@ export const App = () => {
               onInput={(event) => setForm({...form, email: event.currentTarget.value})}
             />
           </label>
-          <label class="opt__field">
-            <span>API token</span>
-            <input
-              type="password"
-              value={form.apiToken}
-              placeholder="••••••••••••"
-              onInput={(event) => setForm({...form, apiToken: event.currentTarget.value})}
-            />
-          </label>
+        </div>
+        <label class="opt__field">
+          <span>API token</span>
+          <input
+            type="password"
+            value={form.apiToken}
+            placeholder="••••••••••••"
+            onInput={(event) => setForm({...form, apiToken: event.currentTarget.value})}
+          />
+        </label>
+        <p class="opt__hint">
+          Create one at{' '}
+          <a href={TOKEN_HELP_URL} target="_blank" rel="noreferrer">
+            id.atlassian.com → Security → API tokens
+          </a>
+          .
+        </p>
 
-          <p class="opt__hint">
-            Create a token at{' '}
-            <a href={TOKEN_HELP_URL} target="_blank" rel="noreferrer">
-              id.atlassian.com → Security → API tokens
-            </a>
-            . It is stored only in this browser and used to reach your Jira directly — no Caliper server is involved.
-          </p>
+        <span class="opt__label">Attach defects as</span>
+        <div class="opt__seg">
+          <button
+            class={attachAs === 'comment' ? 'opt__seg-opt is-on' : 'opt__seg-opt'}
+            onClick={() => chooseAttach('comment')}
+          >
+            Comment
+          </button>
+          <button
+            class={attachAs === 'description' ? 'opt__seg-opt is-on' : 'opt__seg-opt'}
+            onClick={() => chooseAttach('description')}
+          >
+            Description
+          </button>
+        </div>
 
-          <button class="opt__submit" disabled={busy || !ready} onClick={connect}>
+        <span class="opt__label">Shortcuts</span>
+        <dl class="opt__keys">
+          {shortcuts.map((item) => (
+            <div key={item.name} class="opt__key-row">
+              <dt class={item.shortcut ? 'opt__key' : 'opt__key opt__key--unset'}>
+                {item.shortcut || 'unset'}
+              </dt>
+              <dd class="opt__key-label">{item.description}</dd>
+            </div>
+          ))}
+        </dl>
+        <button class="opt__linkbtn" onClick={() => void chrome.tabs.create({url: 'chrome://extensions/shortcuts'})}>
+          Assign shortcuts →
+        </button>
+
+        {error ? <p class="opt__error">{error}</p> : null}
+      </section>
+
+      <footer class="opt__foot">
+        <span class="opt__status">
+          <span class={connection ? 'opt__status-dot' : 'opt__status-dot opt__status-dot--off'} />
+          {connection ? `Connected · ${site}` : 'Not connected'}
+        </span>
+        {connection ? (
+          <button class="btn" onClick={disconnect}>
+            Reconnect
+          </button>
+        ) : (
+          <button class="opt__submit opt__submit--inline" disabled={busy || !ready} onClick={connect}>
             {busy ? 'Verifying…' : 'Connect'}
           </button>
-          {error ? <p class="opt__error">{error}</p> : null}
-        </section>
-      )}
+        )}
+      </footer>
     </main>
   );
 };
