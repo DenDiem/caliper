@@ -25,6 +25,8 @@ const readAll = async (): Promise<SendRecord[]> => {
 export const getSends = async (sessionId: string): Promise<SendRecord[]> =>
   (await readAll()).filter((record) => record.sessionId === sessionId);
 
+export const getAllSends = (): Promise<SendRecord[]> => readAll();
+
 export const addSend = async (record: SendRecord): Promise<void> => {
   const all = await readAll();
   await chrome.storage.local.set({[STORAGE.sends]: [...all, record]});

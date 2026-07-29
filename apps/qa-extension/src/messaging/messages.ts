@@ -21,6 +21,15 @@ export interface ToggleTabMessage {
   tabId: number;
 }
 
+export interface DisarmMessage {
+  type: 'caliper/disarm';
+}
+
+export interface DisarmTabMessage {
+  type: 'caliper/disarm-tab';
+  tabId: number;
+}
+
 export type StoreOp =
   | {kind: 'push'; annotation: CaliperAnnotation; screenshot?: string}
   | {kind: 'update'; id: string; patch: Partial<CaliperAnnotation>}
@@ -40,6 +49,8 @@ export type CaliperMessage =
   | AnnotationCreatedMessage
   | CaptureMessage
   | ToggleTabMessage
+  | DisarmMessage
+  | DisarmTabMessage
   | StoreOpMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
@@ -50,6 +61,8 @@ export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
     type === 'caliper/annotation-created' ||
     type === 'caliper/capture' ||
     type === 'caliper/toggle-tab' ||
+    type === 'caliper/disarm' ||
+    type === 'caliper/disarm-tab' ||
     type === 'caliper/store-op'
   );
 };

@@ -1,5 +1,6 @@
 import type {CaliperSession, MediaRef} from '@caliper/core';
 import {screenshotFilename, sessionToJiraComment} from '@caliper/core';
+import {devSend} from './jira-dev';
 import {postComment, resolveMediaId, setDescription, updateComment, uploadAttachment} from './jira-client';
 import {STORAGE} from './jira-config';
 import {addSend, type SendRecord} from './jira-history';
@@ -49,6 +50,7 @@ export const sendSessionToJira = async (
   session: CaliperSession,
   options: SendOptions,
 ): Promise<SendRecord> => {
+  if (import.meta.env.DEV) return devSend(session, options);
   const {issueKey, target, attachScreenshots, updateCommentId, onProgress} = options;
 
   const media = attachScreenshots ? await uploadScreenshots(session, issueKey, onProgress) : {};

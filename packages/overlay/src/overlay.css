@@ -1,54 +1,114 @@
+/* Mirror of @caliper/design tokens.css — :host { all: initial } blocks the :root vars from
+   cascading into the shadow, so the shared values are duplicated here. Keep in sync. */
 :host {
   all: initial;
-  color-scheme: light;
+  color-scheme: dark;
 
-  --caliper-accent: #4f7cff;
-  --caliper-surface: #ffffff;
-  --caliper-text: #1a1a1a;
-  --caliper-muted: #666666;
-  --caliper-border: #d8d8d8;
-  --caliper-field: #ffffff;
-  --caliper-shadow: rgba(0, 0, 0, 0.18);
-  --caliper-tint: rgba(79, 124, 255, 0.12);
-  --caliper-danger: #e5484d;
-  --caliper-danger-tint: rgba(229, 72, 77, 0.16);
+  --caliper-accent: #34d8c0;
+  --caliper-accent-hover: #56e6d1;
+  --caliper-on-accent: #06231e;
+  --caliper-surface: #10161d;
+  --caliper-text: #eaf0f5;
+  --caliper-muted: #8b98a8;
+  --caliper-border: #232c36;
+  --caliper-field: #0a0e13;
+  --caliper-shadow: rgba(5, 8, 12, 0.55);
+  --caliper-tint: rgba(52, 216, 192, 0.1);
+  --caliper-halo: rgba(52, 216, 192, 0.16);
+  --caliper-danger: #f2545b;
+  --caliper-danger-tint: rgba(242, 84, 91, 0.16);
+  --caliper-danger-seg: rgba(242, 84, 91, 0.14);
+  --caliper-danger-bd: rgba(242, 84, 91, 0.6);
+  --caliper-on-danger: #ffffff;
+  --caliper-area-bd: rgba(52, 216, 192, 0.85);
+  --caliper-area-fill: rgba(52, 216, 192, 0.07);
+  --caliper-blocker: #f2545b;
+  --caliper-major: #f0913e;
+  --caliper-minor: #7aa2ff;
+  --caliper-blocker-seg: rgba(242, 84, 91, 0.14);
+  --caliper-major-seg: rgba(240, 145, 62, 0.14);
+  --caliper-minor-seg: rgba(122, 162, 255, 0.14);
+  --caliper-blocker-bd: rgba(242, 84, 91, 0.45);
+  --caliper-major-bd: rgba(240, 145, 62, 0.45);
+  --caliper-minor-bd: rgba(122, 162, 255, 0.45);
+  --caliper-mono: #b8c4d1;
+  --caliper-micro: #7b8a9b;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :host {
-    color-scheme: dark;
+    color-scheme: light;
 
-    --caliper-accent: #7d9bff;
-    --caliper-surface: #1e1f24;
-    --caliper-text: #eaedf5;
-    --caliper-muted: #9aa0ae;
-    --caliper-border: #3a3d46;
-    --caliper-field: #16171b;
-    --caliper-shadow: rgba(0, 0, 0, 0.55);
-    --caliper-tint: rgba(125, 155, 255, 0.16);
-    --caliper-danger: #ff6369;
-    --caliper-danger-tint: rgba(255, 99, 105, 0.2);
+    --caliper-accent: #0f9c88;
+    --caliper-accent-hover: #0b7c6c;
+    --caliper-on-accent: #ffffff;
+    --caliper-surface: #ffffff;
+    --caliper-text: #141b25;
+    --caliper-muted: #46536a;
+    --caliper-border: #e2e8ef;
+    --caliper-field: #ffffff;
+    --caliper-shadow: rgba(5, 8, 12, 0.18);
+    --caliper-tint: rgba(15, 156, 136, 0.1);
+    --caliper-halo: rgba(15, 156, 136, 0.16);
+    --caliper-danger: #b32d36;
+    --caliper-danger-tint: rgba(179, 45, 54, 0.14);
+    --caliper-danger-seg: rgba(179, 45, 54, 0.12);
+    --caliper-danger-bd: rgba(179, 45, 54, 0.55);
+    --caliper-on-danger: #ffffff;
+    --caliper-area-bd: rgba(15, 156, 136, 0.85);
+    --caliper-area-fill: rgba(15, 156, 136, 0.07);
+    --caliper-blocker: #b32d36;
+    --caliper-major: #9a5a14;
+    --caliper-minor: #2f5bd0;
+    --caliper-blocker-seg: rgba(179, 45, 54, 0.12);
+    --caliper-major-seg: rgba(154, 90, 20, 0.12);
+    --caliper-minor-seg: rgba(47, 91, 208, 0.12);
+    --caliper-blocker-bd: rgba(179, 45, 54, 0.4);
+    --caliper-major-bd: rgba(154, 90, 20, 0.4);
+    --caliper-minor-bd: rgba(47, 91, 208, 0.4);
+    --caliper-mono: #333e50;
+    --caliper-micro: #6b7789;
   }
 }
 
 .caliper-highlight {
   position: fixed;
-  border: 2px solid var(--caliper-accent);
-  background: var(--caliper-tint);
   pointer-events: none;
   box-sizing: border-box;
+  border-radius: 8px;
+  background-color: var(--caliper-tint);
+  background-image:
+    linear-gradient(90deg, var(--caliper-accent) 50%, transparent 0),
+    linear-gradient(90deg, var(--caliper-accent) 50%, transparent 0),
+    linear-gradient(0deg, var(--caliper-accent) 50%, transparent 0),
+    linear-gradient(0deg, var(--caliper-accent) 50%, transparent 0);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size:
+    12px 1.5px,
+    12px 1.5px,
+    1.5px 12px,
+    1.5px 12px;
+  background-position:
+    0 0,
+    0 100%,
+    0 0,
+    100% 0;
+  animation: calDash 0.5s linear infinite;
 }
 
 .caliper-highlight--strike {
-  border-color: var(--caliper-danger);
-  background: var(--caliper-danger-tint)
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 6px,
-      var(--caliper-danger-tint) 6px,
-      var(--caliper-danger-tint) 12px
-    );
+  border: 1.5px dashed var(--caliper-danger);
+  background-color: var(--caliper-danger-seg);
+  background-image: none;
+  animation: none;
+}
+
+.caliper-highlight--area {
+  border: 1.5px dashed var(--caliper-area-bd);
+  border-radius: 14px;
+  background-color: var(--caliper-area-fill);
+  background-image: none;
+  animation: none;
 }
 
 .caliper-highlight__label {
@@ -58,9 +118,111 @@
   padding: 2px 6px;
   border-radius: 3px;
   background: var(--caliper-accent);
-  color: #ffffff;
+  color: var(--caliper-on-accent);
+  font: 500 11px/1.4 ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.caliper-highlight__label--remove {
+  left: auto;
+  right: 0;
+  background: var(--caliper-danger);
+  color: var(--caliper-on-danger);
+}
+
+/* leader line from a corner-docked popover back to its mark */
+.caliper-leader {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.caliper-leader line {
+  stroke: var(--caliper-accent);
+  stroke-width: 1;
+}
+
+/* ── keyboard focus cursor (screen 16) ─────────────────── */
+
+.caliper-focus {
+  position: fixed;
+  pointer-events: none;
+  box-sizing: border-box;
+  border-radius: 6px;
+  outline: 2px solid var(--caliper-accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--caliper-halo);
+}
+
+.caliper-focus__label {
+  position: absolute;
+  top: -27px;
+  left: -2px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 340px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  background: var(--caliper-surface);
+  border: 1px solid var(--caliper-border);
+  box-shadow: 0 4px 12px var(--caliper-shadow);
   font: 500 11px/1.4 ui-monospace, monospace;
   white-space: nowrap;
+}
+
+.caliper-focus__tag {
+  color: var(--caliper-accent);
+}
+
+.caliper-focus__sel {
+  overflow: hidden;
+  color: var(--caliper-mono);
+  text-overflow: ellipsis;
+}
+
+.caliper-focus__pos {
+  flex: 0 0 auto;
+  color: var(--caliper-micro);
+}
+
+/* ── keyboard HUD bar (screen 16) ──────────────────────── */
+
+.caliper-hud {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--caliper-surface);
+  border: 1px solid var(--caliper-border);
+  box-shadow: 0 4px 12px var(--caliper-shadow);
+  pointer-events: none;
+}
+
+.caliper-hud__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.caliper-hud__key {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--caliper-field);
+  border: 1px solid var(--caliper-border);
+  color: var(--caliper-text);
+  font: 600 10px/1.4 ui-monospace, monospace;
+}
+
+.caliper-hud__label {
+  color: var(--caliper-muted);
+  font: 400 11px/1.4 system-ui, sans-serif;
 }
 
 .caliper-toolbar {
@@ -108,7 +270,7 @@
 
 .caliper-toolbar__mode--active {
   background: var(--caliper-accent);
-  color: #ffffff;
+  color: var(--caliper-on-accent);
 }
 
 .caliper-toolbar__hint {
@@ -150,7 +312,7 @@
 
 .caliper-popover__intent-option--active {
   background: var(--caliper-accent);
-  color: #ffffff;
+  color: var(--caliper-on-accent);
 }
 
 .caliper-popover__intent-option--remove.caliper-popover__intent-option--active {
@@ -245,7 +407,7 @@
   border: 0;
   border-radius: 4px;
   background: var(--caliper-accent);
-  color: #ffffff;
+  color: var(--caliper-on-accent);
   font: inherit;
   cursor: pointer;
 }
@@ -253,4 +415,263 @@
 .caliper-popover__button--ghost {
   background: transparent;
   color: var(--caliper-muted);
+}
+
+/* ── popover (screen 04) ───────────────────────────────── */
+
+.caliper-pop {
+  position: fixed;
+  width: 372px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--caliper-tint);
+  border-radius: 12px;
+  background: var(--caliper-surface);
+  box-shadow: 0 24px 60px var(--caliper-shadow);
+  color: var(--caliper-text);
+  font: 400 13px/1.5 system-ui, sans-serif;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.caliper-pop__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.caliper-pop__meta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  align-content: start;
+}
+
+.caliper-pop__key {
+  font: 400 9px/1.4 ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: var(--caliper-micro);
+}
+
+.caliper-pop__val {
+  overflow: hidden;
+  font: 400 10px/1.4 ui-monospace, monospace;
+  color: var(--caliper-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caliper-pop__val--ok {
+  color: var(--caliper-accent);
+}
+
+.caliper-pop__val--warn {
+  color: var(--caliper-major);
+}
+
+.caliper-pop__pill {
+  flex: 0 0 auto;
+  max-width: 45%;
+  overflow: hidden;
+  padding: 3px 9px;
+  border: 1px solid var(--caliper-tint);
+  border-radius: 20px;
+  background: var(--caliper-tint);
+  color: var(--caliper-accent);
+  font: 400 10px/1.4 ui-monospace, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caliper-pop__text {
+  height: 62px;
+  padding: 10px 12px;
+  border: 1px solid var(--caliper-border);
+  border-radius: 8px;
+  background: var(--caliper-field);
+  color: var(--caliper-text);
+  font: 400 13px/1.5 system-ui, sans-serif;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.caliper-pop__text::placeholder {
+  color: var(--caliper-muted);
+}
+
+.caliper-pop__text:focus-visible {
+  outline: 1px solid var(--caliper-accent);
+  outline-offset: -1px;
+}
+
+.caliper-pop__sev {
+  display: flex;
+  gap: 6px;
+}
+
+.caliper-pop__sev-opt {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid var(--caliper-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: 400 11px/1 ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.caliper-pop__sev-opt--active.caliper-pop__sev-opt--blocker {
+  color: var(--caliper-blocker);
+  background: var(--caliper-blocker-seg);
+  border-color: var(--caliper-blocker-bd);
+}
+
+.caliper-pop__sev-opt--active.caliper-pop__sev-opt--major {
+  color: var(--caliper-major);
+  background: var(--caliper-major-seg);
+  border-color: var(--caliper-major-bd);
+}
+
+.caliper-pop__sev-opt--active.caliper-pop__sev-opt--minor {
+  color: var(--caliper-minor);
+  background: var(--caliper-minor-seg);
+  border-color: var(--caliper-minor-bd);
+}
+
+.caliper-pop__secondary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.caliper-pop__intent {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--caliper-field);
+}
+
+.caliper-pop__intent-opt {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: 400 11px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.caliper-pop__intent-opt--active {
+  background: var(--caliper-accent);
+  color: var(--caliper-on-accent);
+}
+
+.caliper-pop__intent-opt--remove.caliper-pop__intent-opt--active {
+  background: var(--caliper-danger);
+  color: #ffffff;
+}
+
+.caliper-pop__figma-toggle {
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: var(--caliper-muted);
+  font: 400 11px/1.4 ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.caliper-pop__figma-toggle:hover {
+  color: var(--caliper-accent);
+}
+
+.caliper-pop__figma {
+  padding: 8px 12px;
+  border: 1px solid var(--caliper-border);
+  border-radius: 8px;
+  background: var(--caliper-field);
+  color: var(--caliper-text);
+  font: 400 12px/1.4 ui-monospace, monospace;
+  box-sizing: border-box;
+}
+
+.caliper-pop__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.caliper-pop__hint {
+  font: 400 10px/1.4 ui-monospace, monospace;
+  color: var(--caliper-muted);
+}
+
+.caliper-pop__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.caliper-pop__cancel {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--caliper-muted);
+  font: 400 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.caliper-pop__cancel:hover {
+  color: var(--caliper-text);
+}
+
+.caliper-pop__save {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--caliper-accent);
+  color: var(--caliper-on-accent);
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.caliper-pop__save:hover {
+  background: var(--caliper-accent-hover);
+}
+
+@keyframes calDash {
+  to {
+    background-position:
+      12px 0,
+      -12px 100%,
+      0 -12px,
+      100% 12px;
+  }
+}
+
+/* ── gesture ink trail ─────────────────────────────────── */
+
+.caliper-stroke {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.caliper-stroke__path {
+  fill: none;
+  stroke: var(--caliper-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.caliper-stroke__path--strike {
+  stroke: var(--caliper-danger);
 }

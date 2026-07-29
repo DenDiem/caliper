@@ -18,4 +18,5 @@ export * from './export/to-toon';
 export * from './export/to-jira-adf';
 export * from './picker/pick-target';
 export * from './region/path-bounds';
+export * from './region/classify-gesture';
 export * from './session/sink';

@@ -1,5 +1,6 @@
 import type {AdfDoc} from '@caliper/core';
 import {apiBase, authHeader} from './jira-auth';
+import {devSearchIssues} from './jira-dev';
 
 export interface IssueHit {
   key: string;
@@ -16,6 +17,7 @@ export const resolveIssueKey = (input: string): string => {
 };
 
 export const searchIssues = async (query: string): Promise<IssueHit[]> => {
+  if (import.meta.env.DEV) return devSearchIssues(query);
   const url = `${await apiBase()}/issue/picker?query=${encodeURIComponent(query)}`;
   const response = await fetch(url, {headers: {Authorization: await authHeader(), Accept: 'application/json'}});
   if (!response.ok) throw new Error(`issue picker failed: ${response.status}`);
