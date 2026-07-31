@@ -642,8 +642,13 @@
   cursor: pointer;
 }
 
-.caliper-pop__save:hover {
+.caliper-pop__save:hover:not(:disabled) {
   background: var(--caliper-accent-hover);
+}
+
+.caliper-pop__save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 @keyframes calDash {

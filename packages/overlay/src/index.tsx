@@ -446,6 +446,17 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     }
   };
 
+  // Apps whose modals trap focus (Bootstrap _enforceFocus, CDK / focus-trap, hand-rolled) yank focus
+  // back into the modal the instant it lands outside. The popover lives in a shadow host on <html> —
+  // always "outside" — so its note field would lose the caret the moment it gained it. Swallow focus
+  // events targeting our host in the capture phase, before the app's bubble-phase enforcer can react.
+  const onFocusCapture = (event: FocusEvent) => {
+    if (isOverlayEvent(event)) event.stopImmediatePropagation();
+  };
+
+  document.addEventListener('focusin', onFocusCapture, true);
+  document.addEventListener('focusout', onFocusCapture, true);
+  document.addEventListener('focus', onFocusCapture, true);
   document.addEventListener('pointermove', onPointerMove, true);
   document.addEventListener('pointerdown', onPointerDown, true);
   document.addEventListener('pointerup', onPointerUp, true);
@@ -463,6 +474,9 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       if (strokeFrame !== null) cancelAnimationFrame(strokeFrame);
       frame = null;
       strokeFrame = null;
+      document.removeEventListener('focusin', onFocusCapture, true);
+      document.removeEventListener('focusout', onFocusCapture, true);
+      document.removeEventListener('focus', onFocusCapture, true);
       document.removeEventListener('pointermove', onPointerMove, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('pointerup', onPointerUp, true);
