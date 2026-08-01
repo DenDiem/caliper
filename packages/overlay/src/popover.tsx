@@ -38,6 +38,7 @@ export const Popover = ({context, region, intent: initialIntent, top, left, onSu
 
   const tok = token(context);
   const component = context.componentName ?? context.tagName;
+  const canSubmit = intent === 'remove' || comment.trim().length > 0;
 
   const submit = () => {
     const trimmed = comment.trim();
@@ -131,12 +132,12 @@ export const Popover = ({context, region, intent: initialIntent, top, left, onSu
       ) : null}
 
       <div class="caliper-pop__foot">
-        <span class="caliper-pop__hint">⌘⏎ save · esc dismiss</span>
+        <span class="caliper-pop__hint">{canSubmit ? '⌘⏎ save · esc dismiss' : 'add a note to save'}</span>
         <div class="caliper-pop__actions">
           <button class="caliper-pop__cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button class="caliper-pop__save" onClick={submit}>
+          <button class="caliper-pop__save" onClick={submit} disabled={!canSubmit}>
             {intent === 'remove' ? 'Mark removal' : 'Save defect'}
           </button>
         </div>
