@@ -1,4 +1,4 @@
-# @caliper/ask
+# @dendiem/caliper
 
 <p align="center">
   <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-4f7cff?labelColor=13161d">
@@ -21,7 +21,7 @@ the agent as structured data. It also ships a **design mode** for the reverse di
 ## Install
 
 ```bash
-npx @caliper/ask init
+npx @dendiem/caliper init
 ```
 
 This registers the MCP server with your coding agent and installs the `caliper-ask` skill so
@@ -49,7 +49,7 @@ CORS checks, an OAuth redirect, Next.js `allowedDevOrigins`. Re-run with `--mode
 add the one line `caliper snippet` prints to your app's root HTML (e.g. `index.html`):
 
 ```bash
-npx @caliper/ask snippet
+npx @dendiem/caliper snippet
 ```
 
 Remove the tag once the review is done.

@@ -30,7 +30,7 @@ payload — selector, component, token-matched styles — an agent fixes straigh
 
 ![Arming the picker, clicking an element, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
 
-### 💬 Agent → human — [`@caliper/ask`](apps/ask/README.md)
+### 💬 Agent → human — [`@dendiem/caliper`](apps/ask/README.md)
 
 An MCP server for the reverse flow. While a coding agent implements a UI and is unsure what a region
 should do, it asks *you* — questions pinned to the live elements, answered in place, sent straight

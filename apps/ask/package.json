@@ -1,5 +1,5 @@
 {
-  "name": "@caliper/ask",
+  "name": "@dendiem/caliper",
   "version": "0.1.0",
   "description": "MCP server that lets a coding agent ask the developer to review ambiguous UI regions directly in the running dev preview.",
   "license": "MIT",

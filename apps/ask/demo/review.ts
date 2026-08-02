@@ -120,7 +120,7 @@ const clientBundlePath = (): string => {
 
   if (!existsSync(distPath)) {
     console.error('Error: dist/client.js not found');
-    console.error('Please run: pnpm --filter @caliper/ask build:client');
+    console.error('Please run: pnpm --filter @dendiem/caliper build:client');
     process.exit(1);
   }
 
@@ -148,7 +148,7 @@ const main = async (): Promise<void> => {
     if (!targetReachable) {
       console.error('Error: demo target not reachable');
       console.error('Please run in another terminal:');
-      console.error('  pnpm --filter @caliper/ask demo');
+      console.error('  pnpm --filter @dendiem/caliper demo');
       process.exit(1);
     }
     console.log('Demo target is up.');

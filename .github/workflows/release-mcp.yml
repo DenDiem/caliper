@@ -35,7 +35,7 @@ jobs:
           pnpm exec tsc --noEmit -p apps/ask/client/tsconfig.json
 
       - name: Build
-        run: pnpm --filter @caliper/ask build
+        run: pnpm --filter @dendiem/caliper build
 
       - name: Publish to npm
         working-directory: apps/ask
