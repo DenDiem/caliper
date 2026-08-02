@@ -6,6 +6,7 @@ import type {AgentAdapter, InstallConfig} from './adapters/index';
 import {isLoopbackTarget} from './review-runner';
 import {buildSnippetTag, parsePort, SNIPPET_PORT_DEFAULT} from './config';
 import type {CaliperMode} from './config';
+import {cancel, intro, isCancel, multiselect, outro, select, text} from '@clack/prompts';
 
 const DEFAULT_TARGET = 'http://localhost:3000';
 const KNOWN_AGENT_IDS = ADAPTERS.map((adapter) => adapter.id).join(', ');
@@ -57,9 +58,11 @@ const initHelp = (): string =>
     'Usage:',
     '  caliper init [--global] [--agent <id>] [--target <url>] [--mode proxy|snippet] [--port <n>]',
     '',
+    'Run with no flags in a terminal to choose agents and scope interactively.',
+    '',
     'Flags:',
     '  --global          Install into the user-global config instead of the current project',
-    '  --agent <id>      Install for one agent only (default: every detected agent)',
+    '  --agent <ids>     Install for one or more agents (comma-separated); default: every detected agent',
     '  --target <url>    Loopback dev-server URL to review (default: $CALIPER_TARGET or http://localhost:3000)',
     '  --mode <mode>     "proxy" (default) or "snippet" — see caliper snippet --help for the difference',
     `  --port <n>        Snippet server port, snippet mode only (default: ${SNIPPET_PORT_DEFAULT})`,
@@ -208,12 +211,20 @@ const resolvePortFlag = (raw: string | null): number => {
   }
 };
 
-const resolveAdapters = (agentId: string | null): readonly AgentAdapter[] => {
-  if (agentId !== null) {
-    const adapter = ADAPTERS.find((candidate) => candidate.id === agentId);
-    if (!adapter)
-      throw new UsageError(`Unknown agent "${agentId}". Known agents: ${KNOWN_AGENT_IDS}.`);
-    return [adapter];
+const adapterById = (id: string): AgentAdapter => {
+  const adapter = ADAPTERS.find((candidate) => candidate.id === id);
+  if (!adapter) throw new UsageError(`Unknown agent "${id}". Known agents: ${KNOWN_AGENT_IDS}.`);
+  return adapter;
+};
+
+const resolveAdapters = (agentSpec: string | null): readonly AgentAdapter[] => {
+  if (agentSpec !== null) {
+    const ids = agentSpec
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    if (ids.length === 0) throw new UsageError('--agent requires at least one agent id.');
+    return ids.map(adapterById);
   }
   const detected = ADAPTERS.filter((candidate) => candidate.detect());
   if (detected.length === 0) {
@@ -231,20 +242,103 @@ const printSnippetInstructions = (port: number): void => {
   console.log('Remove it once the review work is done.');
 };
 
-const runInit = (args: ParsedArgs): void => {
+interface InstallPlan {
+  readonly adapters: readonly AgentAdapter[];
+  readonly config: InstallConfig;
+}
+
+const isInteractiveTerminal = (): boolean =>
+  Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY);
+
+// Prompt only when nothing was pinned on the command line — any explicit init flag
+// means "run me non-interactively", so scripts, CI, and muscle memory keep working.
+const shouldPromptInit = (args: ParsedArgs): boolean =>
+  isInteractiveTerminal() &&
+  args.agent === null &&
+  !args.global &&
+  args.target === null &&
+  args.mode === null &&
+  args.port === null;
+
+const orCancel = <T>(value: T | symbol): T => {
+  if (isCancel(value)) {
+    cancel('Cancelled — nothing was changed.');
+    process.exit(2);
+  }
+  return value;
+};
+
+const planFromFlags = (args: ParsedArgs): InstallPlan => {
   const mode = resolveMode(args.mode);
   if (args.port !== null && mode === 'proxy') {
     console.log('Note: --port is ignored in proxy mode (only applies with --mode snippet).');
   }
   const port = mode === 'snippet' ? resolvePortFlag(args.port) : null;
-  const config: InstallConfig = {
-    serverCommand: resolveServerCommand(),
-    target: resolveTarget(args.target),
-    mode,
-    port,
-    global: args.global,
+  return {
+    adapters: resolveAdapters(args.agent),
+    config: {
+      serverCommand: resolveServerCommand(),
+      target: resolveTarget(args.target),
+      mode,
+      port,
+      global: args.global,
+    },
   };
-  const adapters = resolveAdapters(args.agent);
+};
+
+const promptInitPlan = async (): Promise<InstallPlan> => {
+  intro('Caliper — install the review MCP server');
+
+  const detected = new Set(
+    ADAPTERS.filter((adapter) => adapter.detect()).map((adapter) => adapter.id),
+  );
+
+  const agentIds = orCancel(
+    await multiselect({
+      message: 'Install for which coding agents?',
+      options: ADAPTERS.map((adapter) => ({
+        value: adapter.id,
+        label: adapter.id,
+        hint: detected.has(adapter.id) ? 'detected' : undefined,
+      })),
+      initialValues: detected.size > 0 ? [...detected] : undefined,
+      required: true,
+    }),
+  );
+
+  const global = orCancel(
+    await select({
+      message: 'Install scope',
+      options: [
+        {value: false, label: 'This project', hint: '.mcp.json in the current folder'},
+        {value: true, label: 'Global', hint: '~/.claude.json — every project'},
+      ],
+      initialValue: false,
+    }),
+  );
+
+  const target = orCancel(
+    await text({
+      message: 'Dev server URL to review',
+      placeholder: DEFAULT_TARGET,
+      initialValue: process.env.CALIPER_TARGET ?? DEFAULT_TARGET,
+      validate: (value) =>
+        typeof value === 'string' && isLoopbackTarget(value)
+          ? undefined
+          : 'Must be a loopback dev server (localhost / 127.0.0.1 / [::1]).',
+    }),
+  );
+
+  outro(`Installing for ${agentIds.join(', ')} (${global ? 'global' : 'project'})`);
+
+  return {
+    adapters: agentIds.map(adapterById),
+    config: {serverCommand: resolveServerCommand(), target, mode: 'proxy', port: null, global},
+  };
+};
+
+const runInit = async (args: ParsedArgs): Promise<void> => {
+  const {adapters, config} = shouldPromptInit(args) ? await promptInitPlan() : planFromFlags(args);
 
   console.log(
     `Installing Caliper for: ${adapters.map((adapter) => adapter.id).join(', ')} ` +
@@ -312,14 +406,14 @@ const runSnippet = (args: ParsedArgs): void => {
   console.log(buildSnippetTag(resolvePortFlag(args.port)));
 };
 
-const main = (): void => {
+const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     console.log(helpForCommand(args.command));
     return;
   }
   if (args.command === 'init') {
-    runInit(args);
+    await runInit(args);
   } else if (args.command === 'uninstall') {
     runUninstall(args);
   } else {
@@ -327,10 +421,8 @@ const main = (): void => {
   }
 };
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`error: ${message}`);
   process.exit(error instanceof UsageError ? 2 : 1);
-}
+});

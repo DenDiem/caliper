@@ -23,6 +23,15 @@ project rules — just build it. Do not use `caliper_ask` as a substitute for re
 and do not batch trivial/obvious questions into a review just because the tool is available.
 Each call interrupts the developer; only ask what you actually cannot resolve yourself.
 
+## Which dev server (target)
+
+`caliper init` pins one dev-server URL (`CALIPER_TARGET`), used as the default. If that default is
+wrong for the work at hand — you're in a different project than the one it was pinned for, several
+dev servers are up on different ports, or Caliper was installed globally — don't rely on the pin:
+read the project's dev port from its config (Vite → `5173`, Angular → `4200`, Next / CRA → `3000`,
+or whatever the `dev`/`serve` script uses) and pass `target` explicitly. Both `caliper_ask` and
+`caliper_design` accept an optional `target` (`http://localhost:<port>`); it must be a loopback URL.
+
 ## Anchor with a selector — never edit the app to add one
 
 Anchor each zone with an ordinary CSS `selector` for an element that already exists on the

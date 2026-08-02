@@ -56,6 +56,7 @@
   "devDependencies": {
     "@caliper/core": "workspace:*",
     "@caliper/overlay": "workspace:*",
+    "@clack/prompts": "^1.7.0",
     "@preact/preset-vite": "^2.9.0",
     "@preact/signals": "^1.3.0",
     "@types/http-proxy": "^1.17.15",
