@@ -63,7 +63,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
   }
 
   if (region) {
-    const nodes = region.enclosedSelectors.length;
+    const nodes = region.covers.length;
     const zone = `${Math.round(region.box.width)} × ${Math.round(region.box.height)}${nodes ? ` · ${nodes} node${nodes === 1 ? '' : 's'}` : ''}`;
     return (
       <li class={`card card--${hue}`}>
