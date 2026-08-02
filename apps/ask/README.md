@@ -28,6 +28,11 @@ npx @dendiem/caliper init
 This registers the MCP server with your coding agent and installs the `caliper-ask` skill so
 the agent knows when and how to use it.
 
+By default the registered entry **auto-updates**: it runs `npx -y @dendiem/caliper@latest serve`,
+so each agent launch resolves the latest published version (the same way big MCP servers such as
+Playwright are set up). Pass `--pinned` to lock the entry to the current install
+(`node <path>/dist/server.js`) instead — useful for offline or reproducible setups.
+
 Flags:
 
 | Flag                         | Default                                      | Description                                                        |
@@ -37,6 +42,7 @@ Flags:
 | `--target <url>`             | `$CALIPER_TARGET` or `http://localhost:3000` | Loopback dev-server URL to review                                  |
 | `--mode proxy\|snippet`      | `proxy`                                      | See Modes below                                                    |
 | `--port <n>`                 | `4599`                                       | Snippet server port, snippet mode only                             |
+| `--pinned`                   | auto-update (`npx @latest`)                  | Pin the entry to this install instead of resolving `@latest`       |
 
 `caliper uninstall [--global] [--agent <id>]` removes the registration and installed guidance.
 

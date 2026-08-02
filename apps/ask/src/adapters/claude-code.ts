@@ -4,11 +4,13 @@ import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {writeFileAtomic} from './atomic-write';
 import {buildServerEnv} from './server-env';
+import {buildServerLaunch} from './server-command';
 import type {AgentAdapter, InstallConfig} from './types';
 
-// The Caliper entry merged into .mcp.json / ~/.claude.json:
-// {"mcpServers": {"caliper": {"command": "node", "args": ["<abs>/dist/server.js"],
+// The Caliper entry merged into .mcp.json / ~/.claude.json (auto-update mode by default):
+// {"mcpServers": {"caliper": {"command": "npx", "args": ["-y", "@dendiem/caliper@latest", "serve"],
 //   "env": {"CALIPER_TARGET": "<target>", "CALIPER_MODE": "<mode>", "CALIPER_PORT": "<port>"}}}}
+// Pinned mode (--pinned) instead writes {"command": "node", "args": ["<abs>/dist/server.js"], ...}.
 const SERVER_ID = 'caliper';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -63,13 +65,14 @@ const registerServer = (config: InstallConfig): void => {
   const path = mcpConfigPath(config.global);
   const root = readJsonRecord(path);
   const existingServers = isRecord(root.mcpServers) ? root.mcpServers : {};
+  const {command, args} = buildServerLaunch(config);
   writeJsonRecord(path, {
     ...root,
     mcpServers: {
       ...existingServers,
       [SERVER_ID]: {
-        command: 'node',
-        args: [config.serverCommand],
+        command,
+        args,
         env: buildServerEnv(config),
       },
     },
