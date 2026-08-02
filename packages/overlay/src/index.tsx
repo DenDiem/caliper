@@ -260,24 +260,30 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
 
     const box = pathBounds(points);
     const centre = centreOf(box);
-    const anchor = anchorForRegion(document, box, elementAt(document, centre.x, centre.y));
-    if (!anchor) {
-      paint();
+    const contained = anchorForRegion(document, box, elementAt(document, centre.x, centre.y));
+
+    if (kind === 'strike') {
+      if (!contained) {
+        paint();
+        return;
+      }
+      const anchorBox = toBox(contained);
+      mark = {el: contained, anchorBox, frameBox: anchorBox, variant: 'strike', stroke: points};
+      void openPending(contained, extractContext(contained, tokens), 'remove', null);
       return;
     }
 
+    // An area is defined by its lassoed box, not a single element. When nothing encloses the loop
+    // — drawing over empty space below the app's own content, where the only element is <html>/
+    // <body> — anchor to <body> so the region is still marked instead of silently dropped.
+    const anchor = contained ?? document.body;
     const anchorBox = toBox(anchor);
-    if (kind === 'strike') {
-      mark = {el: anchor, anchorBox, frameBox: anchorBox, variant: 'strike', stroke: points};
-      void openPending(anchor, extractContext(anchor, tokens), 'remove', null);
-    } else {
-      mark = {el: anchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
-      void openPending(anchor, extractContext(anchor, tokens), 'change', {
-        box,
-        path: points,
-        enclosedSelectors: [],
-      });
-    }
+    mark = {el: anchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
+    void openPending(anchor, extractContext(anchor, tokens), 'change', {
+      box,
+      path: points,
+      enclosedSelectors: [],
+    });
   };
 
   const isCaliperEl = (element: Element | null): boolean =>
