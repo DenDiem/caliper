@@ -51,6 +51,13 @@ resolve it by calling `caliper_ask` so the developer can point on the page, **no
 Reserve chat for *lexical or scope* questions (an unclear word, whether to also delete a component's
 files) — anything answered with words rather than a click.
 
+## Finding a mark's source file
+
+Caliper cannot emit a `file:line` — a running page carries no template source location. Use the
+`component` a mark reports (e.g. `app-recent-activity`) plus its `selector` to locate the source
+yourself: grep the repo for the component, then the class/attribute in the selector. Start from the
+`component`, not a blind text search — it usually lands you in one or two files.
+
 ## Anchor with a selector — never edit the app to add one
 
 Anchor each zone with an ordinary CSS `selector` for an element that already exists on the
