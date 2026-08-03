@@ -21,6 +21,12 @@ const disarmTab = (tabId: number): Promise<void> =>
     .then(() => undefined)
     .catch(() => undefined);
 
+const setModeTab = (tabId: number, armed: boolean): Promise<void> =>
+  chrome.tabs
+    .sendMessage(tabId, {type: 'caliper/set-mode', armed})
+    .then(() => undefined)
+    .catch(() => undefined);
+
 const getOwner = async (): Promise<number | undefined> => {
   const raw: unknown = (await chrome.storage.session.get(OWNER_KEY))[OWNER_KEY];
   return typeof raw === 'number' ? raw : undefined;
@@ -111,6 +117,11 @@ export default defineBackground(() => {
 
     if (message.type === 'caliper/disarm-tab') {
       void disarmTab(message.tabId).then(() => sendResponse(true));
+      return true;
+    }
+
+    if (message.type === 'caliper/set-mode-tab') {
+      void setModeTab(message.tabId, message.armed).then(() => sendResponse(true));
       return true;
     }
 

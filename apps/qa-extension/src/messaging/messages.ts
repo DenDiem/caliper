@@ -30,6 +30,19 @@ export interface DisarmTabMessage {
   tabId: number;
 }
 
+// Flip a mounted overlay's picker mode (armed = arm-picker, else passive). `set-mode` reaches the
+// content script; `set-mode-tab` is the sidepanel's request the background forwards to the tab.
+export interface SetModeMessage {
+  type: 'caliper/set-mode';
+  armed: boolean;
+}
+
+export interface SetModeTabMessage {
+  type: 'caliper/set-mode-tab';
+  tabId: number;
+  armed: boolean;
+}
+
 export type StoreOp =
   | {kind: 'push'; annotation: CaliperAnnotation; screenshot?: string}
   | {kind: 'update'; id: string; patch: Partial<CaliperAnnotation>}
@@ -51,6 +64,8 @@ export type CaliperMessage =
   | ToggleTabMessage
   | DisarmMessage
   | DisarmTabMessage
+  | SetModeMessage
+  | SetModeTabMessage
   | StoreOpMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
@@ -63,6 +78,8 @@ export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
     type === 'caliper/toggle-tab' ||
     type === 'caliper/disarm' ||
     type === 'caliper/disarm-tab' ||
+    type === 'caliper/set-mode' ||
+    type === 'caliper/set-mode-tab' ||
     type === 'caliper/store-op'
   );
 };

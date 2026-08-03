@@ -11,6 +11,7 @@ import {DefectCard} from './DefectCard';
 import {EmptyState} from './EmptyState';
 import {JiraSheet} from './JiraSheet';
 import {PanelFooter} from './PanelFooter';
+import {PickerMode} from './PickerMode';
 import {TaskSheet} from './TaskSheet';
 import {TitleBar} from './TitleBar';
 
@@ -117,6 +118,7 @@ export const App = () => {
   return (
     <div class="panel" onPointerDown={() => void disarmPicker()}>
       <TitleBar jiraKey={linkedKey} />
+      <PickerMode />
 
       <button class={taskSheet ? 'chip chip--open' : 'chip'} onClick={() => setTaskSheet(!taskSheet)}>
         <div class="chip__body">

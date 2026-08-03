@@ -530,6 +530,46 @@ body {
   animation: calPulse 1.6s ease-in-out infinite;
 }
 
+/* ── picker mode toggle ────────────────────────────────── */
+
+.mode {
+  display: flex;
+  padding: 10px 14px;
+  background: var(--cal-chrome);
+  border-bottom: 1px solid var(--cal-border-structure);
+}
+
+.mode__btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 11px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-20);
+  background: transparent;
+  color: var(--cal-text-secondary);
+  font: 400 10px/1 var(--cal-font-mono);
+  cursor: pointer;
+}
+
+.mode__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mode__btn--armed {
+  border-color: var(--cal-teal-border-40);
+  background: var(--cal-teal-12);
+  color: var(--cal-teal);
+}
+
+.mode__btn--armed .mode__dot {
+  animation: calPulse 1.6s ease-in-out infinite;
+}
+
 /* ── empty state ───────────────────────────────────────── */
 
 .empty {
@@ -646,6 +686,7 @@ body {
   .card,
   .jira,
   .arm--on .arm__dot,
+  .mode__btn--armed .mode__dot,
   .empty__arm-dot {
     animation: none;
   }

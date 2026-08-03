@@ -52,23 +52,37 @@ export default defineContentScript({
       });
     };
 
-    const ARMED_KEY = 'caliper.armed';
-    const persistArmed = (value: boolean): void => void chrome.storage.local.set({[ARMED_KEY]: value});
+    const MOUNTED_KEY = 'caliper.armed';
+    const MODE_KEY = 'caliper.pickerArmed';
+
+    const persistMounted = (value: boolean): void =>
+      void chrome.storage.local.set({[MOUNTED_KEY]: value});
+    const persistMode = (value: boolean): void => void chrome.storage.local.set({[MODE_KEY]: value});
+
+    const readMode = async (): Promise<boolean> =>
+      (await chrome.storage.local.get(MODE_KEY))[MODE_KEY] === true;
 
     const disarm = (): void => {
       if (!handle) return;
       handle.destroy();
       handle = null;
-      persistArmed(false);
+      persistMounted(false);
     };
 
-    // Mounting is the extension's explicit "arm" action, so drop the picker straight into arm-picker
-    // mode (clicks mark, Alt reaches the app); passive here is simply the unmounted state.
+    // On (mount) defaults to passive: clicks reach the app, hold Alt to mark. The persisted picker
+    // mode is re-applied so a reload keeps the reviewer's last choice; the sidepanel toggle flips it
+    // to arm-picker (clicks mark, Alt reaches the app).
     const arm = (): void => {
       if (handle) return;
       handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft), onExit: disarm});
-      handle.setArmed(true);
-      persistArmed(true);
+      persistMounted(true);
+      void readMode().then((armed) => handle?.setArmed(armed));
+    };
+
+    const setMode = (armed: boolean): void => {
+      if (!handle) return;
+      handle.setArmed(armed);
+      persistMode(armed);
     };
 
     chrome.runtime.onMessage.addListener((message: unknown) => {
@@ -78,6 +92,8 @@ export default defineContentScript({
         else arm();
       } else if (message.type === 'caliper/disarm') {
         disarm();
+      } else if (message.type === 'caliper/set-mode') {
+        setMode(message.armed);
       }
     });
   },
