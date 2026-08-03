@@ -15,7 +15,10 @@ const readNgComponentName = (element: Element): string | null => {
     const instance: unknown = getOwningComponent.call(ng, element);
     if (!instance || typeof instance !== 'object') return null;
     const name: unknown = instance.constructor?.name;
-    return typeof name === 'string' && name.length > 0 ? name : null;
+    if (typeof name !== 'string') return null;
+    // Angular dev builds mangle the class to `_StatCardComponent`; the mark should read the source name.
+    const cleaned = name.replace(/^_+/, '');
+    return cleaned.length > 0 ? cleaned : null;
   } catch {
     return null;
   }

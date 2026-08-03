@@ -19,6 +19,20 @@ describe('parseColor', () => {
     expect(parseColor('rgba(51, 51, 51, 0.5)')).toEqual({r: 51, g: 51, b: 51});
   });
 
+  it('parses named colours to their canonical rgb', () => {
+    expect(parseColor('white')).toEqual({r: 255, g: 255, b: 255});
+    expect(parseColor('WHITE')).toEqual({r: 255, g: 255, b: 255});
+    expect(parseColor('black')).toEqual({r: 0, g: 0, b: 0});
+  });
+
+  it('canonicalises the same colour across every notation', () => {
+    const white = {r: 255, g: 255, b: 255};
+    expect(parseColor('#fff')).toEqual(white);
+    expect(parseColor('#ffffff')).toEqual(white);
+    expect(parseColor('rgb(255,255,255)')).toEqual(white);
+    expect(parseColor('white')).toEqual(white);
+  });
+
   it('returns null for a non-colour', () => {
     expect(parseColor('8px')).toBeNull();
     expect(parseColor('var(--x)')).toBeNull();

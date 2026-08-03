@@ -32,6 +32,17 @@ describe('resolveComponent', () => {
     });
   });
 
+  it('strips the leading underscore Angular dev builds add to the class name', () => {
+    document.body.innerHTML = '<div class="inner"></div>';
+    Reflect.set(globalThis, 'ng', {
+      getOwningComponent: () => ({constructor: {name: '_StatCardComponent'}}),
+    });
+    expect(resolveComponent(query('.inner'))).toEqual({
+      name: 'StatCardComponent',
+      source: 'ng-devmode',
+    });
+  });
+
   it('falls back to the custom element tag on a production build', () => {
     document.body.innerHTML = '<soa-inform-block></soa-inform-block>';
     expect(resolveComponent(query('soa-inform-block'))).toEqual({

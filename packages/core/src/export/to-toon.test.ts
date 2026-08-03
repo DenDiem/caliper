@@ -106,6 +106,59 @@ describe('toToon', () => {
     expect(output).not.toContain('styles[');
   });
 
+  it('omits styles entirely for an add mark', () => {
+    const output = toToon(session([annotation({intent: 'add'})]));
+    expect(output).not.toContain('styles[');
+  });
+
+  it('folds four box sides that share a token into a single shorthand row', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'padding-top': {value: '8px', token: '--spacing-2', tokenMatch: 'exact'},
+          'padding-right': {value: '8px', token: '--spacing-2', tokenMatch: 'exact'},
+          'padding-bottom': {value: '8px', token: '--spacing-2', tokenMatch: 'exact'},
+          'padding-left': {value: '8px', token: '--spacing-2', tokenMatch: 'exact'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('ram-home div.about,padding,8px,--spacing-2,exact');
+    expect(output).not.toContain('padding-top');
+  });
+
+  it('folds mixed box sides into a shorthand value with no token', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'padding-top': {value: '8px'},
+          'padding-right': {value: '16px'},
+          'padding-bottom': {value: '8px'},
+          'padding-left': {value: '16px'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('padding,8px 16px,null,null');
+  });
+
+  it('folds row-gap and column-gap into a single gap row', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'row-gap': {value: '4px', token: '--spacing-1', tokenMatch: 'exact'},
+          'column-gap': {value: '4px', token: '--spacing-1', tokenMatch: 'exact'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('gap,4px,--spacing-1,exact');
+    expect(output).not.toContain('row-gap');
+  });
+
   it('flattens newlines inside a comment', () => {
     const output = toToon(session([annotation({comment: 'first\nsecond'})]));
     expect(output).toContain('first second');
@@ -140,6 +193,24 @@ describe('toToon', () => {
     const output = toToon(session([area]));
     expect(output).toContain('bbox: [120,600,1616,160]');
     expect(output).toContain('covers: app-recent-activity 92%');
+  });
+
+  it('always reports covers for an area, marking an empty region as none', () => {
+    const area = annotation({
+      markType: 'area',
+      region: {box: {x: 0, y: 0, width: 10, height: 10}, path: [], covers: []},
+    });
+    const output = toToon(session([area]));
+    expect(output).toContain('covers: (none)');
+  });
+
+  it('omits the misleading container text line for an area mark', () => {
+    const area = annotation({
+      markType: 'area',
+      region: {box: {x: 0, y: 0, width: 10, height: 10}, path: [], covers: []},
+    });
+    const output = toToon(session([area]));
+    expect(output).not.toContain('text: About us');
   });
 
   it('gives an add mark an anchor and target', () => {

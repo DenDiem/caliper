@@ -33,6 +33,43 @@ const realElementAt = (doc: Document, x: number, y: number): Element | null => {
   return null;
 };
 
+const WALK_STEP = 24;
+
+const boxDistance = (rect: DOMRect, box: Box): number => {
+  const dx = Math.max(rect.left - (box.x + box.width), box.x - rect.right, 0);
+  const dy = Math.max(rect.top - (box.y + box.height), box.y - rect.bottom, 0);
+  return Math.hypot(dx, dy);
+};
+
+const closestByDistance = (doc: Document, box: Box): Element | null => {
+  let best: Element | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const element of Array.from(doc.body.querySelectorAll('*'))) {
+    if (element.closest(OVERLAY_HOST)) continue;
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const distance = boxDistance(rect, box);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = element;
+    }
+  }
+  return best;
+};
+
+// The nearest real element to a box that no element encloses — an `add`/area drawn in the empty space
+// below the app's content. Prefer the element directly above the box (walk up from its top-centre so
+// the mark reads `after → <that element>`); otherwise the closest by rect-distance. Null only when the
+// page is truly empty, in which case the caller falls back to <body>.
+export const nearestElement = (doc: Document, box: Box): Element | null => {
+  const centreX = box.x + box.width / 2;
+  for (let y = Math.round(box.y) - 1; y >= 0; y -= WALK_STEP) {
+    const element = realElementAt(doc, centreX, y);
+    if (element) return element;
+  }
+  return closestByDistance(doc, box);
+};
+
 // Which elements the lassoed area actually sits on, and how much of it each covers — grid-sampled so
 // the agent gets `covers: app-recent-activity 0.92, section.stats 0.08` instead of guessing from a
 // single derived selector. Coverage is the fraction of the box's area each element is topmost over.

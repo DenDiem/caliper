@@ -50,6 +50,24 @@ describe('matchToken', () => {
     });
   });
 
+  it('matches a background against a token whose value is a named colour', () => {
+    const surface = new Map<string, string>([['--color-surface', 'white']]);
+    expect(matchToken('background-color', 'rgb(255, 255, 255)', surface)).toEqual({
+      token: '--color-surface',
+      tokenMatch: 'exact',
+    });
+  });
+
+  it('matches white written in any notation against a hex token', () => {
+    const surface = new Map<string, string>([['--color-surface', '#ffffff']]);
+    for (const value of ['#fff', '#ffffff', 'rgb(255,255,255)', 'white']) {
+      expect(matchToken('background-color', value, surface)).toEqual({
+        token: '--color-surface',
+        tokenMatch: 'exact',
+      });
+    }
+  });
+
   it('never matches a dimension against a colour token', () => {
     expect(matchToken('padding-top', 'rgb(51, 51, 51)', tokens)).toEqual({
       token: null,

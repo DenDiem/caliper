@@ -1,5 +1,5 @@
 import {allAnswered, pendingRefs, toReviewToon} from '@caliper/core';
-import type {AskPayload} from '@caliper/core';
+import type {AskPayload, ReviewSessionState} from '@caliper/core';
 import {launchReviewBrowser} from './browser/launch';
 import type {BrowserWindow} from './browser/launch';
 import {SessionRegistry} from './session/registry';
@@ -193,10 +193,21 @@ export class ReviewRunner {
     });
   }
 
+  // A poll before every zone is answered returns only a counter — never the full answers table, whose
+  // per-zone question text would otherwise echo on each caliper_ask/caliper_wait. The answers arrive
+  // once, in the final (completed) result.
+  private pendingStatus(state: ReviewSessionState): string {
+    return [
+      'review:',
+      `  id: ${state.id}`,
+      `  count: ${state.zones.length}`,
+      `  pending: ${pendingRefs(state).length}`,
+    ].join('\n');
+  }
+
   private async settle(session: ActiveSession): Promise<AskResult> {
     const state = await this.registry.wait(session.id, ASK_WINDOW_MS);
     const completed = allAnswered(state);
-    const toon = toReviewToon(state);
     const reviewUrlLine = `review url: ${session.reviewUrl}`;
     const noticeLine = session.snippetNotice ? `\n${session.snippetNotice}` : '';
     const warningLine = this.injectionRisk
@@ -211,7 +222,7 @@ export class ReviewRunner {
       return {
         completed,
         ticket: session.id,
-        text: `${toon}\n\n${reviewUrlLine}${noticeLine}${warningLine}`,
+        text: `${toReviewToon(state)}\n\n${reviewUrlLine}${noticeLine}${warningLine}`,
       };
     }
     const pendingLine =
@@ -219,7 +230,7 @@ export class ReviewRunner {
     return {
       completed,
       ticket: session.id,
-      text: `${toon}\n\n${pendingLine}\n${reviewUrlLine}${noticeLine}${warningLine}`,
+      text: `${this.pendingStatus(state)}\n\n${pendingLine}\n${reviewUrlLine}${noticeLine}${warningLine}`,
     };
   }
 }

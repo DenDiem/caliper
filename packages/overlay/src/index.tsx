@@ -9,7 +9,7 @@ import {createOverlayHost} from './overlay-host';
 import {placePopover} from './place-popover';
 import {Popover} from './popover';
 import type {AnnotationDraft} from './popover';
-import {anchorForRegion, anchorRelation, coversForBox} from './region';
+import {anchorForRegion, anchorRelation, coversForBox, nearestElement} from './region';
 import {GestureStroke} from './stroke';
 import overlayStyles from './overlay.css?inline';
 
@@ -296,9 +296,10 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     }
 
     // An area is defined by its lassoed box, not a single element. When nothing encloses the loop
-    // — drawing over empty space below the app's own content, where the only element is <html>/
-    // <body> — anchor to <body> so the region is still marked instead of silently dropped.
-    const areaAnchor = contained ?? document.body;
+    // — drawing over empty space below the app's own content — anchor to the nearest real element
+    // (usually the landmark directly above) so the mark keeps a real selector and an `after` relation,
+    // falling back to <body> only when the page is truly empty.
+    const areaAnchor = contained ?? nearestElement(document, box) ?? document.body;
     const anchorBox = toBox(areaAnchor);
     mark = {el: areaAnchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
     const context = extractContext(areaAnchor, tokens);
