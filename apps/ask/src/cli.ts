@@ -6,6 +6,7 @@ import type {AgentAdapter, InstallConfig} from './adapters/index';
 import {isLoopbackTarget} from './review-runner';
 import {buildSnippetTag, parsePort, SNIPPET_PORT_DEFAULT} from './config';
 import type {CaliperMode} from './config';
+import {pullSession} from './jira/pull';
 import {cancel, intro, isCancel, multiselect, outro, select, text} from '@clack/prompts';
 
 const DEFAULT_TARGET = 'http://localhost:3000';
@@ -13,7 +14,7 @@ const KNOWN_AGENT_IDS = ADAPTERS.map((adapter) => adapter.id).join(', ');
 
 class UsageError extends Error {}
 
-type Command = 'init' | 'uninstall' | 'snippet' | 'serve';
+type Command = 'init' | 'uninstall' | 'snippet' | 'serve' | 'pull';
 
 interface ParsedArgs {
   command: Command;
@@ -24,20 +25,23 @@ interface ParsedArgs {
   port: string | null;
   pinned: boolean;
   help: boolean;
+  positional: string | null;
 }
 
 const INIT_FLAGS = ['--global', '--agent', '--target', '--mode', '--port', '--pinned', '--help', '-h'];
 const UNINSTALL_FLAGS = ['--global', '--agent', '--help', '-h'];
 const SNIPPET_FLAGS = ['--port', '--help', '-h'];
 const SERVE_FLAGS = ['--help', '-h'];
+const PULL_FLAGS = ['--help', '-h'];
 
 const isKnownCommand = (value: string): value is Command =>
-  value === 'init' || value === 'uninstall' || value === 'snippet' || value === 'serve';
+  value === 'init' || value === 'uninstall' || value === 'snippet' || value === 'serve' || value === 'pull';
 
 const flagsForCommand = (command: Command): readonly string[] => {
   if (command === 'init') return INIT_FLAGS;
   if (command === 'uninstall') return UNINSTALL_FLAGS;
   if (command === 'snippet') return SNIPPET_FLAGS;
+  if (command === 'pull') return PULL_FLAGS;
   return SERVE_FLAGS;
 };
 
@@ -49,11 +53,13 @@ const topLevelHelp = (): string =>
     '  caliper init [--global] [--agent <id>] [--target <url>] [--mode proxy|snippet] [--port <n>] [--pinned]',
     '  caliper uninstall [--global] [--agent <id>]',
     '  caliper snippet [--port <n>]',
+    '  caliper pull <jira-issue-url|key>',
     '  caliper --help',
     '',
     `Known agents: ${KNOWN_AGENT_IDS}`,
     '',
     'caliper serve runs the MCP server over stdio; your coding agent launches it for you.',
+    'caliper pull fetches a Caliper QA session attached to a Jira issue and prints it as a TOON work list.',
   ].join('\n');
 
 const initHelp = (): string =>
@@ -123,10 +129,28 @@ const serveHelp = (): string =>
     'run it by hand. It writes nothing to stdout, which is the MCP stdio channel.',
   ].join('\n');
 
+const pullHelp = (): string =>
+  [
+    'caliper pull — fetch a Caliper QA session attached to a Jira issue and print it as TOON',
+    '',
+    'Usage:',
+    '  caliper pull <jira-issue-url|key>',
+    '',
+    'Reads the newest caliper-*.session.json attachment on the issue (added when QA uses "Send to',
+    'Jira" from the Caliper extension), materialises its screenshots under .caliper/<id>/, and prints',
+    'the review as a TOON work list — the same shape caliper_design returns. No live app is needed.',
+    '',
+    'Auth (a read-scoped Jira API token is enough — set once per machine):',
+    '  CALIPER_JIRA_SITE   your team (e.g. your-team or your-team.atlassian.net)',
+    '  CALIPER_JIRA_EMAIL  your Atlassian login email',
+    '  CALIPER_JIRA_TOKEN  an API token from https://id.atlassian.com/manage-profile/security/api-tokens',
+  ].join('\n');
+
 const helpForCommand = (command: Command): string => {
   if (command === 'init') return initHelp();
   if (command === 'uninstall') return uninstallHelp();
   if (command === 'snippet') return snippetHelp();
+  if (command === 'pull') return pullHelp();
   return serveHelp();
 };
 
@@ -150,11 +174,16 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     port: null,
     pinned: false,
     help: false,
+    positional: null,
   };
 
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === undefined) continue;
+    if (parsed.command === 'pull' && parsed.positional === null && !flag.startsWith('-')) {
+      parsed.positional = flag;
+      continue;
+    }
     if (!allowedFlags.includes(flag)) {
       throw new UsageError(
         `Unknown flag "${flag}" for "caliper ${commandArg}". Valid flags: ${allowedFlags.join(', ')}.`,
@@ -449,6 +478,16 @@ const runSnippet = (args: ParsedArgs): void => {
   console.log(buildSnippetTag(resolvePortFlag(args.port)));
 };
 
+const runPull = async (args: ParsedArgs): Promise<void> => {
+  if (args.positional === null) {
+    throw new UsageError(
+      'caliper pull requires a Jira issue URL or key, e.g. ' +
+        'caliper pull https://your-team.atlassian.net/browse/ABC-123',
+    );
+  }
+  console.log(await pullSession(args.positional));
+};
+
 // Machine entrypoint: importing the server module boots it (it connects a stdio transport at the
 // top level), which both starts serving and keeps the process alive. Nothing may print to stdout
 // here — stdout is the MCP stdio channel.
@@ -468,6 +507,8 @@ const main = async (): Promise<void> => {
     runUninstall(args);
   } else if (args.command === 'snippet') {
     runSnippet(args);
+  } else if (args.command === 'pull') {
+    await runPull(args);
   } else {
     await runServe();
   }

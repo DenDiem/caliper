@@ -104,6 +104,14 @@ const buildCaliperSection = (config: InstallConfig): string =>
       'call the `caliper_design` MCP tool instead — it opens the review window and returns their marks. ' +
       'While the result says status: PENDING, call `caliper_design` again to keep waiting until they submit.',
     '',
+    'To fix UI defects filed to a Jira issue (a URL or key, with or without the word "Caliper"), run ' +
+      '`caliper pull <jira-url|key>` (or `npx -y @dendiem/caliper@latest pull <url>`). It fetches the QA ' +
+      'session Caliper attached to the ticket, materialises its screenshots under `.caliper/<id>/`, and ' +
+      'prints a TOON work list — the same shape `caliper_design` returns, so read it the same way; no ' +
+      'running app is needed. It needs a read-scoped Jira token once per machine (CALIPER_JIRA_SITE / ' +
+      'CALIPER_JIRA_EMAIL / CALIPER_JIRA_TOKEN); the command prints what to set. `pull` only reads — it ' +
+      'never changes the ticket status.',
+    '',
     'Default is proxy mode: nothing to change in the app. If the review page looks broken — ' +
       'failing API calls with CORS errors, an OAuth redirect bouncing out, or a Next.js ' +
       '`allowedDevOrigins` warning — that is an origin shift proxy mode cannot fix. Switch to ' +

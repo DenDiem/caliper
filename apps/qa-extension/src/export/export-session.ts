@@ -1,5 +1,5 @@
 import type {CaliperAnnotation, CaliperSession} from '@caliper/core';
-import {toToon} from '@caliper/core';
+import {screenshotFilename, toToon} from '@caliper/core';
 import {zipSync} from 'fflate';
 
 export interface ExportOptions {
@@ -56,4 +56,31 @@ export const downloadSessionArchive = async (session: CaliperSession): Promise<v
   const url = URL.createObjectURL(new Blob([archive], {type: 'application/zip'}));
 
   await chrome.downloads.download({url, filename: `${folder}.zip`, saveAs: false});
+};
+
+const toJiraAnnotation = (
+  annotation: CaliperAnnotation,
+  index: number,
+  session: CaliperSession,
+): CaliperAnnotation => {
+  const dataUrl = annotation.screenshotId ? session.assets[annotation.screenshotId] : undefined;
+  const copy: CaliperAnnotation = {...annotation};
+  delete copy.screenshotId;
+  if (dataUrl) copy.screenshot = screenshotFilename(index, annotation);
+  else delete copy.screenshot;
+  return copy;
+};
+
+// The machine-readable session Caliper attaches to a Jira issue so an agent can reconstruct the review
+// offline (`caliper pull`). Screenshots are referenced by their attachment filename — the same PNGs
+// uploadScreenshots already attaches — and screenshotId/assets are dropped: the id would dangle into an
+// empty asset map, and its mere presence triggers toToon's extension-only "use Download" help line on the
+// read side, which is wrong once the PNGs are materialised to disk.
+export const buildJiraManifest = (session: CaliperSession): string => {
+  const manifest: CaliperSession = {
+    ...session,
+    annotations: session.annotations.map((annotation, index) => toJiraAnnotation(annotation, index, session)),
+    assets: {},
+  };
+  return JSON.stringify(manifest, null, 2);
 };

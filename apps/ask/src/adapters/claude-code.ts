@@ -13,20 +13,23 @@ import type {AgentAdapter, InstallConfig} from './types';
 // Pinned mode (--pinned) instead writes {"command": "node", "args": ["<abs>/dist/server.js"], ...}.
 const SERVER_ID = 'caliper';
 
+// caliper-ask covers the live review tools (caliper_ask/caliper_design); caliper-fix covers the offline
+// `caliper pull` handoff from a Jira ticket. Separate skills so each is surfaced by its own trigger
+// description, not folded into one whose description matches only the live flow.
+const SKILL_NAMES = ['caliper-ask', 'caliper-fix'] as const;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const mcpConfigPath = (global: boolean): string =>
   global ? join(homedir(), '.claude.json') : join(process.cwd(), '.mcp.json');
 
-const skillTargetDir = (global: boolean): string =>
-  global
-    ? join(homedir(), '.claude', 'skills', 'caliper-ask')
-    : join(process.cwd(), '.claude', 'skills', 'caliper-ask');
+const skillsRoot = (global: boolean): string =>
+  global ? join(homedir(), '.claude', 'skills') : join(process.cwd(), '.claude', 'skills');
 
-const skillSourcePath = (): string => {
+const skillSourcePath = (name: string): string => {
   const distDir = dirname(fileURLToPath(import.meta.url));
-  return join(distDir, '..', 'skills', 'caliper-ask', 'SKILL.md');
+  return join(distDir, '..', 'skills', name, 'SKILL.md');
 };
 
 const readJsonRecord = (path: string): Record<string, unknown> => {
@@ -81,11 +84,14 @@ const registerServer = (config: InstallConfig): void => {
 };
 
 const installGuidance = (config: InstallConfig): void => {
-  const targetDir = skillTargetDir(config.global);
-  mkdirSync(targetDir, {recursive: true});
-  const targetFile = join(targetDir, 'SKILL.md');
-  writeFileAtomic(targetFile, readFileSync(skillSourcePath(), 'utf8'));
-  console.log(`  skill -> ${targetFile}`);
+  const root = skillsRoot(config.global);
+  for (const name of SKILL_NAMES) {
+    const targetDir = join(root, name);
+    mkdirSync(targetDir, {recursive: true});
+    const targetFile = join(targetDir, 'SKILL.md');
+    writeFileAtomic(targetFile, readFileSync(skillSourcePath(name), 'utf8'));
+    console.log(`  skill -> ${targetFile}`);
+  }
 };
 
 const uninstall = (config: Pick<InstallConfig, 'global'>): void => {
@@ -97,10 +103,13 @@ const uninstall = (config: Pick<InstallConfig, 'global'>): void => {
       console.log(`  removed mcp server entry -> ${path}`);
     }
   }
-  const skillDir = skillTargetDir(config.global);
-  if (existsSync(skillDir)) {
-    rmSync(skillDir, {recursive: true, force: true});
-    console.log(`  removed skill -> ${skillDir}`);
+  const root = skillsRoot(config.global);
+  for (const name of SKILL_NAMES) {
+    const skillDir = join(root, name);
+    if (existsSync(skillDir)) {
+      rmSync(skillDir, {recursive: true, force: true});
+      console.log(`  removed skill -> ${skillDir}`);
+    }
   }
 };
 
