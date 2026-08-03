@@ -3,14 +3,16 @@ import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {writeFileAtomic} from './atomic-write';
 import {buildServerEnv} from './server-env';
+import {buildServerLaunch} from './server-command';
 import type {AgentAdapter, InstallConfig} from './types';
 
-// The Caliper block merged into ~/.codex/config.toml:
+// The Caliper block merged into ~/.codex/config.toml (auto-update mode by default):
 // [mcp_servers.caliper]
-// command = "node"
-// args = ["<abs>/dist/server.js"]
+// command = "npx"
+// args = ["-y", "@dendiem/caliper@latest", "serve"]
 // env = { CALIPER_TARGET = "<target>", CALIPER_MODE = "<mode>", CALIPER_PORT = "<port>" }
 // tool_timeout_sec = 600
+// Pinned mode (--pinned) instead writes command = "node", args = ["<abs>/dist/server.js"].
 const BLOCK_HEADER = '[mcp_servers.caliper]';
 const TOOL_TIMEOUT_SEC = 600;
 
@@ -46,13 +48,14 @@ const findBlockRange = (lines: readonly string[]): {start: number; end: number} 
 };
 
 const buildCaliperBlock = (config: InstallConfig): string => {
+  const {command, args} = buildServerLaunch(config);
   const envEntries = Object.entries(buildServerEnv(config))
     .map(([key, value]) => `${key} = ${tomlString(value)}`)
     .join(', ');
   return [
     BLOCK_HEADER,
-    `command = ${tomlString('node')}`,
-    `args = [${tomlString(config.serverCommand)}]`,
+    `command = ${tomlString(command)}`,
+    `args = [${args.map(tomlString).join(', ')}]`,
     `env = { ${envEntries} }`,
     `tool_timeout_sec = ${TOOL_TIMEOUT_SEC}`,
   ].join('\n');

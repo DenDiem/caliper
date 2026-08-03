@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ADAPTERS} from './adapters/index';
+import {ADAPTERS, buildServerLaunch} from './adapters/index';
 import type {AgentAdapter, InstallConfig} from './adapters/index';
 import {isLoopbackTarget} from './review-runner';
 import {buildSnippetTag, parsePort, SNIPPET_PORT_DEFAULT} from './config';
@@ -13,7 +13,7 @@ const KNOWN_AGENT_IDS = ADAPTERS.map((adapter) => adapter.id).join(', ');
 
 class UsageError extends Error {}
 
-type Command = 'init' | 'uninstall' | 'snippet';
+type Command = 'init' | 'uninstall' | 'snippet' | 'serve';
 
 interface ParsedArgs {
   command: Command;
@@ -22,20 +22,23 @@ interface ParsedArgs {
   target: string | null;
   mode: string | null;
   port: string | null;
+  pinned: boolean;
   help: boolean;
 }
 
-const INIT_FLAGS = ['--global', '--agent', '--target', '--mode', '--port', '--help', '-h'];
+const INIT_FLAGS = ['--global', '--agent', '--target', '--mode', '--port', '--pinned', '--help', '-h'];
 const UNINSTALL_FLAGS = ['--global', '--agent', '--help', '-h'];
 const SNIPPET_FLAGS = ['--port', '--help', '-h'];
+const SERVE_FLAGS = ['--help', '-h'];
 
 const isKnownCommand = (value: string): value is Command =>
-  value === 'init' || value === 'uninstall' || value === 'snippet';
+  value === 'init' || value === 'uninstall' || value === 'snippet' || value === 'serve';
 
 const flagsForCommand = (command: Command): readonly string[] => {
   if (command === 'init') return INIT_FLAGS;
   if (command === 'uninstall') return UNINSTALL_FLAGS;
-  return SNIPPET_FLAGS;
+  if (command === 'snippet') return SNIPPET_FLAGS;
+  return SERVE_FLAGS;
 };
 
 const topLevelHelp = (): string =>
@@ -43,12 +46,14 @@ const topLevelHelp = (): string =>
     'caliper — install the Caliper agent-review MCP server for your coding agent',
     '',
     'Usage:',
-    '  caliper init [--global] [--agent <id>] [--target <url>] [--mode proxy|snippet] [--port <n>]',
+    '  caliper init [--global] [--agent <id>] [--target <url>] [--mode proxy|snippet] [--port <n>] [--pinned]',
     '  caliper uninstall [--global] [--agent <id>]',
     '  caliper snippet [--port <n>]',
     '  caliper --help',
     '',
     `Known agents: ${KNOWN_AGENT_IDS}`,
+    '',
+    'caliper serve runs the MCP server over stdio; your coding agent launches it for you.',
   ].join('\n');
 
 const initHelp = (): string =>
@@ -56,9 +61,13 @@ const initHelp = (): string =>
     'caliper init — register the Caliper MCP server and install agent guidance',
     '',
     'Usage:',
-    '  caliper init [--global] [--agent <id>] [--target <url>] [--mode proxy|snippet] [--port <n>]',
+    '  caliper init [--global] [--agent <id>] [--target <url>] [--mode proxy|snippet] [--port <n>] [--pinned]',
     '',
-    'Run with no flags in a terminal to choose agents and scope interactively.',
+    'Run with no flags in a terminal to choose agents, scope and update mode interactively.',
+    '',
+    'By default the registered entry auto-updates — it runs `npx -y @dendiem/caliper@latest serve`, so',
+    'each agent launch resolves the latest published version (like Playwright). Pass --pinned to lock',
+    'this install to `node <path>/dist/server.js` instead (offline / reproducible).',
     '',
     'Flags:',
     '  --global          Install into the user-global config instead of the current project',
@@ -66,6 +75,7 @@ const initHelp = (): string =>
     '  --target <url>    Loopback dev-server URL to review (default: $CALIPER_TARGET or http://localhost:3000)',
     '  --mode <mode>     "proxy" (default) or "snippet" — see caliper snippet --help for the difference',
     `  --port <n>        Snippet server port, snippet mode only (default: ${SNIPPET_PORT_DEFAULT})`,
+    '  --pinned          Pin to this install (node <path>/dist/server.js) instead of auto-updating via npx @latest',
     '  --help            Show this help',
     '',
     `Known agents: ${KNOWN_AGENT_IDS}`,
@@ -102,10 +112,22 @@ const snippetHelp = (): string =>
     `  ${buildSnippetTag(SNIPPET_PORT_DEFAULT)}`,
   ].join('\n');
 
+const serveHelp = (): string =>
+  [
+    'caliper serve — run the Caliper MCP server over stdio (machine entrypoint)',
+    '',
+    'Usage:',
+    '  caliper serve',
+    '',
+    'Your coding agent launches this for you via the entry `caliper init` registered — you rarely',
+    'run it by hand. It writes nothing to stdout, which is the MCP stdio channel.',
+  ].join('\n');
+
 const helpForCommand = (command: Command): string => {
   if (command === 'init') return initHelp();
   if (command === 'uninstall') return uninstallHelp();
-  return snippetHelp();
+  if (command === 'snippet') return snippetHelp();
+  return serveHelp();
 };
 
 const parseArgs = (argv: readonly string[]): ParsedArgs => {
@@ -126,6 +148,7 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     target: null,
     mode: null,
     port: null,
+    pinned: false,
     help: false,
   };
 
@@ -143,6 +166,10 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     }
     if (flag === '--global') {
       parsed.global = true;
+      continue;
+    }
+    if (flag === '--pinned') {
+      parsed.pinned = true;
       continue;
     }
     if (flag === '--agent') {
@@ -258,7 +285,8 @@ const shouldPromptInit = (args: ParsedArgs): boolean =>
   !args.global &&
   args.target === null &&
   args.mode === null &&
-  args.port === null;
+  args.port === null &&
+  !args.pinned;
 
 const orCancel = <T>(value: T | symbol): T => {
   if (isCancel(value)) {
@@ -278,6 +306,7 @@ const planFromFlags = (args: ParsedArgs): InstallPlan => {
     adapters: resolveAdapters(args.agent),
     config: {
       serverCommand: resolveServerCommand(),
+      autoUpdate: !args.pinned,
       target: resolveTarget(args.target),
       mode,
       port,
@@ -329,22 +358,36 @@ const promptInitPlan = async (): Promise<InstallPlan> => {
     }),
   );
 
+  const autoUpdate = orCancel(
+    await select({
+      message: 'Update mode',
+      options: [
+        {value: true, label: 'Auto-update', hint: 'npx @latest — like Playwright'},
+        {value: false, label: 'Pinned', hint: 'this install; offline/reproducible'},
+      ],
+      initialValue: true,
+    }),
+  );
+
   outro(`Installing for ${agentIds.join(', ')} (${global ? 'global' : 'project'})`);
 
   return {
     adapters: agentIds.map(adapterById),
-    config: {serverCommand: resolveServerCommand(), target, mode: 'proxy', port: null, global},
+    config: {serverCommand: resolveServerCommand(), autoUpdate, target, mode: 'proxy', port: null, global},
   };
 };
 
 const runInit = async (args: ParsedArgs): Promise<void> => {
   const {adapters, config} = shouldPromptInit(args) ? await promptInitPlan() : planFromFlags(args);
 
+  const launch = buildServerLaunch(config);
   console.log(
     `Installing Caliper for: ${adapters.map((adapter) => adapter.id).join(', ')} ` +
       `(${config.global ? 'global' : 'project'})`,
   );
-  console.log(`  server: node ${config.serverCommand}`);
+  console.log(
+    `  server: ${launch.command} ${launch.args.join(' ')} (${config.autoUpdate ? 'auto-update' : 'pinned'})`,
+  );
   console.log(`  target: ${config.target}`);
   console.log(`  mode: ${config.mode}`);
   if (config.mode === 'snippet' && config.port !== null) {
@@ -406,6 +449,13 @@ const runSnippet = (args: ParsedArgs): void => {
   console.log(buildSnippetTag(resolvePortFlag(args.port)));
 };
 
+// Machine entrypoint: importing the server module boots it (it connects a stdio transport at the
+// top level), which both starts serving and keeps the process alive. Nothing may print to stdout
+// here — stdout is the MCP stdio channel.
+const runServe = async (): Promise<void> => {
+  await import('./server.js');
+};
+
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -416,8 +466,10 @@ const main = async (): Promise<void> => {
     await runInit(args);
   } else if (args.command === 'uninstall') {
     runUninstall(args);
-  } else {
+  } else if (args.command === 'snippet') {
     runSnippet(args);
+  } else {
+    await runServe();
   }
 };
 
