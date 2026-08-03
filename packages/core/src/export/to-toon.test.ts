@@ -8,6 +8,9 @@ const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotati
   comment: 'Padding is too small',
   severity: 'minor',
   intent: 'change',
+  markType: 'element',
+  anchor: null,
+  anchorTarget: null,
   author: 'human',
   concernType: null,
   verdict: null,
@@ -30,6 +33,7 @@ const annotation = (overrides: Partial<CaliperAnnotation> = {}): CaliperAnnotati
     styles: {
       'padding-top': {value: '20px', token: '--offset-20px', tokenMatch: 'exact'},
       'font-size': {value: '15px'},
+      display: {value: 'block'},
     },
     ...overrides.target,
   },
@@ -52,20 +56,26 @@ describe('toToon', () => {
     expect(output).not.toContain('session{');
   });
 
-  it('declares row counts on every array header', () => {
+  it('emits one indented block per mark, headed by id/severity/intent/markType/selector', () => {
     const output = toToon(session([annotation()]));
-    expect(output).toContain('annotations[1]{');
-    expect(output).toContain('styles[2]{');
+    expect(output).toContain('annotations[1]:');
+    expect(output).not.toContain('annotations[1]{');
+    expect(output).toContain('09216b54 minor change element ram-home div.about');
+  });
+
+  it('declares row counts on the styles and help array headers', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('styles[2]{selector,property,value,token,match}:');
     expect(output).toMatch(/help\[\d+\]:/);
   });
 
-  it('quotes a value containing a colon, as the spec requires', () => {
+  it('quotes a selector containing a colon, as the spec requires', () => {
     const selector = 'div:nth-child(2) > span';
     const output = toToon(session([annotation({target: {...annotation().target, selector}})]));
     expect(output).toContain(`"${selector}"`);
   });
 
-  it('quotes a value containing the delimiter', () => {
+  it('quotes a comment containing the delimiter', () => {
     const output = toToon(session([annotation({comment: 'button, but broken'})]));
     expect(output).toContain('"button, but broken"');
   });
@@ -75,13 +85,25 @@ describe('toToon', () => {
     expect(output).toContain('"the \\"save\\" button"');
   });
 
-  it('quotes a bare value that would otherwise read as a number', () => {
+  it('quotes a bare comment that would otherwise read as a number', () => {
     const output = toToon(session([annotation({comment: '42'})]));
     expect(output).toContain('"42"');
   });
 
-  it('writes the null literal for an absent token', () => {
-    expect(toToon(session([annotation()]))).toContain('09216b54,font-size,15px,null,null');
+  it('keeps a hardcode on a tokenizable property but drops structural noise', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('ram-home div.about,font-size,15px,null,null');
+    expect(output).not.toContain(',display,');
+  });
+
+  it('keys styles by selector and dedupes across marks', () => {
+    const output = toToon(session([annotation(), annotation({comment: 'second'})]));
+    expect(output).toContain('styles[2]{selector,property,value,token,match}:');
+  });
+
+  it('omits styles entirely for a remove mark', () => {
+    const output = toToon(session([annotation({intent: 'remove'})]));
+    expect(output).not.toContain('styles[');
   });
 
   it('flattens newlines inside a comment', () => {
@@ -94,28 +116,48 @@ describe('toToon', () => {
     expect(output).toContain('severity: minor=1 blocker=1');
   });
 
-  it('lifts a url shared by every annotation out of the table', () => {
+  it('lifts a url shared by every mark into the session block', () => {
     const output = toToon(session([annotation(), annotation()]));
     expect(output).toContain('url: "https://app.test/menu"');
-    expect(output).toContain('annotations[2]{id,severity,component,confidence,selector,comment}:');
+    expect(output).not.toContain('    url: "https://app.test/menu"');
   });
 
-  it('keeps a url column when annotations span several pages', () => {
+  it('keeps a per-mark url when marks span several pages', () => {
     const other = annotation({page: {...annotation().page, url: 'https://app.test/cart'}});
     const output = toToon(session([annotation(), other]));
-    expect(output).toContain(
-      'annotations[2]{id,severity,component,confidence,selector,comment,url}:',
-    );
+    expect(output).toContain('    url: "https://app.test/cart"');
   });
 
-  it('adds an intent column only once an annotation asks for removal', () => {
-    const plain = toToon(session([annotation()]));
-    expect(plain).toContain('annotations[1]{id,severity,component,confidence,selector,comment}:');
-    expect(plain).not.toContain(',intent,');
+  it('locates an area mark with bbox and covers', () => {
+    const area = annotation({
+      markType: 'area',
+      region: {
+        box: {x: 120, y: 600, width: 1616, height: 160},
+        path: [],
+        covers: [{selector: 'app-recent-activity', coverage: 0.92}],
+      },
+    });
+    const output = toToon(session([area]));
+    expect(output).toContain('bbox: [120,600,1616,160]');
+    expect(output).toContain('covers: app-recent-activity 92%');
+  });
 
-    const withRemove = toToon(session([annotation({intent: 'remove'})]));
-    expect(withRemove).toContain('annotations[1]{id,severity,intent,component,confidence,selector,comment}:');
-    expect(withRemove).toContain('minor,remove,');
+  it('gives an add mark an anchor and target', () => {
+    const add = annotation({
+      intent: 'add',
+      markType: 'area',
+      anchor: 'after',
+      anchorTarget: 'app-recent-activity',
+      region: {box: {x: 0, y: 0, width: 10, height: 10}, path: [], covers: []},
+    });
+    const output = toToon(session([add]));
+    expect(output).toContain('add area');
+    expect(output).toContain('anchor: after → app-recent-activity');
+  });
+
+  it('surfaces the marked element text', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('text: About us');
   });
 
   it('states an empty session with context and suggests the next step', () => {

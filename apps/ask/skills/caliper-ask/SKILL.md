@@ -32,6 +32,25 @@ read the project's dev port from its config (Vite → `5173`, Angular → `4200`
 or whatever the `dev`/`serve` script uses) and pass `target` explicitly. Both `caliper_ask` and
 `caliper_design` accept an optional `target` (`http://localhost:<port>`); it must be a loopback URL.
 
+## Reading design marks (caliper_design)
+
+Each mark block leads with `markType`:
+
+- `element` — a deliberately picked element; `selector` is a real choice, act on it directly.
+- `area` / `strike` — the loop had no single owning element, so `selector` is a *derived* anchor
+  (often a container). Trust `covers` (the elements the area sits on, with % coverage) and `bbox`
+  over the selector; never treat a container-level selector as the intended target.
+
+`intent` is the action: `change` (restyle), `remove` (delete the element), `add` (insert a new one).
+For `add`, `anchor` gives the position relative to the target — `after` / `before` / `inside-start` /
+`inside-end` / `replace` → `<target>` — so "add a chart here" means a *new* sibling/child, not a
+replacement of what is there.
+
+If a mark is still ambiguous — a container-level selector, or you can't tell which element is meant —
+resolve it by calling `caliper_ask` so the developer can point on the page, **not** by asking in chat.
+Reserve chat for *lexical or scope* questions (an unclear word, whether to also delete a component's
+files) — anything answered with words rather than a click.
+
 ## Anchor with a selector — never edit the app to add one
 
 Anchor each zone with an ordinary CSS `selector` for an element that already exists on the

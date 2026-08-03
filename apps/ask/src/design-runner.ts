@@ -122,9 +122,22 @@ export class DesignRunner {
       completed: false,
       ticket: session.id,
       text:
-        `${this.toon(state)}\n\nstatus: PENDING — the developer has not submitted yet. ` +
+        `${this.pending(state)}\n\nstatus: PENDING — the developer has not submitted yet. ` +
         `Call caliper_design again to keep waiting.\nreview url: ${session.reviewUrl}${warning}`,
     };
+  }
+
+  // A poll before submit returns only a counter — never the full snapshot. The marks and their styles
+  // arrive once, in the final (submitted) result, instead of on every wait.
+  private pending(state: DesignSessionState): string {
+    const counts = new Map<string, number>();
+    for (const annotation of state.annotations) {
+      counts.set(annotation.severity, (counts.get(annotation.severity) ?? 0) + 1);
+    }
+    const severity = Array.from(counts, ([name, count]) => `${name}=${count}`).join(' ');
+    const lines = ['design:', `  id: ${state.id.slice(0, 8)}`, `  count: ${state.annotations.length}`];
+    if (severity) lines.push(`  severity: ${severity}`);
+    return lines.join('\n');
   }
 
   private toon(state: DesignSessionState): string {
