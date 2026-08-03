@@ -59,8 +59,9 @@ export const bootDesign = (): void => {
   const marks: CaliperAnnotation[] = [];
   let sent = false;
   let handle: OverlayHandle | null = null;
-  // Passive by default: the picker mounts inert so you can drive the app; "Arm picker" flips it to
-  // arm-picker (clicks mark, Alt reaches the app) and back.
+  // Same model as the extension: OFF (Browse, the default) — clicks drive the app, hold Alt to mark;
+  // ON (Mark) — clicks mark, hold Alt to reach the app. The single toggle flips between them; the
+  // overlay stays mounted in both so Alt always inverts. Closing the window is the full stop.
   let picking = false;
 
   const toggleArm = (): void => {

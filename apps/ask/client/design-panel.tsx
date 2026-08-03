@@ -102,8 +102,11 @@ export const DesignPanel = ({marks, sent, armed, onArm, onSubmit}: DesignPanelPr
           onClick={onArm}
         >
           <span class="caliper-design-panel__arm-dot" aria-hidden="true" />
-          {armed ? 'Picking — Alt to use the app' : 'Arm picker'}
+          {armed ? 'PICKER ON' : 'PICKER OFF'}
         </button>
+        <span class="caliper-design-panel__arm-hint">
+          {armed ? 'Hold Alt to use the app' : 'Hold Alt to mark'}
+        </span>
       </div>
     )}
 
