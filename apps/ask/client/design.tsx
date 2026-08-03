@@ -3,6 +3,7 @@ import {mountOverlay} from '@caliper/overlay';
 import type {AnnotationDraft, OverlayHandle} from '@caliper/overlay';
 import {createOverlayHost} from '@caliper/overlay/review';
 import {render} from 'preact';
+import {DesignPanel} from './design-panel';
 import {postCapture, postMark, postSubmit} from './sink';
 import designStyles from './design.css?inline';
 
@@ -29,53 +30,21 @@ const toAnnotation = (draft: AnnotationDraft): CaliperAnnotation => ({
   target: draft.context,
 });
 
-interface DockProps {
-  count: number;
-  sent: boolean;
-  onArm: () => void;
-  onSubmit: () => void;
-}
-
-const DesignDock = ({count, sent, onArm, onSubmit}: DockProps) => (
-  <div class="caliper-design-dock">
-    {sent ? (
-      <span class="caliper-design-dock__done">✓ Sent to the agent — you can close this window</span>
-    ) : (
-      <>
-        <button type="button" class="caliper-design-dock__arm" onClick={onArm}>
-          Arm picker
-        </button>
-        <span class="caliper-design-dock__count">
-          {count} mark{count === 1 ? '' : 's'}
-        </span>
-        <button
-          type="button"
-          class="caliper-design-dock__send"
-          disabled={count === 0}
-          onClick={onSubmit}
-        >
-          Send to agent
-        </button>
-      </>
-    )}
-  </div>
-);
-
 export const bootDesign = (): void => {
   document.title = `Caliper design — ${document.title}`;
 
-  const host = createOverlayHost(designStyles, 'caliper-design-dock-host');
+  const host = createOverlayHost(designStyles, 'caliper-design-panel-host');
   const container = document.createElement('div');
   host.root.append(container);
 
-  let count = 0;
+  const marks: CaliperAnnotation[] = [];
   let sent = false;
   let handle: OverlayHandle | null = null;
 
   const paint = (): void => {
     render(
-      <DesignDock
-        count={count}
+      <DesignPanel
+        marks={marks}
         sent={sent}
         onArm={() => handle?.setActive(true)}
         onSubmit={() => void submit()}
@@ -98,9 +67,10 @@ export const bootDesign = (): void => {
   handle = mountOverlay({
     capture: (box) => postCapture(box),
     onSubmit: (draft) => {
-      count += 1;
+      const annotation = toAnnotation(draft);
+      marks.push(annotation);
       paint();
-      void postMark(toAnnotation(draft)).catch(() => undefined);
+      void postMark(annotation).catch(() => undefined);
     },
   });
 

@@ -1,53 +1,370 @@
+/**
+ * Design-mode sidebar, injected into a shadow root. `:host { all: initial }` blocks the canonical
+ * `packages/design/tokens.css` custom properties from cascading in, so the tokens this surface uses
+ * are mirrored here — same values as the dark theme in that file. Keep them in sync.
+ */
 :host {
   all: initial;
+
+  --cal-panel: #0b0f14;
+  --cal-chrome: #12171e;
+  --cal-card: #0f141a;
+  --cal-footer: #0e131a;
+
+  --cal-border-structure: #1d242c;
+  --cal-border-control: #232c36;
+
+  --cal-text-strong: #eaf0f5;
+  --cal-text-body: #e6edf4;
+  --cal-text-secondary: #8b98a8;
+  --cal-text-mono: #b8c4d1;
+  --cal-text-micro: #7b8a9b;
+
+  --cal-teal: #34d8c0;
+  --cal-teal-hover: #56e6d1;
+  --cal-on-teal: #06231e;
+  --cal-teal-10: rgba(52, 216, 192, 0.1);
+  --cal-teal-12: rgba(52, 216, 192, 0.12);
+  --cal-teal-border-35: rgba(52, 216, 192, 0.35);
+  --cal-teal-border-40: rgba(52, 216, 192, 0.4);
+
+  --cal-blocker: #f2545b;
+  --cal-major: #f0913e;
+  --cal-minor: #7aa2ff;
+  --cal-blocker-fill: rgba(242, 84, 91, 0.12);
+  --cal-major-fill: rgba(240, 145, 62, 0.12);
+  --cal-minor-fill: rgba(122, 162, 255, 0.12);
+  --cal-blocker-border: rgba(242, 84, 91, 0.45);
+
+  --cal-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --cal-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+
+  --cal-radius-4: 4px;
+  --cal-radius-5: 5px;
+  --cal-radius-8: 8px;
+  --cal-radius-20: 20px;
+
+  --cal-shadow-panel: -24px 0 60px rgba(5, 8, 12, 0.55);
+  --cal-crop-placeholder: repeating-linear-gradient(135deg, #1a222b 0 6px, #202a34 6px 12px);
 }
 
-.caliper-design-dock {
+/* ── sidebar shell ─────────────────────────────────────── */
+
+.caliper-design-panel {
   position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 8px 8px 14px;
-  border-radius: 999px;
-  background: #10161d;
-  color: #eaf0f5;
-  border: 1px solid #232c36;
-  box-shadow: 0 24px 60px rgba(5, 8, 12, 0.55);
-  font: 500 13px/1.4 system-ui, sans-serif;
+  flex-direction: column;
+  width: 340px;
+  max-width: 90vw;
+  background: var(--cal-panel);
+  border-left: 1px solid var(--cal-border-structure);
+  box-shadow: var(--cal-shadow-panel);
+  color: var(--cal-text-strong);
+  font: 400 13px/1.5 var(--cal-font-sans);
   pointer-events: auto;
 }
 
-.caliper-design-dock__count {
-  color: #8b98a8;
+.caliper-design-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 14px;
+  background: var(--cal-chrome);
+  border-bottom: 1px solid var(--cal-border-structure);
 }
 
-.caliper-design-dock button {
-  border: 0;
-  border-radius: 999px;
-  padding: 6px 14px;
-  font: inherit;
+.caliper-design-panel__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.caliper-design-panel__mark {
+  width: 15px;
+  height: 15px;
+  border-radius: var(--cal-radius-4);
+  background: var(--cal-teal);
+}
+
+.caliper-design-panel__title {
+  font: 600 12px/1 var(--cal-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--cal-text-strong);
+}
+
+.caliper-design-panel__count {
+  font: 400 10px/1 var(--cal-font-mono);
+  color: var(--cal-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.caliper-design-panel__tools {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px 0;
+}
+
+.caliper-design-panel__arm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-20);
+  background: transparent;
+  color: var(--cal-text-secondary);
+  font: 400 10px/1 var(--cal-font-mono);
   cursor: pointer;
 }
 
-.caliper-design-dock__arm {
-  background: #232c36;
-  color: #eaf0f5;
+.caliper-design-panel__arm:hover {
+  border-color: var(--cal-teal-border-40);
+  background: var(--cal-teal-12);
+  color: var(--cal-teal);
 }
 
-.caliper-design-dock__send {
-  background: #34d8c0;
-  color: #06231e;
-  font-weight: 600;
+.caliper-design-panel__arm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-.caliper-design-dock__send:disabled {
-  opacity: 0.5;
+/* ── mark list ─────────────────────────────────────────── */
+
+.caliper-design-panel__list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 12px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cal-border-control) transparent;
+}
+
+.caliper-design-panel__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.caliper-design-panel__list::-webkit-scrollbar-thumb {
+  background: var(--cal-border-control);
+  border-radius: 4px;
+}
+
+.caliper-design-panel__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 24px;
+}
+
+.caliper-design-panel__empty-text {
+  margin: 0;
+  font: 400 12px/1.55 var(--cal-font-sans);
+  color: var(--cal-text-secondary);
+  text-align: center;
+}
+
+/* ── mark card (mirrors the extension DefectCard) ──────── */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--cal-border-control);
+  border-left-width: 2px;
+  border-left-color: var(--card-hue);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+  list-style: none;
+  animation: calLand 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.card:hover {
+  border-color: var(--cal-teal);
+  border-left-color: var(--card-hue);
+}
+
+.card--blocker {
+  --card-hue: var(--cal-blocker);
+  --card-fill: var(--cal-blocker-fill);
+}
+
+.card--major {
+  --card-hue: var(--cal-major);
+  --card-fill: var(--cal-major-fill);
+}
+
+.card--minor {
+  --card-hue: var(--cal-minor);
+  --card-fill: var(--cal-minor-fill);
+}
+
+.card--remove {
+  border-left: 2px dashed var(--cal-blocker);
+}
+
+.card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card__tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card__pill {
+  padding: 3px 7px;
+  border-radius: var(--cal-radius-4);
+  background: var(--card-fill);
+  color: var(--card-hue);
+  font: 600 9px/1 var(--cal-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card__tag {
+  padding: 2px 7px;
+  border-radius: var(--cal-radius-4);
+  font: 600 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.card__tag--remove {
+  color: var(--cal-blocker);
+  border: 1px dashed var(--cal-blocker-border);
+}
+
+.card__tag--area,
+.card__tag--add {
+  color: var(--cal-teal);
+  border: 1px solid var(--cal-teal-border-35);
+}
+
+.card__index {
+  font: 400 10px/1 var(--cal-font-mono);
+  color: var(--cal-text-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.card__note {
+  margin: 0;
+  font: 400 13px/1.45 var(--cal-font-sans);
+  color: var(--cal-text-body);
+}
+
+.card__note--struck {
+  color: var(--cal-text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: var(--cal-blocker);
+}
+
+.card__bottom {
+  display: flex;
+  gap: 10px;
+}
+
+.card__shot {
+  flex: 0 0 auto;
+  width: 76px;
+  height: 52px;
+  border-radius: var(--cal-radius-5);
+  object-fit: cover;
+  object-position: top;
+  background: var(--cal-crop-placeholder);
+}
+
+.card__meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  min-width: 0;
+  align-content: start;
+}
+
+.card__key {
+  font: 400 9px/1.4 var(--cal-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--cal-text-micro);
+}
+
+.card__val {
+  overflow: hidden;
+  font: 400 10px/1.4 var(--cal-font-mono);
+  color: var(--cal-text-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── footer ────────────────────────────────────────────── */
+
+.caliper-design-panel__foot {
+  display: flex;
+  flex-direction: column;
+  padding: 11px 12px 12px;
+  border-top: 1px solid var(--cal-border-structure);
+  background: var(--cal-footer);
+}
+
+.caliper-design-panel__submit {
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-teal);
+  color: var(--cal-on-teal);
+  font: 600 12px/1 var(--cal-font-mono);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.caliper-design-panel__submit:hover:not(:disabled) {
+  background: var(--cal-teal-hover);
+}
+
+.caliper-design-panel__submit:disabled {
+  opacity: 0.4;
   cursor: default;
 }
 
-.caliper-design-dock__done {
-  color: #34d8c0;
+.caliper-design-panel__done {
+  padding: 4px 0;
+  font: 400 12px/1.4 var(--cal-font-sans);
+  color: var(--cal-teal);
+  text-align: center;
+}
+
+@keyframes calLand {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
 }
