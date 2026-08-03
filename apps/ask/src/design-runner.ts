@@ -4,7 +4,8 @@ import {toToon} from '@caliper/core';
 import type {Box, CaliperSession} from '@caliper/core';
 import {launchDesignBrowser} from './browser/launch';
 import type {BrowserWindow} from './browser/launch';
-import {captureRegion} from './browser/cdp';
+import {createCdpConnection} from './browser/cdp';
+import type {CdpConnection} from './browser/cdp';
 import {makeDesignApiHandlers} from './http/design-api';
 import {startProxyServer} from './http/proxy-server';
 import {DesignRegistry} from './session/design-registry';
@@ -30,6 +31,7 @@ interface ActiveDesign {
   window: BrowserWindow;
   close: () => void;
   debugPort: number | null;
+  connection: CdpConnection | null;
 }
 
 const noTargetError = (): Error =>
@@ -51,7 +53,10 @@ export class DesignRunner {
   private injectionRisk: string | null = null;
 
   public async design(payload: DesignPayload): Promise<DesignResult> {
-    if (this.active) return this.settle(this.active);
+    if (this.active) {
+      const note = await this.refreshActiveWindow(this.active);
+      return this.settle(this.active, note);
+    }
 
     const target = payload.target ?? process.env.CALIPER_TARGET;
     if (!target) throw noTargetError();
@@ -59,6 +64,25 @@ export class DesignRunner {
 
     const session = await this.ensureSession(target);
     return this.settle(session);
+  }
+
+  // Reusing an unsubmitted session never relaunches a live window (that would spawn a duplicate). If the
+  // developer closed it, relaunch at the same review url and rebuild the CDP connection for the new
+  // window's debug port. Either way return a note for the PENDING result so the agent can tell the
+  // developer the window's state instead of waiting silently against a window that may be gone.
+  private async refreshActiveWindow(session: ActiveDesign): Promise<string> {
+    if (session.window.isAlive()) {
+      return `note: reused the open review session — if you closed the window, reopen: ${session.reviewUrl}`;
+    }
+    session.connection?.close();
+    session.window = await launchDesignBrowser(session.reviewUrl);
+    session.debugPort = session.window.debugPort;
+    session.connection = await this.openConnection(session.debugPort);
+    return `note: the review window had been closed — reopened it at ${session.reviewUrl}`;
+  }
+
+  private openConnection(debugPort: number | null): Promise<CdpConnection | null> {
+    return debugPort === null ? Promise.resolve(null) : createCdpConnection(debugPort);
   }
 
   private async ensureSession(target: string): Promise<ActiveDesign> {
@@ -69,6 +93,7 @@ export class DesignRunner {
         .then(async (session) => {
           session.window = await launchDesignBrowser(session.reviewUrl);
           session.debugPort = session.window.debugPort;
+          session.connection = await this.openConnection(session.debugPort);
           return session;
         })
         .finally(() => {
@@ -79,9 +104,11 @@ export class DesignRunner {
     return this.starting;
   }
 
+  // Late-bound so the capture always targets the session's current CDP connection — which is rebuilt if
+  // the window is relaunched (refreshActiveWindow) — rather than a socket captured at handler-wiring time.
   private capture(box: Box): Promise<string | null> {
-    const debugPort = this.active?.debugPort ?? null;
-    return debugPort === null ? Promise.resolve(null) : captureRegion(debugPort, box);
+    const connection = this.active?.connection ?? null;
+    return connection === null ? Promise.resolve(null) : connection.capture(box);
   }
 
   private startSession(target: string): Promise<ActiveDesign> {
@@ -98,9 +125,12 @@ export class DesignRunner {
           const session: ActiveDesign = {
             id: state.id,
             reviewUrl: origin,
-            window: {close: () => undefined, debugPort: null},
+            // Placeholder until ensureSession launches the real window; reports alive so a caliper_design
+            // call racing the in-flight launch never mistakes it for a closed window and relaunches.
+            window: {close: () => undefined, debugPort: null, isAlive: () => true},
             close,
             debugPort: null,
+            connection: null,
           };
           this.active = session;
           resolve(session);
@@ -113,7 +143,7 @@ export class DesignRunner {
     });
   }
 
-  private async settle(session: ActiveDesign): Promise<DesignResult> {
+  private async settle(session: ActiveDesign, note?: string): Promise<DesignResult> {
     const state = await this.registry.wait(session.id, ASK_WINDOW_MS);
     const warning = this.injectionRisk
       ? "\nwarning: the app sent a Content-Security-Policy that may block Caliper's injected script " +
@@ -122,6 +152,7 @@ export class DesignRunner {
 
     if (state.submitted) {
       this.persistScreenshots(state);
+      session.connection?.close();
       session.window.close();
       session.close();
       if (this.active?.id === session.id) this.active = null;
@@ -134,12 +165,13 @@ export class DesignRunner {
       };
     }
 
+    const noteLine = note ? `\n${note}` : '';
     return {
       completed: false,
       ticket: session.id,
       text:
         `${this.pending(state)}\n\nstatus: PENDING — the developer has not submitted yet. ` +
-        `Call caliper_design again to keep waiting.\nreview url: ${session.reviewUrl}${warning}`,
+        `Call caliper_design again to keep waiting.\nreview url: ${session.reviewUrl}${warning}${noteLine}`,
     };
   }
 

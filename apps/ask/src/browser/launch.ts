@@ -75,21 +75,36 @@ const CLEAN_LAUNCH_FLAGS = [
 export interface BrowserWindow {
   close: () => void;
   debugPort: number | null;
+  // Whether the launched browser process is still running. Design mode reuses an unsubmitted session
+  // across caliper_design calls; if the developer closed the window meanwhile this reads false so the
+  // caller can relaunch instead of returning PENDING against a window that no longer exists.
+  isAlive: () => boolean;
 }
 
-const closer = (subprocess: ChildProcess, debugPort: number | null): BrowserWindow => ({
-  close: () => {
-    try {
-      subprocess.kill();
-    } catch {
-      // best-effort — the design client also closes itself with window.close() on submit
-    }
-  },
-  debugPort,
-});
+const closer = (subprocess: ChildProcess, debugPort: number | null): BrowserWindow => {
+  let exited = false;
+  const markExited = (): void => {
+    exited = true;
+  };
+  subprocess.once('exit', markExited);
+  subprocess.once('close', markExited);
+  return {
+    close: () => {
+      try {
+        subprocess.kill();
+      } catch {
+        // best-effort — the design client also closes itself with window.close() on submit
+      }
+    },
+    debugPort,
+    isAlive: () => !exited && subprocess.exitCode === null,
+  };
+};
 
-// The unclosable fallback: no subprocess handle, so no debug port and close() is a no-op.
-const detachedWindow = (): BrowserWindow => ({close: () => undefined, debugPort: null});
+// The unclosable fallback: opened in the developer's default browser with no subprocess handle, so no
+// debug port and close() is a no-op. Reports alive so the caller never tries to relaunch it — a
+// relaunch would just open a second default-browser tab; the PENDING note tells the developer instead.
+const detachedWindow = (): BrowserWindow => ({close: () => undefined, debugPort: null, isAlive: () => true});
 
 // Opens the review URL in an isolated --new-window and returns a handle to close it — the ask flow's
 // injected page script can't close a --new-window itself (only an --app window), so the server kills
