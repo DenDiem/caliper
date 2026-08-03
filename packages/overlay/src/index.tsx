@@ -491,9 +491,16 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   // Apps whose modals trap focus (Bootstrap _enforceFocus, CDK / focus-trap, hand-rolled) yank focus
   // back into the modal the instant it lands outside. The popover lives in a shadow host on <html> —
   // always "outside" — so its note field would lose the caret the moment it gained it. Swallow focus
-  // events targeting our host in the capture phase, before the app's bubble-phase enforcer can react.
+  // events in the capture phase before the app's enforcer can react: both when focus LANDS on our host
+  // (focusin/focus target = host) and when focus MOVES TO it from the modal (focusout whose
+  // relatedTarget = host) — the latter is how a trap that re-focuses on its own focusout steals the caret.
+  const focusTargetsOverlay = (event: FocusEvent): boolean =>
+    isOverlayEvent(event) ||
+    (event.relatedTarget instanceof Element &&
+      event.relatedTarget.closest('[data-caliper-overlay]') !== null);
+
   const onFocusCapture = (event: FocusEvent) => {
-    if (isOverlayEvent(event)) event.stopImmediatePropagation();
+    if (focusTargetsOverlay(event)) event.stopImmediatePropagation();
   };
 
   document.addEventListener('focusin', onFocusCapture, true);
