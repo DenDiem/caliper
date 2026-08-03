@@ -682,11 +682,25 @@ body {
   background: var(--cal-teal-hover);
 }
 
+.empty__arm--on {
+  background: var(--cal-teal-12);
+  color: var(--cal-teal);
+  box-shadow: inset 0 0 0 1px var(--cal-teal-border-40);
+}
+
+.empty__arm--on:hover {
+  background: var(--cal-teal-12);
+}
+
 .empty__arm-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
+}
+
+/* Pulse only while the picker is actually on — a static dot no longer implies "armed" when off. */
+.empty__arm--on .empty__arm-dot {
   animation: calPulse 1.6s ease-in-out infinite;
 }
 
@@ -699,7 +713,7 @@ body {
   .card,
   .jira,
   .arm--on .arm__dot,
-  .empty__arm-dot {
+  .empty__arm--on .empty__arm-dot {
     animation: none;
   }
 }

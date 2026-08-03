@@ -1,4 +1,7 @@
 import type {ComponentChildren} from 'preact';
+import {useEffect, useState} from 'preact/hooks';
+
+const ARMED_KEY = 'caliper.armed';
 
 interface Props {
   connected: boolean;
@@ -12,8 +15,21 @@ const STEPS: readonly {n: string; text: ComponentChildren}[] = [
   {n: '03', text: <>Type what is wrong and save the defect.</>},
 ];
 
-export const EmptyState = ({connected, onArm, onConnect}: Props) => (
-  <div class="empty">
+export const EmptyState = ({connected, onArm, onConnect}: Props) => {
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    const read = () => void chrome.storage.local.get(ARMED_KEY).then((store) => setArmed(store[ARMED_KEY] === true));
+    read();
+    const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
+      if (ARMED_KEY in changes) read();
+    };
+    chrome.storage.local.onChanged.addListener(listener);
+    return () => chrome.storage.local.onChanged.removeListener(listener);
+  }, []);
+
+  return (
+    <div class="empty">
     <div class="empty__body">
       <div>
         <p class="empty__title">Nothing measured yet</p>
@@ -44,11 +60,12 @@ export const EmptyState = ({connected, onArm, onConnect}: Props) => (
     </div>
 
     <div class="empty__foot">
-      <button class="empty__arm" onClick={onArm}>
+      <button class={armed ? 'empty__arm empty__arm--on' : 'empty__arm'} onClick={onArm}>
         <span class="empty__arm-dot" />
-        TURN ON PICKER
+        {armed ? 'PICKER ON' : 'TURN ON PICKER'}
       </button>
       <p class="empty__hint">⌥⇧C picker · ⌥⇧P panel</p>
     </div>
   </div>
-);
+  );
+};
