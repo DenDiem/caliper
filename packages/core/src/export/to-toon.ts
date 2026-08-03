@@ -1,4 +1,4 @@
-import type {CaliperAnnotation, CaliperSession, Box} from '../schema/annotation.schema';
+import type {CaliperAnnotation, CaliperSession, Box, StyleValue} from '../schema/annotation.schema';
 
 const ID_LENGTH = 8;
 const TEXT_LIMIT = 80;
@@ -75,17 +75,23 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
   if (showUrl) {
     lines.push(`    url: ${cell(annotation.page.url)}`);
   }
-  if (annotation.target.text.trim()) {
+  // An area's `text` is its container's text (for a body-anchored area, the whole page) — it
+  // contradicts the bbox/covers that actually locate the region, so it is omitted for areas.
+  if (annotation.markType !== 'area' && annotation.target.text.trim()) {
     lines.push(`    text: ${cell(truncate(annotation.target.text))}`);
   }
   if (annotation.markType !== 'element') {
     lines.push(`    bbox: ${formatBox(annotation.region?.box ?? annotation.target.box)}`);
   }
-  if (annotation.region && annotation.region.covers.length > 0) {
-    const covers = annotation.region.covers
-      .map((cover) => `${cover.selector} ${Math.round(cover.coverage * 100)}%`)
-      .join(', ');
-    lines.push(`    covers: ${covers}`);
+  // An area always reports what sits under the loop; an empty list is a real signal ("nothing under
+  // the loop"), so it prints `covers: (none)` rather than being suppressed.
+  if (annotation.markType === 'area') {
+    const covers = annotation.region?.covers ?? [];
+    const rendered =
+      covers.length > 0
+        ? covers.map((cover) => `${cover.selector} ${Math.round(cover.coverage * 100)}%`).join(', ')
+        : '(none)';
+    lines.push(`    covers: ${rendered}`);
   }
   if (annotation.intent === 'add' && annotation.anchor && annotation.anchorTarget) {
     lines.push(`    anchor: ${annotation.anchor} → ${cell(annotation.anchorTarget)}`);
@@ -98,18 +104,93 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
   return lines.join('\n');
 };
 
-// Styles the agent must act on, keyed by selector (deduped across marks) and never emitted for a
-// `remove` mark. Token-matched rows plus hardcodes on tokenizable properties survive; structural
-// noise (display, flex-direction, computed offsets) is dropped.
+const PADDING_SIDES: readonly string[] = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
+const MARGIN_SIDES: readonly string[] = ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+
+// Folds four longhand box sides into one shorthand row: a single token when all four share it, else
+// the 1-/2-/4-value CSS shorthand string with no token (mixed sides carry no single design decision).
+const foldBox = (
+  top: StyleValue | undefined,
+  right: StyleValue | undefined,
+  bottom: StyleValue | undefined,
+  left: StyleValue | undefined,
+): StyleValue | null => {
+  if (!top || !right || !bottom || !left) return null;
+  if (top.value === right.value && right.value === bottom.value && bottom.value === left.value) {
+    const token = top.token ?? null;
+    const sharedToken = [right, bottom, left].every((side) => (side.token ?? null) === token);
+    return token !== null && sharedToken
+      ? {value: top.value, token, tokenMatch: top.tokenMatch ?? null}
+      : {value: top.value};
+  }
+  const shorthand =
+    top.value === bottom.value && right.value === left.value
+      ? `${top.value} ${right.value}`
+      : `${top.value} ${right.value} ${bottom.value} ${left.value}`;
+  return {value: shorthand};
+};
+
+// Folds row-gap/column-gap into one `gap` row (single value when equal, `<row> <column>` otherwise).
+const foldGap = (row: StyleValue | undefined, column: StyleValue | undefined): StyleValue | null => {
+  if (!row || !column) return null;
+  if (row.value === column.value) {
+    const token = row.token ?? null;
+    return token !== null && (column.token ?? null) === token
+      ? {value: row.value, token, tokenMatch: row.tokenMatch ?? null}
+      : {value: row.value};
+  }
+  return {value: `${row.value} ${column.value}`};
+};
+
+// Rewrites a mark's styles so longhand box/gap sides read as their CSS shorthand, keeping every other
+// property in its original position. Consumed longhands collapse onto the first side encountered.
+const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] => {
+  const padding = foldBox(styles['padding-top'], styles['padding-right'], styles['padding-bottom'], styles['padding-left']);
+  const margin = foldBox(styles['margin-top'], styles['margin-right'], styles['margin-bottom'], styles['margin-left']);
+  const hasDirectGap = styles['gap'] !== undefined;
+  const gap = hasDirectGap ? null : foldGap(styles['row-gap'], styles['column-gap']);
+
+  const consumed = new Set<string>();
+  if (padding) for (const side of PADDING_SIDES) consumed.add(side);
+  if (margin) for (const side of MARGIN_SIDES) consumed.add(side);
+  if (gap || hasDirectGap) {
+    consumed.add('row-gap');
+    consumed.add('column-gap');
+  }
+
+  const emitted = new Set<string>();
+  const result: [string, StyleValue][] = [];
+  for (const [property, style] of Object.entries(styles)) {
+    if (!consumed.has(property)) {
+      result.push([property, style]);
+      continue;
+    }
+    if (padding && PADDING_SIDES.includes(property) && !emitted.has('padding')) {
+      emitted.add('padding');
+      result.push(['padding', padding]);
+    } else if (margin && MARGIN_SIDES.includes(property) && !emitted.has('margin')) {
+      emitted.add('margin');
+      result.push(['margin', margin]);
+    } else if (gap && (property === 'row-gap' || property === 'column-gap') && !emitted.has('gap')) {
+      emitted.add('gap');
+      result.push(['gap', gap]);
+    }
+  }
+  return result;
+};
+
+// Styles the agent must act on, keyed by selector (deduped across marks) and emitted only for a
+// `change` mark — an added or removed element's current styles are noise. Token-matched rows plus
+// hardcodes on tokenizable properties survive; structural noise (display, flex-direction, offsets) drops.
 const styleRows = (annotations: readonly CaliperAnnotation[]): string[][] => {
   const seen = new Set<string>();
   const rows: string[][] = [];
   for (const annotation of annotations) {
-    if (annotation.intent === 'remove') continue;
+    if (annotation.intent !== 'change') continue;
     const selector = annotation.target.selector;
     if (seen.has(selector)) continue;
     seen.add(selector);
-    for (const [property, style] of Object.entries(annotation.target.styles)) {
+    for (const [property, style] of foldStyles(annotation.target.styles)) {
       if (style.token == null && !TOKENIZABLE_STYLE.test(property)) continue;
       rows.push([cell(selector), property, cell(style.value), cell(style.token), cell(style.tokenMatch)]);
     }
