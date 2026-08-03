@@ -16,6 +16,9 @@ genuinely ambiguous: unclear empty/error state, an interaction that could reason
 ways, spacing or copy that isn't specified, or a component whose behavior isn't covered by
 the design system rules you have.
 
+Reach for `caliper_ask` when *you* have specific questions to pin; when you instead want the
+developer to freely mark up whatever they want with no questions from you, use `caliper_design`.
+
 ## When NOT to use it
 
 If you are confident in the answer — from the design, the existing codebase conventions, or
