@@ -52,11 +52,12 @@ export const PanelFooter = ({copied, jiraLabel, onCopyToon, onJira, onJson, onZi
 
         <button
           class={armed ? 'arm arm--on' : 'arm'}
+          title="Toggle the picker (⌥⇧C)"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => void armPicker()}
         >
           <span class="arm__dot" />
-          {armed ? 'ARMED ⌥⇧C' : 'ARM PICKER'}
+          {armed ? 'PICKER ON' : 'PICKER OFF'}
         </button>
       </div>
     </footer>

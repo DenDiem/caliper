@@ -1,5 +1,5 @@
 import type {Anchor, AnnotationIntent, ElementContext, MarkType, Region, Severity} from '@caliper/core';
-import {useState} from 'preact/hooks';
+import {useEffect, useRef, useState} from 'preact/hooks';
 
 export interface AnnotationDraft {
   context: ElementContext;
@@ -52,6 +52,26 @@ export const Popover = ({
   const [intent, setIntent] = useState<AnnotationIntent>(initialIntent);
   const [figmaUrl, setFigmaUrl] = useState('');
   const [figmaOpen, setFigmaOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // showModal() lifts the popover into the browser top layer and makes the rest of the document
+  // inert — the one mechanism a modal focus-trap can't defeat (inert elements can't take focus), so
+  // the note field keeps the caret on apps whose modals trap focus (Ionic, CDK, Bootstrap). The
+  // native Esc→cancel is redirected to onCancel so it behaves like the overlay's own Esc.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return undefined;
+    if (!dialog.open) dialog.showModal();
+    const onNativeCancel = (event: Event) => {
+      event.preventDefault();
+      onCancel();
+    };
+    dialog.addEventListener('cancel', onNativeCancel);
+    return () => {
+      dialog.removeEventListener('cancel', onNativeCancel);
+      if (dialog.open) dialog.close();
+    };
+  }, [onCancel]);
 
   const tok = token(context);
   const component = context.componentName ?? context.tagName;
@@ -74,7 +94,7 @@ export const Popover = ({
   };
 
   return (
-    <div class="caliper-pop" style={{top: `${top}px`, left: `${left}px`}}>
+    <dialog ref={dialogRef} class="caliper-pop" style={{top: `${top}px`, left: `${left}px`}}>
       <div class="caliper-pop__head">
         <div class="caliper-pop__meta">
           <span class="caliper-pop__key">SEL</span>
@@ -179,6 +199,6 @@ export const Popover = ({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };

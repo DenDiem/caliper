@@ -1,6 +1,11 @@
+import {useState} from 'preact/hooks';
 import type {CaliperAnnotation} from '@caliper/core';
 
 type Hue = 'blocker' | 'major' | 'minor';
+
+// A wide element cropped to a fixed square thumbnail shows only its corner (usually blank). Once the
+// image loads, elements wider than this ratio render as a full-width strip so the whole thing reads.
+const WIDE_RATIO = 2.2;
 
 const HUE: Record<string, Hue> = {
   blocker: 'blocker',
@@ -21,8 +26,23 @@ const token = (annotation: CaliperAnnotation): {text: string; ok: boolean} => {
   return matched ? {text: `${matched.token} ✓`, ok: true} : {text: 'no match ⚠', ok: false};
 };
 
-const shot = (screenshot?: string) =>
-  screenshot ? <img class="card__shot" src={screenshot} alt="" /> : <div class="card__shot" />;
+const Shot = ({screenshot}: {screenshot?: string}) => {
+  const [wide, setWide] = useState(false);
+
+  if (!screenshot) return <div class="card__shot" />;
+
+  return (
+    <img
+      class={wide ? 'card__shot card__shot--wide' : 'card__shot'}
+      src={screenshot}
+      alt=""
+      onLoad={(event) => {
+        const image = event.currentTarget;
+        setWide(image.naturalWidth / image.naturalHeight > WIDE_RATIO);
+      }}
+    />
+  );
+};
 
 const ordinal = (index: number): string => String(index + 1).padStart(2, '0');
 
@@ -50,7 +70,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
         </div>
         <p class="card__note card__note--struck">{annotation.comment}</p>
         <div class="card__bottom">
-          {shot(screenshot)}
+          <Shot screenshot={screenshot} />
           <div class="card__meta">
             <span class="card__key">SEL</span>
             <span class="card__val">{annotation.target.selector}</span>
@@ -76,7 +96,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
         </div>
         <p class="card__note">{annotation.comment}</p>
         <div class="card__bottom">
-          {shot(screenshot)}
+          <Shot screenshot={screenshot} />
           <div class="card__meta">
             <span class="card__key">ZONE</span>
             <span class="card__val">{zone}</span>
@@ -119,7 +139,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
       <p class="card__note">{annotation.comment}</p>
 
       <div class="card__bottom">
-        {shot(screenshot)}
+        <Shot screenshot={screenshot} />
         <div class="card__meta">
           <span class="card__key">SEL</span>
           <span class="card__val">{annotation.target.selector}</span>

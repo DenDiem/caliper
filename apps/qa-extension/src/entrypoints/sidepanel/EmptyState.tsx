@@ -7,8 +7,8 @@ interface Props {
 }
 
 const STEPS: readonly {n: string; text: ComponentChildren}[] = [
-  {n: '01', text: <>Press <span class="kbd">⌥⇧C</span> to arm the picker.</>},
-  {n: '02', text: <>Click any element you want to flag.</>},
+  {n: '01', text: <>Press <span class="kbd">⌥⇧C</span> to turn the picker on.</>},
+  {n: '02', text: <>Click any element you want to flag (hold <span class="kbd">Alt</span> to use the app).</>},
   {n: '03', text: <>Type what is wrong and save the defect.</>},
 ];
 
@@ -18,8 +18,8 @@ export const EmptyState = ({connected, onArm, onConnect}: Props) => (
       <div>
         <p class="empty__title">Nothing measured yet</p>
         <p class="empty__lead">
-          Arm the picker, then click any element on the page to record what is wrong with it — Caliper
-          captures its selector, owning component and design token for you.
+          Turn the picker on, then click any element on the page to record what is wrong with it —
+          Caliper captures its selector, owning component and design token for you.
         </p>
       </div>
 
@@ -46,9 +46,9 @@ export const EmptyState = ({connected, onArm, onConnect}: Props) => (
     <div class="empty__foot">
       <button class="empty__arm" onClick={onArm}>
         <span class="empty__arm-dot" />
-        ARM PICKER
+        TURN ON PICKER
       </button>
-      <p class="empty__hint">⌥⇧C arm · ⌥⇧P panel</p>
+      <p class="empty__hint">⌥⇧C picker · ⌥⇧P panel</p>
     </div>
   </div>
 );

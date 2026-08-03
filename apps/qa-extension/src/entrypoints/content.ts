@@ -59,8 +59,10 @@ export default defineContentScript({
       void chrome.storage.local.set({[MOUNTED_KEY]: value});
     const persistMode = (value: boolean): void => void chrome.storage.local.set({[MODE_KEY]: value});
 
+    // Default (unset) is Mark mode: click marks, hold Alt to use the app. The reviewer armed the
+    // picker to mark, so marking works immediately; the sidepanel switch flips to "Use app".
     const readMode = async (): Promise<boolean> =>
-      (await chrome.storage.local.get(MODE_KEY))[MODE_KEY] === true;
+      (await chrome.storage.local.get(MODE_KEY))[MODE_KEY] !== false;
 
     const disarm = (): void => {
       if (!handle) return;
@@ -69,9 +71,9 @@ export default defineContentScript({
       persistMounted(false);
     };
 
-    // On (mount) defaults to passive: clicks reach the app, hold Alt to mark. The persisted picker
-    // mode is re-applied so a reload keeps the reviewer's last choice; the sidepanel toggle flips it
-    // to arm-picker (clicks mark, Alt reaches the app).
+    // On (mount) defaults to Mark: click marks, hold Alt to reach the app. The persisted picker
+    // mode is re-applied so a reload keeps the reviewer's last choice; the sidepanel switch flips it
+    // to "Use app" (click reaches the app, Alt marks).
     const arm = (): void => {
       if (handle) return;
       handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft), onExit: disarm});

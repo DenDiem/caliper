@@ -419,9 +419,16 @@
 
 /* ── popover (screen 04) ───────────────────────────────── */
 
+/* Rendered as a <dialog> shown with showModal() (top layer + inert page → focus-trap proof), so
+   the UA dialog defaults (auto margins that centre it, fit-content sizing, max-width) are reset and
+   position/top/left drive placement exactly as before. */
 .caliper-pop {
   position: fixed;
+  inset: auto;
+  margin: 0;
   width: 372px;
+  max-width: none;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -434,6 +441,11 @@
   font: 400 13px/1.5 system-ui, sans-serif;
   pointer-events: auto;
   box-sizing: border-box;
+}
+
+/* Keep the marked page visible behind the modal popover — no dimming veil. */
+.caliper-pop::backdrop {
+  background: transparent;
 }
 
 .caliper-pop__head {

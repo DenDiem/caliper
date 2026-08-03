@@ -353,6 +353,19 @@ body {
   background: var(--cal-crop-placeholder);
 }
 
+/* Wide elements: a full-width strip shows the whole thing instead of a cropped corner. */
+.card__shot--wide {
+  width: 100%;
+  height: auto;
+  max-height: 120px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.card__bottom:has(.card__shot--wide) {
+  flex-direction: column;
+}
+
 .card__meta {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -530,44 +543,44 @@ body {
   animation: calPulse 1.6s ease-in-out infinite;
 }
 
-/* ── picker mode toggle ────────────────────────────────── */
+/* ── picker mode switch ────────────────────────────────── */
 
 .mode {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 14px;
   background: var(--cal-chrome);
   border-bottom: 1px solid var(--cal-border-structure);
 }
 
-.mode__btn {
+.mode__seg {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 7px 11px;
-  border: 1px solid var(--cal-border-control);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--cal-radius-20);
+  background: var(--cal-input);
+}
+
+.mode__opt {
+  flex: 1;
+  padding: 6px 10px;
+  border: 0;
   border-radius: var(--cal-radius-20);
   background: transparent;
   color: var(--cal-text-secondary);
-  font: 400 10px/1 var(--cal-font-mono);
+  font: 500 11px/1 var(--cal-font-sans);
   cursor: pointer;
 }
 
-.mode__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.mode__btn--armed {
-  border-color: var(--cal-teal-border-40);
+.mode__opt--active {
   background: var(--cal-teal-12);
   color: var(--cal-teal);
 }
 
-.mode__btn--armed .mode__dot {
-  animation: calPulse 1.6s ease-in-out infinite;
+.mode__hint {
+  font: 400 10px/1.4 var(--cal-font-mono);
+  color: var(--cal-text-hint);
 }
 
 /* ── empty state ───────────────────────────────────────── */
@@ -686,7 +699,6 @@ body {
   .card,
   .jira,
   .arm--on .arm__dot,
-  .mode__btn--armed .mode__dot,
   .empty__arm-dot {
     animation: none;
   }

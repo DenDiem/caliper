@@ -15,10 +15,6 @@ import overlayStyles from './overlay.css?inline';
 
 const POPOVER_SIZE = {width: 372, height: 300};
 
-// Focus-trap enforcer limits: at most REFOCUS_LIMIT re-grabs within REFOCUS_WINDOW_MS.
-const REFOCUS_LIMIT = 5;
-const REFOCUS_WINDOW_MS = 1000;
-
 export type {AnnotationDraft};
 
 export interface OverlayOptions {
@@ -86,9 +82,6 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   // while Alt is held; armed (true) marks on click and passes clicks through only while Alt is held.
   let armed = false;
   let altHeld = false;
-  // Focus-trap enforcer bookkeeping — how many times, and since when, we have re-grabbed the caret.
-  let refocusCount = 0;
-  let refocusWindowStart = 0;
   let hovered: {box: Box; label: string | null} | null = null;
   let hoveredElement: Element | null = null;
   let pending: Pending | null = null;
@@ -132,7 +125,6 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     stroke = null;
     strokeStrike = false;
     mark = null;
-    refocusCount = 0;
     clearHover();
     paint();
   };
@@ -232,6 +224,8 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     if (element === hoveredElement && !force) return;
     hoveredElement = element;
     hovered = element ? {box: toBox(element), label: element.tagName.toLowerCase()} : null;
+    // An app popover (top layer) opened after us would hide the highlight; re-assert to sit above it.
+    host.raise();
     paint();
   };
 
@@ -281,6 +275,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     if (!capture) {
       pending = {el, context, intent, region, ...meta};
       clearHover();
+      host.raise();
       paint();
       return;
     }
@@ -295,11 +290,15 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     host.setHidden(false);
     capturing = false;
     pending = {el, context, intent, region, ...meta};
+    host.raise();
     paint();
   };
 
-  const finishGesture = (points: Point[]) => {
-    const kind = gesturesEnabled ? classifyGesture(points) : 'pick';
+  // `latchedStrike` carries the live strike latch (see onPointerMove): once a stroke has scribbled
+  // enough to read as a remove, more drawing can't downgrade it back to an area — a detected strike
+  // has already crossed the element, so it stays a strike.
+  const finishGesture = (points: Point[], latchedStrike = false) => {
+    const kind = !gesturesEnabled ? 'pick' : latchedStrike ? 'strike' : classifyGesture(points);
     mark = null;
 
     if (kind === 'pick') {
@@ -437,7 +436,9 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     if (stroke) {
       event.preventDefault();
       stroke.push({x: event.clientX, y: event.clientY});
-      if (gesturesEnabled) strokeStrike = classifyGesture(stroke) === 'strike';
+      // Latch, don't reassign: a scribble that briefly reads as a strike must not flip back to an
+      // area when later winding accumulates. Once true, it stays true for the rest of the stroke.
+      if (gesturesEnabled && classifyGesture(stroke) === 'strike') strokeStrike = true;
       scheduleStroke();
       return;
     }
@@ -461,10 +462,11 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   const onPointerUp = (event: PointerEvent) => {
     if (stroke === null) return;
     const points = stroke;
+    const latchedStrike = strokeStrike;
     stroke = null;
     strokeStrike = false;
     event.preventDefault();
-    finishGesture(points);
+    finishGesture(points, latchedStrike);
   };
 
   // Selection happens on pointerup; swallow the page's own click so marking never navigates. When the
@@ -541,55 +543,10 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     syncAlt(false);
   };
 
-  const overlayContains = (node: EventTarget | null): boolean =>
-    node instanceof Element && node.closest('[data-caliper-overlay]') !== null;
-
-  // Apps whose modals trap focus (Bootstrap _enforceFocus, CDK / focus-trap, hand-rolled) yank focus
-  // back into the modal the instant it lands outside. The popover lives in a shadow host on <html> —
-  // always "outside" — so its note field would lose the caret the moment it gained it. Two defences:
-  //
-  // 1. Capture-phase swallow: stop the focus event before the app's enforcer can see it — both when
-  //    focus LANDS on our host (focusin/focus target = host) and when it MOVES TO it from the modal
-  //    (focusout whose relatedTarget = host, how a trap that re-focuses on its own focusout steals it).
-  // 2. Active enforcer: a trap inside a shadow root (Ionic `ion-modal`) never surfaces to (1). While a
-  //    popover is open, if focus is pulled OUT of our field to a non-overlay target, put it back next
-  //    frame. `refocusCount` caps the fight so a trap that re-steals can't spin an infinite focus war
-  //    and hang the tab — a couple of flickers are acceptable, a freeze is not. Best-effort; a live
-  //    modal is needed to confirm it, so this is unverifiable in a headless build.
-  const focusTargetsOverlay = (event: FocusEvent): boolean =>
-    isOverlayEvent(event) || overlayContains(event.relatedTarget);
-
-  const requestRefocus = () => {
-    const now = Date.now();
-    if (now - refocusWindowStart > REFOCUS_WINDOW_MS) {
-      refocusWindowStart = now;
-      refocusCount = 0;
-    }
-    if (refocusCount >= REFOCUS_LIMIT) return;
-    refocusCount += 1;
-    requestAnimationFrame(() => {
-      if (!pending) return;
-      const field = host.root.querySelector('.caliper-pop__text');
-      if (field instanceof HTMLElement) field.focus();
-    });
-  };
-
-  const onFocusCapture = (event: FocusEvent) => {
-    if (!focusTargetsOverlay(event)) return;
-    event.stopImmediatePropagation();
-    if (
-      pending &&
-      event.type === 'focusout' &&
-      isOverlayEvent(event) &&
-      !overlayContains(event.relatedTarget)
-    ) {
-      requestRefocus();
-    }
-  };
-
-  document.addEventListener('focusin', onFocusCapture, true);
-  document.addEventListener('focusout', onFocusCapture, true);
-  document.addEventListener('focus', onFocusCapture, true);
+  // Focus stealing by app modals is handled at the popover itself: it renders in a native
+  // <dialog> shown with showModal(), which puts it in the browser top layer and makes the rest of
+  // the document inert. Inert elements cannot take focus, so no modal focus-trap (even one inside a
+  // shadow root, like Ionic's ion-modal) can pull the caret out of the note field. See popover.tsx.
   document.addEventListener('pointermove', onPointerMove, true);
   document.addEventListener('pointerdown', onPointerDown, true);
   document.addEventListener('pointerup', onPointerUp, true);
@@ -609,9 +566,6 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       if (strokeFrame !== null) cancelAnimationFrame(strokeFrame);
       frame = null;
       strokeFrame = null;
-      document.removeEventListener('focusin', onFocusCapture, true);
-      document.removeEventListener('focusout', onFocusCapture, true);
-      document.removeEventListener('focus', onFocusCapture, true);
       document.removeEventListener('pointermove', onPointerMove, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('pointerup', onPointerUp, true);
