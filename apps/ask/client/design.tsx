@@ -1,4 +1,5 @@
 import type {CaliperAnnotation} from '@caliper/core';
+import {isSubstantiveText} from '@caliper/core';
 import {mountOverlay} from '@caliper/overlay';
 import type {AnnotationDraft, OverlayHandle} from '@caliper/overlay';
 import {createOverlayHost} from '@caliper/overlay/review';
@@ -59,12 +60,16 @@ export const bootDesign = (): void => {
   const marks: CaliperAnnotation[] = [];
   let sent = false;
   let handle: OverlayHandle | null = null;
+  let warning: string | null = null;
+  // Set once the content-less-comment warning has been shown; a second Submit then goes through.
+  let contentWarningShown = false;
 
   const paint = (): void => {
     render(
       <DesignPanel
         marks={marks}
         sent={sent}
+        warning={warning}
         onArm={() => handle?.setActive(true)}
         onSubmit={() => void submit()}
       />,
@@ -73,6 +78,17 @@ export const bootDesign = (): void => {
   };
 
   const submit = async (): Promise<void> => {
+    const flimsy = marks.filter((mark) => !isSubstantiveText(mark.comment));
+    if (flimsy.length > 0 && !contentWarningShown) {
+      contentWarningShown = true;
+      const sample = flimsy[0]?.comment ?? '';
+      warning =
+        `${flimsy.length} mark${flimsy.length === 1 ? '' : 's'} have no real comment (e.g. "${sample}"). ` +
+        'Add detail, or Submit again to send as-is.';
+      paint();
+      return;
+    }
+    warning = null;
     sent = true;
     paint();
     try {

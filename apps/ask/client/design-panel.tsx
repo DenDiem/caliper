@@ -3,6 +3,7 @@ import type {CaliperAnnotation} from '@caliper/core';
 export interface DesignPanelProps {
   marks: readonly CaliperAnnotation[];
   sent: boolean;
+  warning: string | null;
   onArm: () => void;
   onSubmit: () => void;
 }
@@ -81,7 +82,7 @@ const MarkCard = ({annotation, index}: MarkCardProps) => {
   );
 };
 
-export const DesignPanel = ({marks, sent, onArm, onSubmit}: DesignPanelProps) => (
+export const DesignPanel = ({marks, sent, warning, onArm, onSubmit}: DesignPanelProps) => (
   <aside class="caliper-design-panel">
     <header class="caliper-design-panel__head">
       <div class="caliper-design-panel__brand">
@@ -118,14 +119,17 @@ export const DesignPanel = ({marks, sent, onArm, onSubmit}: DesignPanelProps) =>
       {sent ? (
         <span class="caliper-design-panel__done">✓ Sent to the agent — you can close this window</span>
       ) : (
-        <button
-          type="button"
-          class="caliper-design-panel__submit"
-          disabled={marks.length === 0}
-          onClick={onSubmit}
-        >
-          Submit {marks.length} mark{marks.length === 1 ? '' : 's'} to the agent
-        </button>
+        <>
+          {warning ? <p class="caliper-design-panel__warning">{warning}</p> : null}
+          <button
+            type="button"
+            class="caliper-design-panel__submit"
+            disabled={marks.length === 0}
+            onClick={onSubmit}
+          >
+            Submit {marks.length} mark{marks.length === 1 ? '' : 's'} to the agent
+          </button>
+        </>
       )}
     </footer>
   </aside>
