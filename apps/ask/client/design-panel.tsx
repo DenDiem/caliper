@@ -3,6 +3,7 @@ import type {CaliperAnnotation} from '@caliper/core';
 export interface DesignPanelProps {
   marks: readonly CaliperAnnotation[];
   sent: boolean;
+  armed: boolean;
   warning: string | null;
   onArm: () => void;
   onSubmit: () => void;
@@ -82,7 +83,7 @@ const MarkCard = ({annotation, index}: MarkCardProps) => {
   );
 };
 
-export const DesignPanel = ({marks, sent, warning, onArm, onSubmit}: DesignPanelProps) => (
+export const DesignPanel = ({marks, sent, armed, warning, onArm, onSubmit}: DesignPanelProps) => (
   <aside class="caliper-design-panel">
     <header class="caliper-design-panel__head">
       <div class="caliper-design-panel__brand">
@@ -96,10 +97,17 @@ export const DesignPanel = ({marks, sent, warning, onArm, onSubmit}: DesignPanel
 
     {sent ? null : (
       <div class="caliper-design-panel__tools">
-        <button type="button" class="caliper-design-panel__arm" onClick={onArm}>
+        <button
+          type="button"
+          class={armed ? 'caliper-design-panel__arm caliper-design-panel__arm--on' : 'caliper-design-panel__arm'}
+          onClick={onArm}
+        >
           <span class="caliper-design-panel__arm-dot" aria-hidden="true" />
-          Arm picker
+          {armed ? 'PICKER ON' : 'PICKER OFF'}
         </button>
+        <span class="caliper-design-panel__arm-hint">
+          {armed ? 'Hold Alt to use the app' : 'Hold Alt to mark'}
+        </span>
       </div>
     )}
 

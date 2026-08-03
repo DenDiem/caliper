@@ -1,7 +1,13 @@
 import type {Box, CaliperAnnotation} from '@caliper/core';
 
-export interface ToggleMessage {
-  type: 'caliper/toggle';
+// Mount the overlay in its persisted mode (Browse by default). Sent when the panel (re)opens.
+export interface EngageMessage {
+  type: 'caliper/engage';
+}
+
+// ⌥⇧C: flip Mark ⇄ Browse (mounting if needed), never unmount.
+export interface ToggleModeMessage {
+  type: 'caliper/toggle-mode';
 }
 
 export interface AnnotationCreatedMessage {
@@ -16,11 +22,6 @@ export interface CaptureMessage {
   dpr: number;
 }
 
-export interface ToggleTabMessage {
-  type: 'caliper/toggle-tab';
-  tabId: number;
-}
-
 export interface DisarmMessage {
   type: 'caliper/disarm';
 }
@@ -28,6 +29,19 @@ export interface DisarmMessage {
 export interface DisarmTabMessage {
   type: 'caliper/disarm-tab';
   tabId: number;
+}
+
+// Set the overlay's mode (armed = Mark, else Browse) and ensure it is mounted. `set-mode` reaches the
+// content script; `set-mode-tab` is the sidepanel's request the background forwards to the tab.
+export interface SetModeMessage {
+  type: 'caliper/set-mode';
+  armed: boolean;
+}
+
+export interface SetModeTabMessage {
+  type: 'caliper/set-mode-tab';
+  tabId: number;
+  armed: boolean;
 }
 
 export type StoreOp =
@@ -45,24 +59,28 @@ export interface StoreOpMessage {
 }
 
 export type CaliperMessage =
-  | ToggleMessage
+  | EngageMessage
+  | ToggleModeMessage
   | AnnotationCreatedMessage
   | CaptureMessage
-  | ToggleTabMessage
   | DisarmMessage
   | DisarmTabMessage
+  | SetModeMessage
+  | SetModeTabMessage
   | StoreOpMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
   if (typeof value !== 'object' || value === null) return false;
   const type: unknown = Reflect.get(value, 'type');
   return (
-    type === 'caliper/toggle' ||
+    type === 'caliper/engage' ||
+    type === 'caliper/toggle-mode' ||
     type === 'caliper/annotation-created' ||
     type === 'caliper/capture' ||
-    type === 'caliper/toggle-tab' ||
     type === 'caliper/disarm' ||
     type === 'caliper/disarm-tab' ||
+    type === 'caliper/set-mode' ||
+    type === 'caliper/set-mode-tab' ||
     type === 'caliper/store-op'
   );
 };

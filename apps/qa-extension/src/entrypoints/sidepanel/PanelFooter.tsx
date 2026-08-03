@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'preact/hooks';
-import {armPicker} from './arm';
+import {setPickerMode} from './arm';
 
-const ARMED_KEY = 'caliper.armed';
+const MODE_KEY = 'caliper.pickerArmed';
 
 interface Props {
   copied: string | null;
@@ -17,10 +17,10 @@ export const PanelFooter = ({copied, jiraLabel, onCopyToon, onJira, onJson, onZi
   const [armed, setArmed] = useState(false);
 
   useEffect(() => {
-    const read = () => void chrome.storage.local.get(ARMED_KEY).then((store) => setArmed(store[ARMED_KEY] === true));
+    const read = () => void chrome.storage.local.get(MODE_KEY).then((store) => setArmed(store[MODE_KEY] === true));
     read();
     const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
-      if (ARMED_KEY in changes) read();
+      if (MODE_KEY in changes) read();
     };
     chrome.storage.local.onChanged.addListener(listener);
     return () => chrome.storage.local.onChanged.removeListener(listener);
@@ -52,11 +52,12 @@ export const PanelFooter = ({copied, jiraLabel, onCopyToon, onJira, onJson, onZi
 
         <button
           class={armed ? 'arm arm--on' : 'arm'}
+          title="Mark ⇄ Browse (⌥⇧C) · hold Alt to invert"
           onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => void armPicker()}
+          onClick={() => void setPickerMode(!armed)}
         >
           <span class="arm__dot" />
-          {armed ? 'ARMED ⌥⇧C' : 'ARM PICKER'}
+          {armed ? 'PICKER ON' : 'PICKER OFF'}
         </button>
       </div>
     </footer>

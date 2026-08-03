@@ -60,17 +60,30 @@ export const bootDesign = (): void => {
   const marks: CaliperAnnotation[] = [];
   let sent = false;
   let handle: OverlayHandle | null = null;
+  // Same model as the extension — ON (Mark): clicks mark, hold Alt to drive the app; OFF (Browse):
+  // clicks drive the app, hold Alt to mark. The single toggle flips between them; the overlay stays
+  // mounted in both so Alt always inverts. Closing the window is the full stop. Unlike the extension
+  // this window is opened *to* mark, so it starts ON.
+  let picking = true;
   let warning: string | null = null;
   // Set once the content-less-comment warning has been shown; a second Submit then goes through.
   let contentWarningShown = false;
+
+  const toggleArm = (): void => {
+    picking = !picking;
+    handle?.setActive(true);
+    handle?.setArmed(picking);
+    paint();
+  };
 
   const paint = (): void => {
     render(
       <DesignPanel
         marks={marks}
         sent={sent}
+        armed={picking}
         warning={warning}
-        onArm={() => handle?.setActive(true)}
+        onArm={toggleArm}
         onSubmit={() => void submit()}
       />,
       container,
@@ -108,7 +121,12 @@ export const bootDesign = (): void => {
       paint();
       void postMark(annotation).catch(() => undefined);
     },
+    onExit: () => {
+      picking = false;
+      paint();
+    },
   });
 
+  handle.setArmed(picking);
   paint();
 };

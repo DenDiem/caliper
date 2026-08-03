@@ -52,29 +52,61 @@ export default defineContentScript({
       });
     };
 
-    const ARMED_KEY = 'caliper.armed';
-    const setArmed = (value: boolean): void => void chrome.storage.local.set({[ARMED_KEY]: value});
+    // Engaged = overlay mounted. It stays mounted in BOTH modes so Alt always inverts: Mark (armed)
+    // marks on click and Alt reaches the app; Browse (not armed) reaches the app on click and Alt
+    // marks. The single sidepanel toggle flips the mode; the overlay only unmounts when the panel
+    // closes or you leave the tab. Mount state lives in caliper.armed, the mode in caliper.pickerArmed.
+    const ENGAGED_KEY = 'caliper.armed';
+    const MODE_KEY = 'caliper.pickerArmed';
 
-    const disarm = (): void => {
+    let markMode = false;
+
+    const persistEngaged = (value: boolean): void =>
+      void chrome.storage.local.set({[ENGAGED_KEY]: value});
+    const persistMode = (value: boolean): void => void chrome.storage.local.set({[MODE_KEY]: value});
+
+    // Default (unset) is Browse: opening the panel engages passively, clicks reach the app, Alt marks.
+    const readMode = async (): Promise<boolean> =>
+      (await chrome.storage.local.get(MODE_KEY))[MODE_KEY] === true;
+
+    const applyMode = (armed: boolean): void => {
+      markMode = armed;
+      if (!handle) {
+        handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft), onExit: disengage});
+        persistEngaged(true);
+      }
+      handle.setArmed(armed);
+    };
+
+    // Mount in the persisted mode without changing it — used when the panel (re)opens.
+    const engage = async (): Promise<void> => applyMode(await readMode());
+
+    // Flip and persist the mode; guarantees the overlay is mounted so the toggle also (re)engages.
+    const setMode = (armed: boolean): void => {
+      applyMode(armed);
+      persistMode(armed);
+    };
+
+    // ⌥⇧C flips Mark ⇄ Browse (mounting if needed) instead of unmounting.
+    const toggleMode = (): void => setMode(!markMode);
+
+    function disengage(): void {
       if (!handle) return;
       handle.destroy();
       handle = null;
-      setArmed(false);
-    };
-
-    const arm = (): void => {
-      if (handle) return;
-      handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft), onExit: disarm});
-      setArmed(true);
-    };
+      persistEngaged(false);
+    }
 
     chrome.runtime.onMessage.addListener((message: unknown) => {
       if (!isCaliperMessage(message)) return;
-      if (message.type === 'caliper/toggle') {
-        if (handle) disarm();
-        else arm();
+      if (message.type === 'caliper/engage') {
+        void engage();
+      } else if (message.type === 'caliper/toggle-mode') {
+        toggleMode();
+      } else if (message.type === 'caliper/set-mode') {
+        setMode(message.armed);
       } else if (message.type === 'caliper/disarm') {
-        disarm();
+        disengage();
       }
     });
   },
