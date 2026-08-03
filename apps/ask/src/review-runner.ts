@@ -1,7 +1,8 @@
-import {allAnswered, pendingRefs, toReviewToon} from '@caliper/core';
+import {allAnswered, pendingRefs, toReviewToon, unresolvedRefs} from '@caliper/core';
 import type {AskPayload, ReviewSessionState} from '@caliper/core';
 import {launchReviewBrowser} from './browser/launch';
 import type {BrowserWindow} from './browser/launch';
+import {isTargetReachable, unreachableTargetError} from './browser/reachable';
 import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
 import {startSnippetServer} from './http/snippet-server';
@@ -74,6 +75,7 @@ export class ReviewRunner {
     const target = payload.target ?? this.defaultTarget();
     if (!target) throw noTargetError();
     if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
+    if (!(await isTargetReachable(target))) throw unreachableTargetError(target);
 
     const session = this.active ?? (await this.ensureSession(target));
     this.registry.merge(session.id, payload.zones);
@@ -209,12 +211,17 @@ export class ReviewRunner {
   // per-zone question text would otherwise echo on each caliper_ask/caliper_wait. The answers arrive
   // once, in the final (completed) result.
   private pendingStatus(state: ReviewSessionState): string {
-    return [
+    const unresolved = unresolvedRefs(state);
+    const lines = [
       'review:',
       `  id: ${state.id}`,
       `  count: ${state.zones.length}`,
+      `  resolved: ${state.zones.length - unresolved.length}/${state.zones.length}`,
       `  pending: ${pendingRefs(state).length}`,
-    ].join('\n');
+    ];
+    // Only when some selector matched nothing — otherwise the line is noise on a healthy review.
+    if (unresolved.length > 0) lines.push(`  unresolved: [${unresolved.join(', ')}]`);
+    return lines.join('\n');
   }
 
   // Driven by the registry subscription: closes the window the moment the review becomes fully

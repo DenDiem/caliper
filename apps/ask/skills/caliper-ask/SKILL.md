@@ -28,12 +28,21 @@ Each call interrupts the developer; only ask what you actually cannot resolve yo
 
 ## Which dev server (target)
 
-`caliper init` pins one dev-server URL (`CALIPER_TARGET`), used as the default. If that default is
-wrong for the work at hand — you're in a different project than the one it was pinned for, several
-dev servers are up on different ports, or Caliper was installed globally — don't rely on the pin:
-read the project's dev port from its config (Vite → `5173`, Angular → `4200`, Next / CRA → `3000`,
-or whatever the `dev`/`serve` script uses) and pass `target` explicitly. Both `caliper_ask` and
-`caliper_design` accept an optional `target` (`http://localhost:<port>`); it must be a loopback URL.
+`caliper init` pins one dev-server URL as `CALIPER_TARGET`; it is the default, and the tool
+descriptions show its current value. Prefer it: call `caliper_ask` / `caliper_design` with no `target`
+and let the pin open the server — do not preflight a guessed port.
+
+If the pin is wrong for the work at hand — you're in a different project than the one it was pinned
+for, several dev servers are up, or Caliper was installed globally — read the real target from
+configuration, never from a framework's default port:
+
+- the pinned value in `.mcp.json` → `mcpServers.caliper.env.CALIPER_TARGET` (project scope), or the
+  same entry in `~/.claude.json` (global);
+- the project's own dev-server config — `angular.json` → `serve.options.port`, `vite.config.*` →
+  `server.port`, the `dev`/`serve` script in `package.json` — not a remembered "Angular is 4200".
+
+Then pass `target` explicitly. Both tools accept an optional `target` (`http://localhost:<port>`); it
+must be a loopback URL.
 
 ## Opening design mode (caliper_design)
 

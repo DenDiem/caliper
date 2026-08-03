@@ -4,6 +4,7 @@ import {toToon} from '@caliper/core';
 import type {Box, CaliperSession} from '@caliper/core';
 import {launchDesignBrowser} from './browser/launch';
 import type {BrowserWindow} from './browser/launch';
+import {isTargetReachable, unreachableTargetError} from './browser/reachable';
 import {createCdpConnection} from './browser/cdp';
 import type {CdpConnection} from './browser/cdp';
 import {makeDesignApiHandlers} from './http/design-api';
@@ -61,6 +62,7 @@ export class DesignRunner {
     const target = payload.target ?? process.env.CALIPER_TARGET;
     if (!target) throw noTargetError();
     if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
+    if (!(await isTargetReachable(target))) throw unreachableTargetError(target);
 
     const session = await this.ensureSession(target);
     return this.settle(session);
