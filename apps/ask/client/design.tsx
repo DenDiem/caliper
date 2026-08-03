@@ -59,10 +59,11 @@ export const bootDesign = (): void => {
   const marks: CaliperAnnotation[] = [];
   let sent = false;
   let handle: OverlayHandle | null = null;
-  // Same model as the extension: OFF (Browse, the default) — clicks drive the app, hold Alt to mark;
-  // ON (Mark) — clicks mark, hold Alt to reach the app. The single toggle flips between them; the
-  // overlay stays mounted in both so Alt always inverts. Closing the window is the full stop.
-  let picking = false;
+  // Same model as the extension — ON (Mark): clicks mark, hold Alt to drive the app; OFF (Browse):
+  // clicks drive the app, hold Alt to mark. The single toggle flips between them; the overlay stays
+  // mounted in both so Alt always inverts. Closing the window is the full stop. Unlike the extension
+  // this window is opened *to* mark, so it starts ON.
+  let picking = true;
 
   const toggleArm = (): void => {
     picking = !picking;
@@ -110,5 +111,6 @@ export const bootDesign = (): void => {
     },
   });
 
+  handle.setArmed(picking);
   paint();
 };
