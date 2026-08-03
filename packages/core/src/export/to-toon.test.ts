@@ -128,6 +128,38 @@ describe('toToon', () => {
     expect(output).not.toContain('padding-top');
   });
 
+  it('joins the per-component tokens of a mixed box shorthand instead of dropping to null', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'padding-top': {value: '32px', token: '--space-5', tokenMatch: 'exact'},
+          'padding-right': {value: '24px', token: '--space-4', tokenMatch: 'exact'},
+          'padding-bottom': {value: '32px', token: '--space-5', tokenMatch: 'exact'},
+          'padding-left': {value: '24px', token: '--space-4', tokenMatch: 'exact'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('padding,32px 24px,--space-5 --space-4,exact');
+  });
+
+  it('marks a box shorthand partial when only some sides carry a token', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'padding-top': {value: '32px', token: '--space-5', tokenMatch: 'exact'},
+          'padding-right': {value: '13px'},
+          'padding-bottom': {value: '32px', token: '--space-5', tokenMatch: 'exact'},
+          'padding-left': {value: '13px'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('padding,32px 13px,--space-5 13px,partial');
+  });
+
   it('folds mixed box sides into a shorthand value with no token', () => {
     const styled = annotation({
       target: {
@@ -303,6 +335,71 @@ describe('toToon', () => {
     });
     const output = toToon(session([area]));
     expect(output).not.toContain('text: About us');
+  });
+
+  it('always gives an area an anchor, derived from its container when the mark carries none', () => {
+    const area = annotation({
+      markType: 'area',
+      anchor: null,
+      anchorTarget: null,
+      target: {...annotation().target, selector: 'app-root div.page'},
+      region: {box: {x: 227, y: 937, width: 308, height: 228}, path: [], covers: []},
+    });
+    const output = toToon(session([area]));
+    expect(output).toContain('covers: []');
+    expect(output).toContain('anchor: within → app-root div.page');
+  });
+
+  it('reports covers for a strike mark that has them', () => {
+    const strike = annotation({
+      markType: 'strike',
+      intent: 'remove',
+      region: {
+        box: {x: 0, y: 0, width: 200, height: 40},
+        path: [],
+        covers: [{selector: 'app-recent-activity h2', coverage: 0.75}],
+      },
+    });
+    const output = toToon(session([strike]));
+    expect(output).toContain('covers: app-recent-activity h2 75%');
+  });
+
+  it('adds a bbox to element marks that share a selector, but not to a lone element mark', () => {
+    const collidingLeft = annotation({id: 'a'.repeat(36), target: {...annotation().target, box: {x: 0, y: 0, width: 100, height: 40}}});
+    const collidingRight = annotation({id: 'b'.repeat(36), target: {...annotation().target, box: {x: 0, y: 200, width: 100, height: 40}}});
+    const collided = toToon(session([collidingLeft, collidingRight]));
+    expect(collided).toContain('bbox: [0,0,100,40]');
+    expect(collided).toContain('bbox: [0,200,100,40]');
+
+    const lone = toToon(session([annotation()]));
+    expect(lone).not.toContain('bbox:');
+  });
+
+  it('labels a viewport-filling element as container-level and drops its page-dump text', () => {
+    const container = annotation({
+      target: {...annotation().target, box: {x: 0, y: 0, width: 1440, height: 850}},
+    });
+    const output = toToon(session([container]));
+    expect(output).toContain('change element (container-level) ram-home div.about');
+    expect(output).not.toContain('text: About us');
+  });
+
+  it('emits identical element text once, deduped across marks', () => {
+    const first = annotation({id: 'a'.repeat(36), target: {...annotation().target, selector: 'ram-home div.a'}});
+    const second = annotation({id: 'b'.repeat(36), target: {...annotation().target, selector: 'ram-home div.b'}});
+    const output = toToon(session([first, second]));
+    expect(output.match(/text: About us/g)?.length).toBe(1);
+  });
+
+  it('states the homogeneous el scope once instead of dropping the column silently', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('scope: el\nstyles[2]{selector,property,value,token,match}:');
+  });
+
+  it('carries the area-bbox and empty-covers guidance in help', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('bbox is where the region sits, not a size to apply');
+    expect(output).toContain('`covers: []` is conclusive');
   });
 
   it('gives an add mark an anchor and target', () => {

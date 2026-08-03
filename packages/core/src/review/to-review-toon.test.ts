@@ -40,4 +40,17 @@ describe('toReviewToon', () => {
     const out = toReviewToon(base());
     expect(out).not.toContain('was not built yet');
   });
+
+  it('points the agent at the supplied selector, not a data-caliper-ref attribute', () => {
+    const out = toReviewToon(addZones(base(), [{ref: 'z1', question: 'q'}]));
+    expect(out).toContain("Apply each answer at the zone's anchor");
+    expect(out).not.toContain('data-caliper-ref');
+  });
+
+  it('renders a dismissed verdict as its own status', () => {
+    const s = submitAnswers(addZones(base(), [{ref: 'z1', question: 'q'}]), [
+      {ref: 'z1', answer: 'irrelevant to the redesign', verdict: 'dismissed'},
+    ]);
+    expect(toReviewToon(s)).toContain('z1,irrelevant to the redesign,dismissed');
+  });
 });

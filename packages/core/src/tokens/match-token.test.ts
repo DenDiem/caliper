@@ -115,6 +115,34 @@ describe('matchToken', () => {
     expect(matchToken('color', 'rgb(255, 0, 0)', tokens)).toEqual({token: null, tokenMatch: null});
     expect(matchToken('font-size', '13px', tokens)).toEqual({token: null, tokenMatch: null});
   });
+
+  it('matches every component of a multi-value shorthand and joins the tokens', () => {
+    const space = new Map<string, string>([
+      ['--space-5', '32px'],
+      ['--space-4', '24px'],
+    ]);
+    expect(matchToken('padding', '32px 24px', space)).toEqual({
+      token: '--space-5 --space-4',
+      tokenMatch: 'exact',
+    });
+    expect(matchToken('border-radius', '32px 24px 32px 24px', space)).toEqual({
+      token: '--space-5 --space-4 --space-5 --space-4',
+      tokenMatch: 'exact',
+    });
+  });
+
+  it('reports a shorthand as partial when only some components match, keeping the raw hardcode', () => {
+    const space = new Map<string, string>([['--space-5', '32px']]);
+    expect(matchToken('padding', '32px 13px', space)).toEqual({
+      token: '--space-5 13px',
+      tokenMatch: 'partial',
+    });
+  });
+
+  it('returns null for a shorthand where no component matches', () => {
+    const space = new Map<string, string>([['--space-5', '32px']]);
+    expect(matchToken('padding', '13px 11px', space)).toEqual({token: null, tokenMatch: null});
+  });
 });
 
 describe('toStyleValues', () => {
