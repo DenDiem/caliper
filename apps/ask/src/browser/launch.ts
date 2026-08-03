@@ -28,12 +28,16 @@ const survivedLaunch = (subprocess: ChildProcess): Promise<boolean> =>
     subprocess.once('error', onError);
   });
 
-const tryOpen = async (url: string, name: string | readonly string[], args: readonly string[]): Promise<boolean> => {
+const tryOpen = async (
+  url: string,
+  name: string | readonly string[],
+  args: readonly string[],
+): Promise<ChildProcess | null> => {
   try {
     const subprocess = await open(url, {app: {name, arguments: args}});
-    return await survivedLaunch(subprocess);
+    return (await survivedLaunch(subprocess)) ? subprocess : null;
   } catch {
-    return false;
+    return null;
   }
 };
 
@@ -68,29 +72,6 @@ const CLEAN_LAUNCH_FLAGS = [
   '--disable-features=ChromeWhatsNewUI',
 ] as const;
 
-export const launchReviewBrowser = async (url: string): Promise<void> => {
-  const profileDir = createTempProfileDir();
-  if (profileDir) {
-    const isolatedArgs = [
-      '--new-window',
-      `--user-data-dir=${profileDir}`,
-      '--start-maximized',
-      ...CLEAN_LAUNCH_FLAGS,
-    ];
-    if (await tryOpen(url, apps.chrome, isolatedArgs)) return;
-    if (await tryOpen(url, apps.edge, isolatedArgs)) return;
-  }
-
-  if (await tryOpen(url, apps.browserPrivate, [])) return;
-
-  try {
-    await open(url);
-    console.error('caliper: opened the review in the default browser (no isolated Chrome/Edge profile available).');
-  } catch (error) {
-    console.error(`caliper: could not open a browser automatically (${errorMessage(error)}). Open the review url above manually.`);
-  }
-};
-
 export interface BrowserWindow {
   close: () => void;
   debugPort: number | null;
@@ -106,6 +87,39 @@ const closer = (subprocess: ChildProcess, debugPort: number | null): BrowserWind
   },
   debugPort,
 });
+
+// The unclosable fallback: no subprocess handle, so no debug port and close() is a no-op.
+const detachedWindow = (): BrowserWindow => ({close: () => undefined, debugPort: null});
+
+// Opens the review URL in an isolated --new-window and returns a handle to close it — the ask flow's
+// injected page script can't close a --new-window itself (only an --app window), so the server kills
+// the browser process when the review completes. ask needs no CDP screenshots, so debugPort is null.
+export const launchReviewBrowser = async (url: string): Promise<BrowserWindow> => {
+  const profileDir = createTempProfileDir();
+  if (profileDir) {
+    const isolatedArgs = [
+      '--new-window',
+      `--user-data-dir=${profileDir}`,
+      '--start-maximized',
+      ...CLEAN_LAUNCH_FLAGS,
+    ];
+    const chrome = await tryOpen(url, apps.chrome, isolatedArgs);
+    if (chrome) return closer(chrome, null);
+    const edge = await tryOpen(url, apps.edge, isolatedArgs);
+    if (edge) return closer(edge, null);
+  }
+
+  const priv = await tryOpen(url, apps.browserPrivate, []);
+  if (priv) return closer(priv, null);
+
+  try {
+    await open(url);
+    console.error('caliper: opened the review in the default browser (no isolated Chrome/Edge profile available).');
+  } catch (error) {
+    console.error(`caliper: could not open a browser automatically (${errorMessage(error)}). Open the review url above manually.`);
+  }
+  return detachedWindow();
+};
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -133,8 +147,8 @@ const pollDebugPort = async (profileDir: string): Promise<number | null> => {
 
 // Design mode opens the review as a chromeless --app window in a throwaway profile and returns a
 // handle to close it when the developer submits, plus the DevTools debugging port for CDP
-// screenshots (null when unavailable). Falls back to a normal window (no close handle, no debug
-// port) when an isolated Chrome/Edge app window isn't available.
+// screenshots (null when unavailable). Falls back to a normal review window (still closeable, no
+// debug port) when an isolated Chrome/Edge app window isn't available.
 export const launchDesignBrowser = async (url: string): Promise<BrowserWindow> => {
   const profileDir = createTempProfileDir();
   if (profileDir) {
@@ -154,6 +168,5 @@ export const launchDesignBrowser = async (url: string): Promise<BrowserWindow> =
     }
   }
 
-  await launchReviewBrowser(url);
-  return {close: () => undefined, debugPort: null};
+  return launchReviewBrowser(url);
 };

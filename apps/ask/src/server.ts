@@ -10,7 +10,9 @@ import {CALIPER_VERSION, SESSION_MAX_AGE_MS} from './config';
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 const ASK_DESCRIPTION =
-  'Ask the developer to review UI regions you are unsure how to build while implementing a design. ' +
+  '**You** have specific questions about UI regions you are unsure how to build; you pin them and ' +
+  'the developer answers. (To instead let the developer freely mark up whatever they want, with no ' +
+  'questions from you, use `caliper_design`.) ' +
   'Anchor each zone with an ordinary CSS selector for an element already on the page — do not edit ' +
   'the app source to add anchors. Include the route (the path that element is on) for every zone. ' +
   "No reliable selector yet (region not built, or you're unsure)? Ask anyway — the developer can " +
@@ -23,12 +25,13 @@ const WAIT_DESCRIPTION =
   '(the review session id) returned by a PENDING caliper_ask result.';
 
 const DESIGN_DESCRIPTION =
-  'Open the running dev preview in a design-review window where the developer freely marks up the UI — ' +
-  'pick an element, strike one for removal, or lasso an area when no single element fits — and writes ' +
-  'what to change. Use it when you want the developer to point at what to build or fix rather than ' +
-  'answer specific questions. When they submit, the window closes and this returns their marks as a ' +
-  'TOON work list keyed by selector, component and styles. If the result contains "status: PENDING", ' +
-  'they have not submitted yet — call caliper_design again to keep waiting.';
+  'The developer **freely** marks up the UI and points at what to build/fix — you pose no specific ' +
+  'questions. (When you have specific pinned questions, use `caliper_ask`.) ' +
+  'Open the running dev preview in a design-review window where the developer picks an element, ' +
+  'strikes one for removal, or lassoes an area when no single element fits, and writes what to ' +
+  'change. When they submit, the window closes and this returns their marks as a TOON work list ' +
+  'keyed by selector, component and styles. If the result contains "status: PENDING", they have ' +
+  'not submitted yet — call caliper_design again to keep waiting.';
 
 const waitInputSchema = z.object({
   ticket: z.string().min(1).describe('The session id returned as "ticket" by a PENDING caliper_ask result.'),

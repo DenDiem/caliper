@@ -1,6 +1,7 @@
 import {allAnswered, pendingRefs, toReviewToon} from '@caliper/core';
 import type {AskPayload} from '@caliper/core';
 import {launchReviewBrowser} from './browser/launch';
+import type {BrowserWindow} from './browser/launch';
 import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
 import {startSnippetServer} from './http/snippet-server';
@@ -20,6 +21,9 @@ interface ActiveSession {
   reviewUrl: string;
   // Non-null in snippet mode: a status line reminding the developer the app must carry the snippet tag.
   snippetNotice: string | null;
+  // The isolated browser window; killed on completion so the ask window closes (its page script
+  // can't self-close a --new-window). A no-op placeholder until ensureSession launches the browser.
+  window: BrowserWindow;
   close: () => void;
 }
 
@@ -113,7 +117,7 @@ export class ReviewRunner {
     if (!this.starting) {
       this.starting = this.startSession(target)
         .then(async (session) => {
-          await launchReviewBrowser(session.reviewUrl);
+          session.window = await launchReviewBrowser(session.reviewUrl);
           return session;
         })
         .finally(() => {
@@ -138,7 +142,13 @@ export class ReviewRunner {
         handlers: makeApiHandlers(this.registry, state.id),
         onListen: (origin) => {
           this.registry.setOrigin(state.id, origin, [origin]);
-          const session: ActiveSession = {id: state.id, reviewUrl: origin, snippetNotice: null, close};
+          const session: ActiveSession = {
+            id: state.id,
+            reviewUrl: origin,
+            snippetNotice: null,
+            window: {close: () => undefined, debugPort: null},
+            close,
+          };
           this.active = session;
           resolve(session);
         },
@@ -167,7 +177,13 @@ export class ReviewRunner {
           const snippetNotice =
             'status: snippet mode active — the app must include ' +
             `${buildSnippetTag(port)} in its root HTML, or the review panel will not appear.`;
-          const session: ActiveSession = {id: state.id, reviewUrl: target, snippetNotice, close};
+          const session: ActiveSession = {
+            id: state.id,
+            reviewUrl: target,
+            snippetNotice,
+            window: {close: () => undefined, debugPort: null},
+            close,
+          };
           this.active = session;
           resolve(session);
         },
@@ -189,6 +205,9 @@ export class ReviewRunner {
         '`caliper init --mode snippet` and add the snippet tag instead.'
       : '';
     if (completed) {
+      session.window.close();
+      session.close();
+      if (this.active?.id === session.id) this.active = null;
       return {
         completed,
         ticket: session.id,
