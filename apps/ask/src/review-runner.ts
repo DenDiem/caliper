@@ -146,7 +146,7 @@ export class ReviewRunner {
             id: state.id,
             reviewUrl: origin,
             snippetNotice: null,
-            window: {close: () => undefined, debugPort: null},
+            window: {close: () => undefined, debugPort: null, isAlive: () => false},
             close,
           };
           this.active = session;
@@ -181,7 +181,7 @@ export class ReviewRunner {
             id: state.id,
             reviewUrl: target,
             snippetNotice,
-            window: {close: () => undefined, debugPort: null},
+            window: {close: () => undefined, debugPort: null, isAlive: () => false},
             close,
           };
           this.active = session;

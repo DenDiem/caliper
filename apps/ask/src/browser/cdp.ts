@@ -26,9 +26,10 @@ interface CaptureResult {
   result: {data: string};
 }
 
+// One captureScreenshot reply, matched back to its command by id (many captures share one socket).
 const isCaptureResult = (value: unknown): value is CaptureResult =>
   isRecord(value) &&
-  value.id === 1 &&
+  typeof value.id === 'number' &&
   isRecord(value.result) &&
   typeof value.result.data === 'string';
 
@@ -49,59 +50,122 @@ const clip = (box: Box): {x: number; y: number; width: number; height: number; s
   scale: 1,
 });
 
-const captureOverSocket = (debuggerUrl: string, box: Box): Promise<string | null> =>
+// captureBeyondViewport:false with the default fromSurface:true is deliberate: Chrome then crops the
+// already-composited surface and never enters the Emulation / device-metrics path that resizes the
+// visual viewport for a capture. Flipping either flag risks a visible viewport flash in the headful
+// window (see the "marked element jumps to the corner" investigation) — keep them as-is.
+const captureCommand = (id: number, box: Box): string =>
+  JSON.stringify({
+    id,
+    method: 'Page.captureScreenshot',
+    params: {format: 'png', clip: clip(box), captureBeyondViewport: false},
+  });
+
+// Opens the DevTools page socket and resolves once it is ready to take commands. Best-effort: a socket
+// error, an early close, or a 4s handshake timeout resolves null so the caller degrades to no capture.
+const openSocket = (debuggerUrl: string): Promise<WebSocket | null> =>
   new Promise((resolve) => {
     const socket = new WebSocket(debuggerUrl);
     let settled = false;
 
-    const finish = (value: string | null): void => {
+    const finish = (value: WebSocket | null): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      try {
-        socket.close();
-      } catch {
-        // best-effort — the socket may already be closing
+      if (value === null) {
+        try {
+          socket.close();
+        } catch {
+          // best-effort — the socket may already be closing
+        }
       }
       resolve(value);
     };
 
     const timer = setTimeout(() => finish(null), CDP_TIMEOUT_MS);
+    socket.addEventListener('open', () => finish(socket));
+    socket.addEventListener('error', () => finish(null));
+    socket.addEventListener('close', () => finish(null));
+  });
 
-    socket.addEventListener('open', () => {
-      const command = {
-        id: 1,
-        method: 'Page.captureScreenshot',
-        params: {format: 'png', clip: clip(box), captureBeyondViewport: false},
+export interface CdpConnection {
+  // Screenshots a viewport region of the design page over the already-open socket. Best-effort: a
+  // dead socket, a send failure, a malformed frame, or a 4s timeout resolves null (no crop).
+  capture(box: Box): Promise<string | null>;
+  close(): void;
+}
+
+// A design-session-scoped CDP connection: resolve the page target and open the socket once, then reuse
+// it for every capture. This keeps the overlay hidden only for the ~50-100ms a single captureScreenshot
+// command takes, instead of the ~0.5-1s a fresh /json/list + socket handshake cost on every mark.
+// Best-effort throughout: any failure to connect resolves null and the design flow proceeds without
+// screenshots, exactly as it does when DevTools is unreachable.
+export const createCdpConnection = async (debugPort: number): Promise<CdpConnection | null> => {
+  let debuggerUrl: string | null;
+  try {
+    const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
+    if (!response.ok) return null;
+    const targets: unknown = await response.json();
+    debuggerUrl = pageDebuggerUrl(targets);
+  } catch {
+    return null;
+  }
+  if (debuggerUrl === null) return null;
+
+  const socket = await openSocket(debuggerUrl);
+  if (socket === null) return null;
+
+  const pending = new Map<number, (value: string | null) => void>();
+  let nextId = 1;
+  let alive = true;
+
+  const failAll = (): void => {
+    alive = false;
+    const finishers = Array.from(pending.values());
+    pending.clear();
+    for (const finish of finishers) finish(null);
+  };
+
+  socket.addEventListener('message', (event: MessageEvent) => {
+    const parsed = parseMessage(event.data);
+    if (isCaptureResult(parsed)) pending.get(parsed.id)?.(`data:image/png;base64,${parsed.result.data}`);
+  });
+  socket.addEventListener('close', failAll);
+  socket.addEventListener('error', failAll);
+
+  const capture = (box: Box): Promise<string | null> =>
+    new Promise((resolve) => {
+      if (!alive) {
+        resolve(null);
+        return;
+      }
+      const id = nextId;
+      nextId += 1;
+      let done = false;
+      const finish = (value: string | null): void => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        pending.delete(id);
+        resolve(value);
       };
+      const timer = setTimeout(() => finish(null), CDP_TIMEOUT_MS);
+      pending.set(id, finish);
       try {
-        socket.send(JSON.stringify(command));
+        socket.send(captureCommand(id, box));
       } catch {
         finish(null);
       }
     });
 
-    socket.addEventListener('message', (event: MessageEvent) => {
-      const parsed = parseMessage(event.data);
-      if (isCaptureResult(parsed)) finish(`data:image/png;base64,${parsed.result.data}`);
-    });
+  const close = (): void => {
+    failAll();
+    try {
+      socket.close();
+    } catch {
+      // best-effort — the socket may already be closing
+    }
+  };
 
-    socket.addEventListener('error', () => finish(null));
-    socket.addEventListener('close', () => finish(null));
-  });
-
-// Screenshots a viewport region of the design page over the Chrome DevTools Protocol. Best-effort:
-// any failure (DevTools unreachable, no page target, socket error, malformed frame, 4s timeout)
-// resolves null so the design flow proceeds exactly as it does today, just without a crop.
-export const captureRegion = async (debugPort: number, box: Box): Promise<string | null> => {
-  try {
-    const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
-    if (!response.ok) return null;
-    const targets: unknown = await response.json();
-    const debuggerUrl = pageDebuggerUrl(targets);
-    if (debuggerUrl === null) return null;
-    return await captureOverSocket(debuggerUrl, box);
-  } catch {
-    return null;
-  }
+  return {capture, close};
 };
