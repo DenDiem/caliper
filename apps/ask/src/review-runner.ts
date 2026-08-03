@@ -219,10 +219,12 @@ export class ReviewRunner {
       session.window.close();
       session.close();
       if (this.active?.id === session.id) this.active = null;
+      // The review url is omitted on the final result — the window has already closed, so it is only
+      // actionable on the PENDING responses that precede completion.
       return {
         completed,
         ticket: session.id,
-        text: `${toReviewToon(state)}\n\n${reviewUrlLine}${noticeLine}${warningLine}`,
+        text: `${toReviewToon(state)}${noticeLine}${warningLine}`,
       };
     }
     const pendingLine =

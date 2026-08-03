@@ -42,4 +42,19 @@ describe('extractContext', () => {
     const attributes = extractContext(query('.info'), tokens).attributes;
     expect(Object.keys(attributes).sort()).toEqual(['aria-label', 'class', 'data-testid']);
   });
+
+  it('captures the component host selector and styles when the picked element is a distinct inner node', () => {
+    document.body.innerHTML =
+      '<app-stat-card class="stats__tight"><div class="card">Sales</div></app-stat-card>';
+    const context = extractContext(query('.card'), tokens);
+    expect(context.hostSelector).toBe('app-stat-card.stats__tight');
+    expect(context.hostStyles).not.toBeNull();
+  });
+
+  it('leaves host fields null when the picked element is itself the component host', () => {
+    document.body.innerHTML = '<app-stat-card class="stats__tight"></app-stat-card>';
+    const context = extractContext(query('app-stat-card'), tokens);
+    expect(context.hostSelector).toBeNull();
+    expect(context.hostStyles).toBeNull();
+  });
 });

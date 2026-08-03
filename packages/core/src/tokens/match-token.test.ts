@@ -68,6 +68,34 @@ describe('matchToken', () => {
     }
   });
 
+  it('matches an exact colour even when several tokens hold that identical value', () => {
+    const palette = new Map<string, string>([
+      ['--color-surface', '#ffffff'],
+      ['--color-white', '#ffffff'],
+      ['--color-bg-elevated', 'rgb(255, 255, 255)'],
+      ['--color-border', '#e4e7ec'],
+    ]);
+    expect(matchToken('background-color', 'rgb(255, 255, 255)', palette)).toEqual({
+      token: '--color-surface',
+      tokenMatch: 'exact',
+    });
+    expect(matchToken('border-top-color', 'rgb(228, 231, 236)', palette)).toEqual({
+      token: '--color-border',
+      tokenMatch: 'exact',
+    });
+  });
+
+  it('treats the same colour written in different notations as one unambiguous match', () => {
+    const palette = new Map<string, string>([
+      ['--color-surface', 'white'],
+      ['--color-white', '#ffffff'],
+    ]);
+    expect(matchToken('background-color', 'rgb(255, 255, 255)', palette)).toEqual({
+      token: '--color-surface',
+      tokenMatch: 'exact',
+    });
+  });
+
   it('never matches a dimension against a colour token', () => {
     expect(matchToken('padding-top', 'rgb(51, 51, 51)', tokens)).toEqual({
       token: null,

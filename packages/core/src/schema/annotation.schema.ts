@@ -51,6 +51,11 @@ export const elementContextSchema = z.object({
   attributes: z.record(z.string()),
   box: boxSchema,
   styles: z.record(styleValueSchema),
+  // When the picked element sits inside an app-component host that is a different element, the host's
+  // selector and styles are captured too — the margin/position/alignment a geometry mark means usually
+  // lives on the host, not the inner wrapper. Absent when the picked element is itself the host.
+  hostSelector: z.string().nullish(),
+  hostStyles: z.record(styleValueSchema).nullish(),
 });
 
 export const caliperAnnotationSchema = z.object({

@@ -1,9 +1,23 @@
-import {buildComponentChain, resolveComponent} from '../component/resolve-component';
-import type {ElementContext} from '../schema/annotation.schema';
+import {buildComponentChain, resolveComponent, resolveComponentHost} from '../component/resolve-component';
+import type {ElementContext, StyleValue} from '../schema/annotation.schema';
 import {buildSelector} from '../selector/build-selector';
 import {collectStyles} from '../styles/collect-styles';
 import type {TokenMap} from '../tokens/match-token';
 import {toStyleValues} from '../tokens/match-token';
+
+interface HostContext {
+  hostSelector: string | null;
+  hostStyles: Record<string, StyleValue> | null;
+}
+
+const collectHost = (element: Element, tokens: TokenMap): HostContext => {
+  const host = resolveComponentHost(element);
+  if (!host || host === element) return {hostSelector: null, hostStyles: null};
+  return {
+    hostSelector: buildSelector(host).selector,
+    hostStyles: toStyleValues(collectStyles(host), tokens),
+  };
+};
 
 const MAX_TEXT_LENGTH = 120;
 const IDENTIFYING_ATTRIBUTE_PREFIXES = ['data-', 'aria-'];
@@ -24,6 +38,7 @@ const collectAttributes = (element: Element): Record<string, string> => {
 export const extractContext = (element: Element, tokens: TokenMap): ElementContext => {
   const {selector, strategy, confidence} = buildSelector(element);
   const {name, source} = resolveComponent(element);
+  const {hostSelector, hostStyles} = collectHost(element, tokens);
   const rect = element.getBoundingClientRect();
 
   return {
@@ -43,5 +58,7 @@ export const extractContext = (element: Element, tokens: TokenMap): ElementConte
       height: Math.round(rect.height),
     },
     styles: toStyleValues(collectStyles(element), tokens),
+    hostSelector,
+    hostStyles,
   };
 };

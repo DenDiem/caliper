@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
-import {buildComponentChain, resolveComponent} from './resolve-component';
+import {buildComponentChain, resolveComponent, resolveComponentHost} from './resolve-component';
 
 const query = (selector: string): Element => {
   const found = document.querySelector(selector);
@@ -74,6 +74,28 @@ describe('resolveComponent', () => {
     defineVendorTag('ion-app');
     document.body.innerHTML = '<ion-app></ion-app>';
     expect(resolveComponent(query('ion-app')).name).toBe('ion-app');
+  });
+});
+
+describe('resolveComponentHost', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('returns the nearest app-component ancestor of a picked inner element', () => {
+    document.body.innerHTML = '<app-stat-card class="stats__tight"><div class="card"></div></app-stat-card>';
+    expect(resolveComponentHost(query('.card'))).toBe(query('app-stat-card'));
+  });
+
+  it('returns the element itself when it is the component host', () => {
+    document.body.innerHTML = '<app-stat-card></app-stat-card>';
+    const host = query('app-stat-card');
+    expect(resolveComponentHost(host)).toBe(host);
+  });
+
+  it('returns null when nothing in the ancestry is an app component', () => {
+    document.body.innerHTML = '<section><div class="card"></div></section>';
+    expect(resolveComponentHost(query('.card'))).toBeNull();
   });
 });
 

@@ -125,10 +125,12 @@ export class DesignRunner {
       session.window.close();
       session.close();
       if (this.active?.id === session.id) this.active = null;
+      // The review url is omitted on the final result — the window has already closed, so it is only
+      // actionable on the PENDING responses that precede submission.
       return {
         completed: true,
         ticket: session.id,
-        text: `${this.toon(state)}\n\nreview url: ${session.reviewUrl}${warning}`,
+        text: `${this.toon(state)}${warning}`,
       };
     }
 

@@ -159,6 +159,81 @@ describe('toToon', () => {
     expect(output).not.toContain('row-gap');
   });
 
+  it('folds four border-width sides that share a token into a single border-width row', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'border-top-width': {value: '1px', token: '--border-1', tokenMatch: 'exact'},
+          'border-right-width': {value: '1px', token: '--border-1', tokenMatch: 'exact'},
+          'border-bottom-width': {value: '1px', token: '--border-1', tokenMatch: 'exact'},
+          'border-left-width': {value: '1px', token: '--border-1', tokenMatch: 'exact'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('border-width,1px,--border-1,exact');
+    expect(output).not.toContain('border-top-width');
+  });
+
+  it('relabels a representative border-top-color to border-color so it does not read as top-only', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        styles: {
+          'border-top-color': {value: 'rgb(228, 231, 236)', token: '--color-border', tokenMatch: 'exact'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('border-color,"rgb(228, 231, 236)",--color-border,exact');
+    expect(output).not.toContain('border-top-color');
+  });
+
+  it('surfaces the component host styles under a scope column alongside the picked element', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        selector: 'app-stat-card.stats__tight div.card',
+        hostSelector: 'app-stat-card.stats__tight',
+        hostStyles: {
+          'margin-top': {value: '14px'},
+        },
+        styles: {
+          'padding-top': {value: '16px', token: '--spacing-4', tokenMatch: 'exact'},
+        },
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).toContain('styles[2]{scope,selector,property,value,token,match}:');
+    expect(output).toContain('host,app-stat-card.stats__tight,margin-top,14px,null,null');
+    expect(output).toContain('el,app-stat-card.stats__tight div.card,padding-top,16px,--spacing-4,exact');
+  });
+
+  it('omits the scope column when no mark contributes host styles', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('styles[2]{selector,property,value,token,match}:');
+    expect(output).not.toContain('{scope,');
+  });
+
+  it('drops empty host styles rather than emitting an empty host group', () => {
+    const styled = annotation({
+      target: {
+        ...annotation().target,
+        hostSelector: 'app-stat-card',
+        hostStyles: {},
+      },
+    });
+    const output = toToon(session([styled]));
+    expect(output).not.toContain('{scope,');
+    expect(output).not.toContain('host,');
+  });
+
+  it('reminds the agent the screenshot is a fallback', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).toContain('screenshot is a fallback');
+  });
+
   it('flattens newlines inside a comment', () => {
     const output = toToon(session([annotation({comment: 'first\nsecond'})]));
     expect(output).toContain('first second');
@@ -195,13 +270,30 @@ describe('toToon', () => {
     expect(output).toContain('covers: app-recent-activity 92%');
   });
 
-  it('always reports covers for an area, marking an empty region as none', () => {
+  it('always reports covers for an area, marking an empty region as an empty list', () => {
     const area = annotation({
       markType: 'area',
       region: {box: {x: 0, y: 0, width: 10, height: 10}, path: [], covers: []},
     });
     const output = toToon(session([area]));
-    expect(output).toContain('covers: (none)');
+    expect(output).toContain('covers: []');
+    expect(output).not.toContain('(none)');
+  });
+
+  it('drops the derived selector from an area mark header, keeping bbox and covers', () => {
+    const area = annotation({
+      markType: 'area',
+      region: {
+        box: {x: 120, y: 600, width: 400, height: 160},
+        path: [],
+        covers: [{selector: 'app-recent-activity', coverage: 0.9}],
+      },
+    });
+    const output = toToon(session([area]));
+    expect(output).toContain('09216b54 minor change area\n');
+    expect(output).not.toContain('change area ram-home div.about');
+    expect(output).toContain('bbox: [120,600,400,160]');
+    expect(output).toContain('covers: app-recent-activity 90%');
   });
 
   it('omits the misleading container text line for an area mark', () => {
