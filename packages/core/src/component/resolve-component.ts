@@ -47,6 +47,18 @@ export const resolveComponent = (element: Element): ComponentInfo => {
   return {name: null, source: null};
 };
 
+// The nearest app-component element (self or ancestor) that owns the picked element. The visible-box
+// CSS a mark means — margin, position, alignment — usually lives on this host, not the inner wrapper,
+// so extract-context collects its styles separately when the host is a different element than the target.
+export const resolveComponentHost = (element: Element): Element | null => {
+  let current: Element | null = element;
+  while (current) {
+    if (isAppComponentTag(current.tagName.toLowerCase())) return current;
+    current = current.parentElement;
+  }
+  return null;
+};
+
 export const buildComponentChain = (element: Element): string[] => {
   const chain: string[] = [];
   let current: Element | null = element;

@@ -100,6 +100,10 @@ const buildCaliperSection = (config: InstallConfig): string =>
     'No reliable selector yet? Ask anyway — the developer can click the region to point at it.',
     'If the result contains status: PENDING, call `caliper_wait` with the returned ticket to keep waiting.',
     '',
+    'When the developer says they have marked up / annotated the page, or asks to open "design mode", ' +
+      'call the `caliper_design` MCP tool instead — it opens the review window and returns their marks. ' +
+      'While the result says status: PENDING, call `caliper_design` again to keep waiting until they submit.',
+    '',
     'Default is proxy mode: nothing to change in the app. If the review page looks broken — ' +
       'failing API calls with CORS errors, an OAuth redirect bouncing out, or a Next.js ' +
       '`allowedDevOrigins` warning — that is an origin shift proxy mode cannot fix. Switch to ' +

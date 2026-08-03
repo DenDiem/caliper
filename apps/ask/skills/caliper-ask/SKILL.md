@@ -35,6 +35,12 @@ read the project's dev port from its config (Vite → `5173`, Angular → `4200`
 or whatever the `dev`/`serve` script uses) and pass `target` explicitly. Both `caliper_ask` and
 `caliper_design` accept an optional `target` (`http://localhost:<port>`); it must be a loopback URL.
 
+## Opening design mode (caliper_design)
+
+Call `caliper_design` when the developer says they've marked up / annotated the page, or asks to
+open "design mode" — it opens the review window and returns their marks. While the result says
+`status: PENDING`, call `caliper_design` again to keep waiting until they submit.
+
 ## Reading design marks (caliper_design)
 
 Each mark block leads with `markType`:

@@ -60,12 +60,14 @@ const sharedUrl = (annotations: readonly CaliperAnnotation[]): string | null => 
 // `covers`/`bbox` locate an area; `anchor` gives an `add` its insertion point — so the agent never has
 // to guess what a container-level selector really meant.
 const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): string => {
+  // An area's `selector` is a derived container anchor already carried by `anchor → target`, and it
+  // contradicts the "trust covers/bbox over selector" guidance — so it is dropped from an area's header.
   const head = [
     shortId(annotation.id),
     annotation.severity,
     annotation.intent,
     annotation.markType,
-    cell(annotation.target.selector),
+    ...(annotation.markType === 'area' ? [] : [cell(annotation.target.selector)]),
   ].join(' ');
   const lines = [`  ${head}`];
 
@@ -84,13 +86,13 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
     lines.push(`    bbox: ${formatBox(annotation.region?.box ?? annotation.target.box)}`);
   }
   // An area always reports what sits under the loop; an empty list is a real signal ("nothing under
-  // the loop"), so it prints `covers: (none)` rather than being suppressed.
+  // the loop"), so it prints `covers: []` rather than being suppressed.
   if (annotation.markType === 'area') {
     const covers = annotation.region?.covers ?? [];
     const rendered =
       covers.length > 0
         ? covers.map((cover) => `${cover.selector} ${Math.round(cover.coverage * 100)}%`).join(', ')
-        : '(none)';
+        : '[]';
     lines.push(`    covers: ${rendered}`);
   }
   if (annotation.intent === 'add' && annotation.anchor && annotation.anchorTarget) {
@@ -106,6 +108,12 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
 
 const PADDING_SIDES: readonly string[] = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
 const MARGIN_SIDES: readonly string[] = ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+const BORDER_WIDTH_SIDES: readonly string[] = [
+  'border-top-width',
+  'border-right-width',
+  'border-bottom-width',
+  'border-left-width',
+];
 
 // Folds four longhand box sides into one shorthand row: a single token when all four share it, else
 // the 1-/2-/4-value CSS shorthand string with no token (mixed sides carry no single design decision).
@@ -142,17 +150,29 @@ const foldGap = (row: StyleValue | undefined, column: StyleValue | undefined): S
   return {value: `${row.value} ${column.value}`};
 };
 
-// Rewrites a mark's styles so longhand box/gap sides read as their CSS shorthand, keeping every other
-// property in its original position. Consumed longhands collapse onto the first side encountered.
+// collect-styles surfaces one representative border colour (`border-top-color`) for a uniform border;
+// left as a longhand it misreads as "only the top border was touched", so it is presented as `border-color`.
+const relabel = (property: string): string =>
+  property === 'border-top-color' ? 'border-color' : property;
+
+// Rewrites a mark's styles so longhand box/gap/border sides read as their CSS shorthand, keeping every
+// other property in its original position. Consumed longhands collapse onto the first side encountered.
 const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] => {
   const padding = foldBox(styles['padding-top'], styles['padding-right'], styles['padding-bottom'], styles['padding-left']);
   const margin = foldBox(styles['margin-top'], styles['margin-right'], styles['margin-bottom'], styles['margin-left']);
+  const borderWidth = foldBox(
+    styles['border-top-width'],
+    styles['border-right-width'],
+    styles['border-bottom-width'],
+    styles['border-left-width'],
+  );
   const hasDirectGap = styles['gap'] !== undefined;
   const gap = hasDirectGap ? null : foldGap(styles['row-gap'], styles['column-gap']);
 
   const consumed = new Set<string>();
   if (padding) for (const side of PADDING_SIDES) consumed.add(side);
   if (margin) for (const side of MARGIN_SIDES) consumed.add(side);
+  if (borderWidth) for (const side of BORDER_WIDTH_SIDES) consumed.add(side);
   if (gap || hasDirectGap) {
     consumed.add('row-gap');
     consumed.add('column-gap');
@@ -162,7 +182,7 @@ const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] 
   const result: [string, StyleValue][] = [];
   for (const [property, style] of Object.entries(styles)) {
     if (!consumed.has(property)) {
-      result.push([property, style]);
+      result.push([relabel(property), style]);
       continue;
     }
     if (padding && PADDING_SIDES.includes(property) && !emitted.has('padding')) {
@@ -171,6 +191,9 @@ const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] 
     } else if (margin && MARGIN_SIDES.includes(property) && !emitted.has('margin')) {
       emitted.add('margin');
       result.push(['margin', margin]);
+    } else if (borderWidth && BORDER_WIDTH_SIDES.includes(property) && !emitted.has('border-width')) {
+      emitted.add('border-width');
+      result.push(['border-width', borderWidth]);
     } else if (gap && (property === 'row-gap' || property === 'column-gap') && !emitted.has('gap')) {
       emitted.add('gap');
       result.push(['gap', gap]);
@@ -179,23 +202,40 @@ const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] 
   return result;
 };
 
-// Styles the agent must act on, keyed by selector (deduped across marks) and emitted only for a
+interface StyleEntry {
+  readonly scope: 'host' | 'el';
+  readonly selector: string;
+  readonly property: string;
+  readonly style: StyleValue;
+}
+
+// Styles the agent must act on, keyed by (scope, selector) and deduped across marks, emitted only for a
 // `change` mark — an added or removed element's current styles are noise. Token-matched rows plus
 // hardcodes on tokenizable properties survive; structural noise (display, flex-direction, offsets) drops.
-const styleRows = (annotations: readonly CaliperAnnotation[]): string[][] => {
+// When a mark's picked element sits inside a distinct app-component host, that host's styles are surfaced
+// too (scope `host`) — the margin/position/alignment a geometry mark means usually lives there.
+const styleEntries = (annotations: readonly CaliperAnnotation[]): StyleEntry[] => {
   const seen = new Set<string>();
-  const rows: string[][] = [];
+  const entries: StyleEntry[] = [];
+  const collect = (scope: 'host' | 'el', selector: string, styles: Record<string, StyleValue>): void => {
+    const key = `${scope} ${selector}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    for (const [property, style] of foldStyles(styles)) {
+      if (style.token == null && !TOKENIZABLE_STYLE.test(property)) continue;
+      entries.push({scope, selector, property, style});
+    }
+  };
+
   for (const annotation of annotations) {
     if (annotation.intent !== 'change') continue;
-    const selector = annotation.target.selector;
-    if (seen.has(selector)) continue;
-    seen.add(selector);
-    for (const [property, style] of foldStyles(annotation.target.styles)) {
-      if (style.token == null && !TOKENIZABLE_STYLE.test(property)) continue;
-      rows.push([cell(selector), property, cell(style.value), cell(style.token), cell(style.tokenMatch)]);
+    const {selector, hostSelector, hostStyles} = annotation.target;
+    if (hostSelector && hostStyles && Object.keys(hostStyles).length > 0) {
+      collect('host', hostSelector, hostStyles);
     }
+    collect('el', selector, annotation.target.styles);
   }
-  return rows;
+  return entries;
 };
 
 const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] => {
@@ -208,6 +248,7 @@ const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] =
     'Match a `styles` token against the design-token variable of the same name before hardcoding a value',
     '`intent: remove` deletes the element; `intent: add` inserts relative to `anchor` (after/before/inside-*/replace) → target',
     'If a mark is ambiguous or its selector is container-level, resolve it with caliper_ask (point on the page), not a chat question',
+    'screenshot is a fallback — open it only if selector/text/covers left the mark ambiguous',
   ];
 
   if (hasScreenshots) {
@@ -249,11 +290,27 @@ export const toToon = (session: CaliperSession): string => {
           ...session.annotations.map((annotation) => annotationBlock(annotation, url === null)),
         ].join('\n');
 
-  const styles = styleRows(session.annotations);
+  const entries = styleEntries(session.annotations);
+  // The `scope` column (host vs el) appears only when a mark contributed host styles, so the common
+  // single-element case stays as narrow as before.
+  const scoped = entries.some((entry) => entry.scope === 'host');
   const sections = [block('session', sessionEntries), annotations];
 
-  if (styles.length > 0) {
-    sections.push(table('styles', ['selector', 'property', 'value', 'token', 'match'], styles));
+  if (entries.length > 0) {
+    const columns = scoped
+      ? ['scope', 'selector', 'property', 'value', 'token', 'match']
+      : ['selector', 'property', 'value', 'token', 'match'];
+    const rows = entries.map((entry) => {
+      const base = [
+        cell(entry.selector),
+        entry.property,
+        cell(entry.style.value),
+        cell(entry.style.token),
+        cell(entry.style.tokenMatch),
+      ];
+      return scoped ? [entry.scope, ...base] : base;
+    });
+    sections.push(table('styles', columns, rows));
   }
 
   sections.push(list('help', helpLines(session, hasScreenshots)));

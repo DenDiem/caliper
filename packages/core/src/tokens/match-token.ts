@@ -1,4 +1,5 @@
 import type {StyleValue} from '../schema/annotation.schema';
+import type {Rgb} from './color';
 import {deltaE, parseColor} from './color';
 
 export type TokenMap = Map<string, string>;
@@ -75,8 +76,9 @@ const matchColor = (value: string, tokens: TokenMap): TokenMatch => {
   if (!color) return NO_MATCH;
 
   let bestName: string | null = null;
+  let bestColor: Rgb | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  let ties = 0;
+  let ambiguous = false;
 
   for (const [name, tokenValue] of tokens) {
     const tokenColor = parseColor(tokenValue);
@@ -86,13 +88,17 @@ const matchColor = (value: string, tokens: TokenMap): TokenMatch => {
     if (distance < bestDistance) {
       bestDistance = distance;
       bestName = name;
-      ties = 1;
+      bestColor = tokenColor;
+      ambiguous = false;
       continue;
     }
-    if (distance === bestDistance) ties += 1;
+    // A tie is only a real guess when the equally-close token is a *different* colour. Several tokens
+    // naming one colour any way (`white`, `#fff`, `rgb(255,255,255)` for `--color-surface`,
+    // `--color-white`, …) are unambiguous, so the first-declared name is kept instead of being rejected.
+    if (distance === bestDistance && bestColor && deltaE(bestColor, tokenColor) !== 0) ambiguous = true;
   }
 
-  if (bestName === null || ties > 1) return NO_MATCH;
+  if (bestName === null || ambiguous) return NO_MATCH;
   if (bestDistance === 0) return {token: bestName, tokenMatch: 'exact'};
   if (bestDistance < NEAREST_COLOR_THRESHOLD) return {token: bestName, tokenMatch: 'nearest'};
   return NO_MATCH;
