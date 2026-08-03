@@ -1,7 +1,20 @@
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import {caliperAnnotationSchema} from '@caliper/core';
+import type {Box} from '@caliper/core';
 import type {DesignRegistry} from '../session/design-registry';
 import type {ProxyHandlers} from './proxy-server';
+
+export type CaptureFn = (box: Box) => Promise<string | null>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isBox = (value: unknown): value is Box =>
+  isRecord(value) &&
+  typeof value.x === 'number' &&
+  typeof value.y === 'number' &&
+  typeof value.width === 'number' &&
+  typeof value.height === 'number';
 
 const readJson = (req: IncomingMessage): Promise<unknown> =>
   new Promise((resolve, reject) => {
@@ -31,7 +44,11 @@ const respondBadRequest = (res: ServerResponse): void => {
   res.end('Invalid request body');
 };
 
-export const makeDesignApiHandlers = (registry: DesignRegistry, sessionId: string): ProxyHandlers => ({
+export const makeDesignApiHandlers = (
+  registry: DesignRegistry,
+  sessionId: string,
+  capture: CaptureFn,
+): ProxyHandlers => ({
   api(req, res, url) {
     if (!registry.authorize(sessionId, req, tokenFromRequest(req, url))) {
       res.writeHead(403).end();
@@ -54,6 +71,21 @@ export const makeDesignApiHandlers = (registry: DesignRegistry, sessionId: strin
           }
           registry.addMark(sessionId, parsed.data);
           res.writeHead(204).end();
+        })
+        .catch(() => respondBadRequest(res));
+      return true;
+    }
+
+    if (url.pathname.endsWith('/capture') && req.method === 'POST') {
+      readJson(req)
+        .then(async (body) => {
+          if (!isBox(body)) {
+            respondBadRequest(res);
+            return;
+          }
+          const image = await capture(body);
+          res.writeHead(200, {'content-type': 'application/json'});
+          res.end(JSON.stringify({image}));
         })
         .catch(() => respondBadRequest(res));
       return true;

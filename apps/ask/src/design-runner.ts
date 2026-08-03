@@ -1,13 +1,18 @@
+import {mkdirSync, writeFileSync} from 'node:fs';
+import {join} from 'node:path';
 import {toToon} from '@caliper/core';
-import type {CaliperSession} from '@caliper/core';
+import type {Box, CaliperSession} from '@caliper/core';
 import {launchDesignBrowser} from './browser/launch';
 import type {BrowserWindow} from './browser/launch';
+import {captureRegion} from './browser/cdp';
 import {makeDesignApiHandlers} from './http/design-api';
 import {startProxyServer} from './http/proxy-server';
 import {DesignRegistry} from './session/design-registry';
 import type {DesignSessionState} from './session/design-registry';
 import {isLoopbackTarget} from './review-runner';
 import {ASK_WINDOW_MS, CALIPER_VERSION} from './config';
+
+const ID_SHORT = 8;
 
 export interface DesignResult {
   completed: boolean;
@@ -24,6 +29,7 @@ interface ActiveDesign {
   reviewUrl: string;
   window: BrowserWindow;
   close: () => void;
+  debugPort: number | null;
 }
 
 const noTargetError = (): Error =>
@@ -62,6 +68,7 @@ export class DesignRunner {
       this.starting = this.startSession(target)
         .then(async (session) => {
           session.window = await launchDesignBrowser(session.reviewUrl);
+          session.debugPort = session.window.debugPort;
           return session;
         })
         .finally(() => {
@@ -72,6 +79,11 @@ export class DesignRunner {
     return this.starting;
   }
 
+  private capture(box: Box): Promise<string | null> {
+    const debugPort = this.active?.debugPort ?? null;
+    return debugPort === null ? Promise.resolve(null) : captureRegion(debugPort, box);
+  }
+
   private startSession(target: string): Promise<ActiveDesign> {
     const state = this.registry.open(target);
     return new Promise<ActiveDesign>((resolve, reject) => {
@@ -80,14 +92,15 @@ export class DesignRunner {
         sessionId: state.id,
         token: state.token,
         clientMode: 'design',
-        handlers: makeDesignApiHandlers(this.registry, state.id),
+        handlers: makeDesignApiHandlers(this.registry, state.id, (box) => this.capture(box)),
         onListen: (origin) => {
           this.registry.setOrigin(state.id, origin, [origin]);
           const session: ActiveDesign = {
             id: state.id,
             reviewUrl: origin,
-            window: {close: () => undefined},
+            window: {close: () => undefined, debugPort: null},
             close,
+            debugPort: null,
           };
           this.active = session;
           resolve(session);
@@ -108,6 +121,7 @@ export class DesignRunner {
       : '';
 
     if (state.submitted) {
+      this.persistScreenshots(state);
       session.window.close();
       session.close();
       if (this.active?.id === session.id) this.active = null;
@@ -138,6 +152,33 @@ export class DesignRunner {
     const lines = ['design:', `  id: ${state.id.slice(0, 8)}`, `  count: ${state.annotations.length}`];
     if (severity) lines.push(`  severity: ${severity}`);
     return lines.join('\n');
+  }
+
+  // Writes each in-memory `data:` screenshot to <cwd>/.caliper/<sessionShort>/<annShort>.png and
+  // swaps the annotation's screenshot for that relative path, so the toon carries a file the agent
+  // can open instead of an inline base64 blob. Best-effort per mark: a write failure drops the path.
+  private persistScreenshots(state: DesignSessionState): void {
+    const sessionShort = state.id.slice(0, ID_SHORT);
+    const dir = join(process.cwd(), '.caliper', sessionShort);
+    for (const annotation of state.annotations) {
+      const dataUrl = annotation.screenshot;
+      if (dataUrl === undefined || !dataUrl.startsWith('data:')) continue;
+      const relativePath = this.writeScreenshot(dir, sessionShort, annotation.id, dataUrl);
+      if (relativePath === null) delete annotation.screenshot;
+      else annotation.screenshot = relativePath;
+    }
+  }
+
+  private writeScreenshot(dir: string, sessionShort: string, annotationId: string, dataUrl: string): string | null {
+    const annShort = annotationId.slice(0, ID_SHORT);
+    try {
+      mkdirSync(dir, {recursive: true});
+      const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      writeFileSync(join(dir, `${annShort}.png`), Buffer.from(base64, 'base64'));
+      return `.caliper/${sessionShort}/${annShort}.png`;
+    } catch {
+      return null;
+    }
   }
 
   private toon(state: DesignSessionState): string {

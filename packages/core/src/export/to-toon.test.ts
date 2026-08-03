@@ -155,6 +155,16 @@ describe('toToon', () => {
     expect(output).toContain('anchor: after → app-recent-activity');
   });
 
+  it('emits the screenshot path on a mark that has one', () => {
+    const output = toToon(session([annotation({screenshot: '.caliper/45125a93/09216b54.png'})]));
+    expect(output).toContain('screenshot: .caliper/45125a93/09216b54.png');
+  });
+
+  it('omits the screenshot line when a mark has none', () => {
+    const output = toToon(session([annotation()]));
+    expect(output).not.toContain('screenshot:');
+  });
+
   it('surfaces the marked element text', () => {
     const output = toToon(session([annotation()]));
     expect(output).toContain('text: About us');
