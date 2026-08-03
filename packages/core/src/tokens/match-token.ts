@@ -19,10 +19,32 @@ const DIMENSION_VALUE_PATTERN = /^-?[\d.]+(px|rem|em|%)$/;
 
 export interface TokenMatch {
   token: string | null;
-  tokenMatch: 'exact' | 'nearest' | null;
+  tokenMatch: 'exact' | 'nearest' | 'partial' | null;
+}
+
+export interface TokenComponent {
+  readonly value: string;
+  readonly token?: string | null;
+  readonly tokenMatch?: TokenMatch['tokenMatch'];
 }
 
 const NO_MATCH: TokenMatch = {token: null, tokenMatch: null};
+
+// Joins the per-component matches of a multi-value shorthand (`padding: 32px 24px`) into one match.
+// The token string keeps each component in source order — a token name where it matched, the raw value
+// where it did not — so `--space-5 24px` reads as "first is a token, second is a hardcode". All matched
+// exactly → `exact`; all matched but some `nearest` → `nearest`; only some matched → `partial`; none → null.
+export const combineComponents = (components: readonly TokenComponent[]): TokenMatch => {
+  if (components.length === 0) return NO_MATCH;
+  const matched = components.filter((component) => component.token != null);
+  if (matched.length === 0) return NO_MATCH;
+
+  const token = components.map((component) => component.token ?? component.value).join(' ');
+  const allMatched = matched.length === components.length;
+  const anyInexact = matched.some((component) => component.tokenMatch !== 'exact');
+  const tokenMatch: TokenMatch['tokenMatch'] = !allMatched ? 'partial' : anyInexact ? 'nearest' : 'exact';
+  return {token, tokenMatch};
+};
 
 const namesWithValue = (tokens: TokenMap, predicate: (value: string) => boolean): string[] => {
   const names: string[] = [];
@@ -60,7 +82,7 @@ const preferByName = (property: string, candidates: readonly string[]): string |
   return preferred.length === 1 ? (preferred[0] ?? null) : null;
 };
 
-const matchDimension = (property: string, value: string, tokens: TokenMap): TokenMatch => {
+const matchSingleDimension = (property: string, value: string, tokens: TokenMap): TokenMatch => {
   if (!DIMENSION_VALUE_PATTERN.test(value)) return NO_MATCH;
 
   const candidates = namesWithValue(tokens, (tokenValue) => tokenValue === value);
@@ -69,6 +91,18 @@ const matchDimension = (property: string, value: string, tokens: TokenMap): Toke
   const only = candidates.length === 1 ? candidates[0] : preferByName(property, candidates);
 
   return only ? {token: only, tokenMatch: 'exact'} : NO_MATCH;
+};
+
+// A collapsed shorthand (`padding: 32px 24px`, `border-radius: 8px 4px`) is matched per component, then
+// joined — otherwise the whole shorthand reads as `null` even when every component has an exact token
+// (the regression the shorthand fold introduced). A single value falls straight through to the scalar match.
+const matchDimension = (property: string, value: string, tokens: TokenMap): TokenMatch => {
+  const parts = value.split(/\s+/).filter((part) => part.length > 0);
+  if (parts.length <= 1) return matchSingleDimension(property, value, tokens);
+
+  return combineComponents(
+    parts.map((part) => ({value: part, ...matchSingleDimension(property, part, tokens)})),
+  );
 };
 
 const matchColor = (value: string, tokens: TokenMap): TokenMatch => {

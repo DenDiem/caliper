@@ -97,5 +97,11 @@ export const submitAnswers = (
 export const pendingRefs = (state: ReviewSessionState): string[] =>
   state.zones.filter((zone) => !zone.answered).map((zone) => zone.ref);
 
+// Zones whose selector matched nothing on the page yet (no context resolved). Distinct from "pending":
+// a resolved-but-unanswered zone is on screen waiting for the developer, an unresolved one never
+// appeared. Surfacing it separates "selector missed" from "not answered" in the PENDING response.
+export const unresolvedRefs = (state: ReviewSessionState): string[] =>
+  state.zones.filter((zone) => zone.resolvedTarget === null).map((zone) => zone.ref);
+
 export const allAnswered = (state: ReviewSessionState): boolean =>
   state.zones.length > 0 && state.zones.every((zone) => zone.answered);

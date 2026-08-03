@@ -1,5 +1,5 @@
 import {batch, computed, effect, signal} from '@preact/signals';
-import {extractContext} from '@caliper/core';
+import {extractContext, isSubstantiveText} from '@caliper/core';
 import type {Box, ElementContext, ReviewSessionState, ReviewZoneState, TokenMap} from '@caliper/core';
 import {mountOverlay} from '@caliper/overlay';
 import type {OverlayHandle} from '@caliper/overlay';
@@ -131,6 +131,9 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const seenPopoverRefs = new Set<string>();
   let pickerHandle: OverlayHandle | null = null;
   let autoActivatedOnBoot = false;
+  // Set once the content-less-answer warning has been shown; a second Send then goes through, so the
+  // warning informs without hard-blocking a deliberate short answer.
+  let contentWarningShown = false;
 
   const setDraft = (ref: string, value: string): void => {
     draftsSignal.value = {...draftsSignal.value, [ref]: value};
@@ -427,6 +430,16 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
 
     if (answers.length === 0) {
       submitErrorSignal.value = 'Answer at least one question before submitting.';
+      return;
+    }
+
+    const flimsy = answers.filter((entry) => !isSubstantiveText(entry.answer));
+    if (flimsy.length > 0 && !contentWarningShown) {
+      contentWarningShown = true;
+      const sample = flimsy[0]?.answer ?? '';
+      submitErrorSignal.value =
+        `${flimsy.length} answer${flimsy.length === 1 ? '' : 's'} look empty (e.g. "${sample}"). ` +
+        'Add real detail, or click Send again to submit as-is.';
       return;
     }
 

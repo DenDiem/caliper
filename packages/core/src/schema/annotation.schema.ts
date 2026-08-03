@@ -5,15 +5,20 @@ export const authorSchema = z.enum(['human', 'agent']);
 export const annotationIntentSchema = z.enum(['change', 'remove', 'add']);
 export const markTypeSchema = z.enum(['element', 'area', 'strike']);
 export const anchorSchema = z.enum(['after', 'before', 'inside-start', 'inside-end', 'replace']);
-export const verdictSchema = z.enum(['accepted', 'rejected', 'needs-work']);
+// `dismissed` lets a reviewer (or the agent, once it can write back) record that a mark/answer was
+// rejected and taken no further — kept inside the caliper contract instead of being lost to a chat aside.
+export const verdictSchema = z.enum(['accepted', 'rejected', 'needs-work', 'dismissed']);
 export const selectorStrategySchema = z.enum(['testid', 'id', 'component-path', 'nth-path']);
 export const selectorConfidenceSchema = z.enum(['high', 'medium', 'low']);
 export const componentSourceSchema = z.enum(['ng-devmode', 'tag-heuristic']).nullable();
 
+// `partial` means the value is a multi-value shorthand (`padding: 32px 24px`) whose components matched
+// tokens individually but not all of them — `token` then joins per-component tokens (unmatched
+// components keep their raw value), so a mixed hardcode/token shorthand is still legible.
 export const styleValueSchema = z.object({
   value: z.string(),
   token: z.string().nullish(),
-  tokenMatch: z.enum(['exact', 'nearest']).nullish(),
+  tokenMatch: z.enum(['exact', 'nearest', 'partial']).nullish(),
 });
 
 export const boxSchema = z.object({
@@ -70,6 +75,8 @@ export const caliperAnnotationSchema = z.object({
   author: authorSchema.default('human'),
   concernType: z.string().nullable().default(null),
   verdict: verdictSchema.nullable().default(null),
+  // Optional free-text reason paired with a `dismissed` verdict — why the mark was rejected.
+  dismissReason: z.string().nullish(),
   answer: z.string().nullish(),
   figmaUrl: z.string().url().optional(),
   page: z.object({

@@ -9,6 +9,20 @@ import {CALIPER_VERSION, SESSION_MAX_AGE_MS} from './config';
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
+// The pinned dev-server URL, surfaced in the tool/target descriptions so the agent sees the actual
+// address in context the moment the deferred tool schema loads — no preflight probe on a guessed port.
+const PINNED_TARGET = process.env.CALIPER_TARGET;
+
+const pinnedNote = (): string =>
+  PINNED_TARGET
+    ? `The pinned dev server is ${PINNED_TARGET} (CALIPER_TARGET) — calling with no target opens it; probe nothing first.`
+    : 'No CALIPER_TARGET is pinned — pass a loopback `target` (e.g. http://localhost:3000) explicitly.';
+
+const targetParamDescription = (): string =>
+  PINNED_TARGET
+    ? `Loopback dev-server URL to open (default: the CALIPER_TARGET pinned by \`caliper init\` — currently ${PINNED_TARGET}).`
+    : 'Loopback dev-server URL to open (default: the CALIPER_TARGET pinned by `caliper init`; none is set, so pass one).';
+
 const ASK_DESCRIPTION =
   '**You** have specific questions about UI regions you are unsure how to build; you pin them and ' +
   'the developer answers. (To instead let the developer freely mark up whatever they want, with no ' +
@@ -38,10 +52,7 @@ const waitInputSchema = z.object({
 });
 
 const designInputSchema = z.object({
-  target: z
-    .string()
-    .optional()
-    .describe('Loopback dev-server URL to open (default: the CALIPER_TARGET pinned by `caliper init`).'),
+  target: z.string().optional().describe(targetParamDescription()),
 });
 
 pruneStaleSessions(SESSION_MAX_AGE_MS);
@@ -52,7 +63,7 @@ const server = new McpServer({name: 'caliper', version: CALIPER_VERSION}, {capab
 
 server.registerTool(
   'caliper_ask',
-  {description: ASK_DESCRIPTION, inputSchema: askPayloadSchema},
+  {description: `${ASK_DESCRIPTION} ${pinnedNote()}`, inputSchema: askPayloadSchema},
   async (payload) => {
     try {
       const result = await runner.ask(payload);
@@ -78,7 +89,7 @@ server.registerTool(
 
 server.registerTool(
   'caliper_design',
-  {description: DESIGN_DESCRIPTION, inputSchema: designInputSchema},
+  {description: `${DESIGN_DESCRIPTION} ${pinnedNote()}`, inputSchema: designInputSchema},
   async (payload) => {
     try {
       const result = await designRunner.design(payload);

@@ -356,6 +356,16 @@
   text-align: center;
 }
 
+.caliper-design-panel__warning {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--cal-major);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-major-fill);
+  color: var(--cal-major);
+  font: 400 11px/1.4 var(--cal-font-sans);
+}
+
 @keyframes calLand {
   0% {
     opacity: 0;

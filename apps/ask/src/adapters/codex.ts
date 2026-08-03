@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, rmSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {writeFileAtomic} from './atomic-write';
@@ -144,7 +144,15 @@ const installGuidance = (config: InstallConfig): void => {
   const path = agentsMdPath(config.global);
   mkdirSync(dirname(path), {recursive: true});
   const existing = existsSync(path) ? readFileSync(path, 'utf8') : '';
-  writeFileAtomic(path, upsertCaliperSection(existing, buildCaliperSection(config)));
+  const next = upsertCaliperSection(existing, buildCaliperSection(config));
+  // Guard against ever blanking AGENTS.md on a re-run: the merged content must be non-empty and still
+  // carry the Caliper section. An empty AGENTS.md is worse than an absent one — a `Read` returns nothing
+  // with no signal anything was meant to be there — so refuse the write instead of truncating.
+  if (next.trim().length === 0 || !next.includes(SECTION_START)) {
+    console.log(`  agents guidance -> skipped: refused to blank ${path}`);
+    return;
+  }
+  writeFileAtomic(path, next);
   console.log(`  agents guidance -> ${path}`);
 };
 
@@ -163,8 +171,15 @@ const uninstall = (config: Pick<InstallConfig, 'global'>): void => {
     const before = readFileSync(mdPath, 'utf8');
     const after = removeCaliperSection(before);
     if (after !== before) {
-      writeFileAtomic(mdPath, after);
-      console.log(`  removed agents guidance -> ${mdPath}`);
+      // If the Caliper section was the file's only content, delete the file rather than leave a 0-byte
+      // AGENTS.md behind — an empty file reads as "intentionally blank" on the next run.
+      if (after.trim().length === 0) {
+        rmSync(mdPath, {force: true});
+        console.log(`  removed agents guidance file (was caliper-only) -> ${mdPath}`);
+      } else {
+        writeFileAtomic(mdPath, after);
+        console.log(`  removed agents guidance -> ${mdPath}`);
+      }
     }
   }
 };

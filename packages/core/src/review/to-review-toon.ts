@@ -13,7 +13,8 @@ const cell = (value: string | null | undefined): string => {
   return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 };
 
-const status = (zone: ReviewZoneState): string => (zone.answered ? 'answered' : 'pending');
+const status = (zone: ReviewZoneState): string =>
+  zone.verdict === 'dismissed' ? 'dismissed' : zone.answered ? 'answered' : 'pending';
 
 // The completed review answers, without echoing each zone's question back to the agent (which already
 // holds them) — a `{ref, answer, status}` table keyed by the ref the agent stamped on the page.
@@ -32,7 +33,7 @@ export const toReviewToon = (state: ReviewSessionState): string => {
 
   const help = [
     'help[2]:',
-    '  Apply each answer at the element carrying its ref (data-caliper-ref="<ref>"); you supplied the questions, so they are not echoed',
+    "  Apply each answer at the zone's anchor (the selector you supplied for that ref); you supplied the questions, so they are not echoed",
     '  status=pending means the developer has not answered that zone; call caliper_wait again',
   ].join('\n');
 

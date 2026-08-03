@@ -1,4 +1,5 @@
 import type {CaliperAnnotation, CaliperSession, Box, StyleValue} from '../schema/annotation.schema';
+import {combineComponents} from '../tokens/match-token';
 
 const ID_LENGTH = 8;
 const TEXT_LIMIT = 80;
@@ -56,17 +57,57 @@ const sharedUrl = (annotations: readonly CaliperAnnotation[]): string | null => 
   return annotations.every((item) => item.page.url === first.page.url) ? first.page.url : null;
 };
 
+const CONTAINER_VIEWPORT_RATIO = 0.8;
+
+interface BlockContext {
+  readonly showUrl: boolean;
+  // Selectors carried by more than one element mark — those marks get a `bbox` so two picks on the same
+  // container-level selector stay distinguishable by location, not only by id and comment text.
+  readonly duplicateSelectors: ReadonlySet<string>;
+  // Element text already emitted by an earlier mark; a repeat is dropped the way `styles` are deduped,
+  // so the same truncated container dump never lands three times.
+  readonly seenText: Set<string>;
+}
+
+// True when the picked element fills most of the viewport — almost always a mis-click that resolved to a
+// page container, not a precise pick. Such a selector must not be trusted as an exact target, and its
+// `text` is the whole page rather than anything identifying.
+const isContainerLevel = (annotation: CaliperAnnotation): boolean => {
+  const {width, height} = annotation.page.viewport;
+  const area = width * height;
+  if (area <= 0) return false;
+  const {box} = annotation.target;
+  return (box.width * box.height) / area >= CONTAINER_VIEWPORT_RATIO;
+};
+
+const rendersCovers = (annotation: CaliperAnnotation): string => {
+  const covers = annotation.region?.covers ?? [];
+  return covers.length > 0
+    ? covers.map((cover) => `${cover.selector} ${Math.round(cover.coverage * 100)}%`).join(', ')
+    : '[]';
+};
+
+// An `area` with `covers: []` and no explicit anchor otherwise locates nothing — no target, no position.
+// The nearest container the picker recorded as `target.selector` is still a real DOM anchor, so an area
+// always gets one: `<anchor> → <target>` when the mark carries them, else `within → <container selector>`.
+const areaAnchorLine = (annotation: CaliperAnnotation): string => {
+  const position = annotation.anchor ?? 'within';
+  const target = annotation.anchorTarget ?? annotation.target.selector;
+  return `    anchor: ${position} → ${cell(target)}`;
+};
+
 // One block per mark. `markType` says whether `selector` is a deliberate element or a derived anchor;
 // `covers`/`bbox` locate an area; `anchor` gives an `add` its insertion point — so the agent never has
 // to guess what a container-level selector really meant.
-const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): string => {
+const annotationBlock = (annotation: CaliperAnnotation, context: BlockContext): string => {
+  const containerLevel = annotation.markType === 'element' && isContainerLevel(annotation);
   // An area's `selector` is a derived container anchor already carried by `anchor → target`, and it
   // contradicts the "trust covers/bbox over selector" guidance — so it is dropped from an area's header.
   const head = [
     shortId(annotation.id),
     annotation.severity,
     annotation.intent,
-    annotation.markType,
+    containerLevel ? 'element (container-level)' : annotation.markType,
     ...(annotation.markType === 'area' ? [] : [cell(annotation.target.selector)]),
   ].join(' ');
   const lines = [`  ${head}`];
@@ -74,29 +115,44 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
   if (annotation.target.componentName) {
     lines.push(`    component: ${cell(annotation.target.componentName)}`);
   }
-  if (showUrl) {
+  if (context.showUrl) {
     lines.push(`    url: ${cell(annotation.page.url)}`);
   }
-  // An area's `text` is its container's text (for a body-anchored area, the whole page) — it
-  // contradicts the bbox/covers that actually locate the region, so it is omitted for areas.
-  if (annotation.markType !== 'area' && annotation.target.text.trim()) {
-    lines.push(`    text: ${cell(truncate(annotation.target.text))}`);
+  // An area's `text` is its container's text (for a body-anchored area, the whole page); a container-level
+  // element's is likewise the page dump; a truncated value identifies nothing. All three are omitted, and
+  // an identical text already shown by an earlier mark is deduped away.
+  const rawText = annotation.target.text.trim();
+  const isTextNoise = containerLevel || rawText.length > TEXT_LIMIT;
+  if (annotation.markType !== 'area' && rawText && !isTextNoise) {
+    const text = truncate(rawText);
+    if (!context.seenText.has(text)) {
+      context.seenText.add(text);
+      lines.push(`    text: ${cell(text)}`);
+    }
   }
-  if (annotation.markType !== 'element') {
+  // Derived marks (area/strike) always locate by box; an element mark only needs one when its selector
+  // collides with another mark's — otherwise selector/text/styles already identify it.
+  const needsBox =
+    annotation.markType !== 'element' || context.duplicateSelectors.has(annotation.target.selector);
+  if (needsBox) {
     lines.push(`    bbox: ${formatBox(annotation.region?.box ?? annotation.target.box)}`);
   }
-  // An area always reports what sits under the loop; an empty list is a real signal ("nothing under
-  // the loop"), so it prints `covers: []` rather than being suppressed.
+  // An area always reports what sits under the loop; an empty list is a real signal ("nothing under the
+  // loop"), so it prints `covers: []`. A strike reports its covers too, but only when it has them —
+  // `[]` is not the same conclusive signal there.
   if (annotation.markType === 'area') {
-    const covers = annotation.region?.covers ?? [];
-    const rendered =
-      covers.length > 0
-        ? covers.map((cover) => `${cover.selector} ${Math.round(cover.coverage * 100)}%`).join(', ')
-        : '[]';
-    lines.push(`    covers: ${rendered}`);
+    lines.push(`    covers: ${rendersCovers(annotation)}`);
+  } else if (annotation.markType === 'strike' && (annotation.region?.covers?.length ?? 0) > 0) {
+    lines.push(`    covers: ${rendersCovers(annotation)}`);
   }
-  if (annotation.intent === 'add' && annotation.anchor && annotation.anchorTarget) {
+  if (annotation.markType === 'area') {
+    lines.push(areaAnchorLine(annotation));
+  } else if (annotation.intent === 'add' && annotation.anchor && annotation.anchorTarget) {
     lines.push(`    anchor: ${annotation.anchor} → ${cell(annotation.anchorTarget)}`);
+  }
+  if (annotation.verdict === 'dismissed') {
+    const reason = annotation.dismissReason?.trim();
+    lines.push(`    dismissed: ${reason ? cell(reason) : 'true'}`);
   }
   lines.push(`    comment: ${cell(annotation.comment)}`);
   if (annotation.screenshot) {
@@ -104,6 +160,20 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
   }
 
   return lines.join('\n');
+};
+
+const duplicateElementSelectors = (annotations: readonly CaliperAnnotation[]): Set<string> => {
+  const counts = new Map<string, number>();
+  for (const annotation of annotations) {
+    if (annotation.markType !== 'element') continue;
+    const selector = annotation.target.selector;
+    counts.set(selector, (counts.get(selector) ?? 0) + 1);
+  }
+  const duplicates = new Set<string>();
+  for (const [selector, count] of counts) {
+    if (count > 1) duplicates.add(selector);
+  }
+  return duplicates;
 };
 
 const PADDING_SIDES: readonly string[] = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
@@ -115,8 +185,16 @@ const BORDER_WIDTH_SIDES: readonly string[] = [
   'border-left-width',
 ];
 
-// Folds four longhand box sides into one shorthand row: a single token when all four share it, else
-// the 1-/2-/4-value CSS shorthand string with no token (mixed sides carry no single design decision).
+// Rebuilds the shorthand `token`/`match` from the surviving sides by joining their per-component tokens,
+// so a mixed-side shorthand (`padding: 32px 24px`) keeps `--space-5 --space-4` instead of dropping to
+// `null` — the same component-wise join the scalar matcher uses, applied here where the sides are folded.
+const foldedShorthand = (value: string, sides: readonly StyleValue[]): StyleValue => {
+  const {token, tokenMatch} = combineComponents(sides);
+  return token !== null ? {value, token, tokenMatch} : {value};
+};
+
+// Folds four longhand box sides into one shorthand row: a single token when all four share it, else the
+// 1-/2-/4-value CSS shorthand string with its components' tokens joined (`--space-5 --space-4`).
 const foldBox = (
   top: StyleValue | undefined,
   right: StyleValue | undefined,
@@ -131,11 +209,9 @@ const foldBox = (
       ? {value: top.value, token, tokenMatch: top.tokenMatch ?? null}
       : {value: top.value};
   }
-  const shorthand =
-    top.value === bottom.value && right.value === left.value
-      ? `${top.value} ${right.value}`
-      : `${top.value} ${right.value} ${bottom.value} ${left.value}`;
-  return {value: shorthand};
+  const sides =
+    top.value === bottom.value && right.value === left.value ? [top, right] : [top, right, bottom, left];
+  return foldedShorthand(sides.map((side) => side.value).join(' '), sides);
 };
 
 // Folds row-gap/column-gap into one `gap` row (single value when equal, `<row> <column>` otherwise).
@@ -147,7 +223,7 @@ const foldGap = (row: StyleValue | undefined, column: StyleValue | undefined): S
       ? {value: row.value, token, tokenMatch: row.tokenMatch ?? null}
       : {value: row.value};
   }
-  return {value: `${row.value} ${column.value}`};
+  return foldedShorthand(`${row.value} ${column.value}`, [row, column]);
 };
 
 // collect-styles surfaces one representative border colour (`border-top-color`) for a uniform border;
@@ -248,6 +324,8 @@ const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] =
     'Match a `styles` token against the design-token variable of the same name before hardcoding a value',
     '`intent: remove` deletes the element; `intent: add` inserts relative to `anchor` (after/before/inside-*/replace) → target',
     'If a mark is ambiguous or its selector is container-level, resolve it with caliper_ask (point on the page), not a chat question',
+    'An `area` bbox is where the region sits, not a size to apply — never resize an element to match it',
+    '`covers: []` is conclusive: nothing lies under the loop, so read the mark from its `anchor` target',
     'screenshot is a fallback — open it only if selector/text/covers left the mark ambiguous',
   ];
 
@@ -282,12 +360,17 @@ export const toToon = (session: CaliperSession): string => {
     sessionEntries.push(['url', cell(url)]);
   }
 
+  const blockContext: BlockContext = {
+    showUrl: url === null,
+    duplicateSelectors: duplicateElementSelectors(session.annotations),
+    seenText: new Set<string>(),
+  };
   const annotations =
     session.annotations.length === 0
       ? 'annotations: 0 defects recorded in this session'
       : [
           `annotations[${session.annotations.length}]:`,
-          ...session.annotations.map((annotation) => annotationBlock(annotation, url === null)),
+          ...session.annotations.map((annotation) => annotationBlock(annotation, blockContext)),
         ].join('\n');
 
   const entries = styleEntries(session.annotations);
@@ -310,7 +393,10 @@ export const toToon = (session: CaliperSession): string => {
       ];
       return scoped ? [entry.scope, ...base] : base;
     });
-    sections.push(table('styles', columns, rows));
+    // Homogeneous scope: state it once so the agent can tell "every row is `el`" from "the column was
+    // dropped", instead of the column vanishing silently when no mark contributed host styles.
+    const stylesTable = table('styles', columns, rows);
+    sections.push(scoped ? stylesTable : `scope: el\n${stylesTable}`);
   }
 
   sections.push(list('help', helpLines(session, hasScreenshots)));
