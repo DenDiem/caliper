@@ -410,6 +410,9 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   const onPointerDown = (event: PointerEvent) => {
     if (!active || pending || capturing || event.button !== 0) return;
     if (isOverlayEvent(event)) return;
+    // Alt lets the click reach the app instead of marking — open its selects/modals to navigate to
+    // what you want to mark, without disarming.
+    if (event.altKey) return;
     event.preventDefault();
     stroke = [{x: event.clientX, y: event.clientY}];
     strokeStrike = false;
@@ -428,7 +431,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
 
   // Selection happens on pointerup; swallow the page's own click so armed marking never navigates.
   const onClick = (event: MouseEvent) => {
-    if (!active || isOverlayEvent(event)) return;
+    if (!active || isOverlayEvent(event) || event.altKey) return;
     event.preventDefault();
     event.stopPropagation();
   };
