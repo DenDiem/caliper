@@ -5,15 +5,23 @@ import {runOp} from '../sinks/store';
 const CONTENT_SCRIPT = 'content-scripts/content.js';
 const PANEL = 'sidepanel.html';
 const OWNER_KEY = 'caliper.ownerTab';
+const ENGAGED_KEY = 'caliper.armed';
 
-const togglePicker = async (tabId: number): Promise<void> => {
+// Send a message to the tab's content script, injecting it first if it isn't there yet.
+const sendToTab = async (tabId: number, type: string): Promise<void> => {
   try {
-    await chrome.tabs.sendMessage(tabId, {type: 'caliper/toggle'});
+    await chrome.tabs.sendMessage(tabId, {type});
   } catch {
     await chrome.scripting.executeScript({target: {tabId}, files: [CONTENT_SCRIPT]});
-    await chrome.tabs.sendMessage(tabId, {type: 'caliper/toggle'});
+    await chrome.tabs.sendMessage(tabId, {type});
   }
 };
+
+// Mount the overlay in its persisted mode (Browse by default) — called whenever the panel opens on a
+// tab, so the picker is live (Alt marks) the moment the panel is up, without a separate arm step.
+const engageTab = (tabId: number): Promise<void> => sendToTab(tabId, 'caliper/engage').catch(() => undefined);
+
+const toggleModeTab = (tabId: number): Promise<void> => sendToTab(tabId, 'caliper/toggle-mode');
 
 const disarmTab = (tabId: number): Promise<void> =>
   chrome.tabs
@@ -41,6 +49,7 @@ const openPanel = (tabId: number): void => {
   void chrome.sidePanel.setOptions({tabId, path: PANEL, enabled: true});
   void chrome.sidePanel.open({tabId});
   void setOwner(tabId);
+  void engageTab(tabId);
 };
 
 // Leaving the owner tab closes the panel and drops ownership, so returning does NOT auto-reopen —
@@ -77,12 +86,22 @@ export default defineBackground(() => {
     });
   });
 
+  // A reload of the owner tab drops its content script and overlay — re-engage once it finishes so the
+  // picker survives navigation while the panel stays open. Only if it was still engaged (Escape or a
+  // panel close clears caliper.armed, and must stay off across the reload).
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status !== 'complete') return;
+    void Promise.all([getOwner(), chrome.storage.local.get(ENGAGED_KEY)]).then(([owner, store]) => {
+      if (owner === tabId && store[ENGAGED_KEY] === true) void engageTab(tabId);
+    });
+  });
+
   chrome.commands.onCommand.addListener((command, tab) => {
     if (typeof tab?.id !== 'number') return;
     const tabId = tab.id;
 
     if (command === 'toggle-picker') {
-      void togglePicker(tabId);
+      void toggleModeTab(tabId);
       return;
     }
 
@@ -103,13 +122,6 @@ export default defineBackground(() => {
 
     if (message.type === 'caliper/store-op') {
       void runOp(message.op)
-        .then(() => sendResponse(true))
-        .catch(() => sendResponse(false));
-      return true;
-    }
-
-    if (message.type === 'caliper/toggle-tab') {
-      void togglePicker(message.tabId)
         .then(() => sendResponse(true))
         .catch(() => sendResponse(false));
       return true;

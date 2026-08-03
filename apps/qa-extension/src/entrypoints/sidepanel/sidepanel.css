@@ -543,46 +543,6 @@ body {
   animation: calPulse 1.6s ease-in-out infinite;
 }
 
-/* ── picker mode switch ────────────────────────────────── */
-
-.mode {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 14px;
-  background: var(--cal-chrome);
-  border-bottom: 1px solid var(--cal-border-structure);
-}
-
-.mode__seg {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--cal-radius-20);
-  background: var(--cal-input);
-}
-
-.mode__opt {
-  flex: 1;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--cal-radius-20);
-  background: transparent;
-  color: var(--cal-text-secondary);
-  font: 500 11px/1 var(--cal-font-sans);
-  cursor: pointer;
-}
-
-.mode__opt--active {
-  background: var(--cal-teal-12);
-  color: var(--cal-teal);
-}
-
-.mode__hint {
-  font: 400 10px/1.4 var(--cal-font-mono);
-  color: var(--cal-text-hint);
-}
-
 /* ── empty state ───────────────────────────────────────── */
 
 .empty {

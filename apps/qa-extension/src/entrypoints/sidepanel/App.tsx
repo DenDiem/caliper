@@ -6,12 +6,11 @@ import {getConnection, type JiraConnection} from '../../jira/jira-auth';
 import {STORAGE} from '../../jira/jira-config';
 import {getSends} from '../../jira/jira-history';
 import {chromeStorageSink, type CaliperStore} from '../../sinks/chrome-storage.sink';
-import {armPicker, disarmPicker} from './arm';
+import {disarmPicker} from './arm';
 import {DefectCard} from './DefectCard';
 import {EmptyState} from './EmptyState';
 import {JiraSheet} from './JiraSheet';
 import {PanelFooter} from './PanelFooter';
-import {PickerMode} from './PickerMode';
 import {TaskSheet} from './TaskSheet';
 import {TitleBar} from './TitleBar';
 
@@ -116,9 +115,8 @@ export const App = () => {
   );
 
   return (
-    <div class="panel" onPointerDown={() => void disarmPicker()}>
+    <div class="panel">
       <TitleBar jiraKey={linkedKey} />
-      <PickerMode />
 
       <button class={taskSheet ? 'chip chip--open' : 'chip'} onClick={() => setTaskSheet(!taskSheet)}>
         <div class="chip__body">
@@ -131,11 +129,7 @@ export const App = () => {
       {taskSheet ? (
         <TaskSheet store={store} onChange={refresh} onClose={() => setTaskSheet(false)} />
       ) : annotations.length === 0 ? (
-        <EmptyState
-          connected={!!connection}
-          onArm={() => void armPicker()}
-          onConnect={() => void chrome.runtime.openOptionsPage()}
-        />
+        <EmptyState connected={!!connection} onConnect={() => void chrome.runtime.openOptionsPage()} />
       ) : (
         <>
           <div class="count">
