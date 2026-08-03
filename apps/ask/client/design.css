@@ -122,7 +122,8 @@
   cursor: pointer;
 }
 
-.caliper-design-panel__arm:hover {
+.caliper-design-panel__arm:hover,
+.caliper-design-panel__arm--on {
   border-color: var(--cal-teal-border-40);
   background: var(--cal-teal-12);
   color: var(--cal-teal);

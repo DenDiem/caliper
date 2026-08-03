@@ -53,19 +53,22 @@ export default defineContentScript({
     };
 
     const ARMED_KEY = 'caliper.armed';
-    const setArmed = (value: boolean): void => void chrome.storage.local.set({[ARMED_KEY]: value});
+    const persistArmed = (value: boolean): void => void chrome.storage.local.set({[ARMED_KEY]: value});
 
     const disarm = (): void => {
       if (!handle) return;
       handle.destroy();
       handle = null;
-      setArmed(false);
+      persistArmed(false);
     };
 
+    // Mounting is the extension's explicit "arm" action, so drop the picker straight into arm-picker
+    // mode (clicks mark, Alt reaches the app); passive here is simply the unmounted state.
     const arm = (): void => {
       if (handle) return;
       handle = mountOverlay({capture, onSubmit: (draft) => void submit(draft), onExit: disarm});
-      setArmed(true);
+      handle.setArmed(true);
+      persistArmed(true);
     };
 
     chrome.runtime.onMessage.addListener((message: unknown) => {

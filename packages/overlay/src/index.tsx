@@ -15,6 +15,10 @@ import overlayStyles from './overlay.css?inline';
 
 const POPOVER_SIZE = {width: 372, height: 300};
 
+// Focus-trap enforcer limits: at most REFOCUS_LIMIT re-grabs within REFOCUS_WINDOW_MS.
+const REFOCUS_LIMIT = 5;
+const REFOCUS_WINDOW_MS = 1000;
+
 export type {AnnotationDraft};
 
 export interface OverlayOptions {
@@ -27,6 +31,7 @@ export interface OverlayOptions {
 export interface OverlayHandle {
   destroy(): void;
   setActive(active: boolean): void;
+  setArmed(armed: boolean): void;
 }
 
 interface MarkMeta {
@@ -58,6 +63,10 @@ const centreOf = (box: Box): {x: number; y: number} => ({
 const isOverlayEvent = (event: Event): boolean =>
   event.target instanceof Element && event.target.closest('[data-caliper-overlay]') !== null;
 
+// AltGraph (right Alt on many layouts) reports separately from altKey; treat either as "Alt held".
+const readAlt = (event: KeyboardEvent | PointerEvent | MouseEvent): boolean =>
+  event.altKey || event.getModifierState('AltGraph');
+
 // The gesture *is* the mode: a click marks the element, a scribble strikes it out (remove), a loop
 // lassos an area. The kind is classified from the drawn path — no mode toolbar to pick first.
 export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions): OverlayHandle => {
@@ -69,8 +78,17 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   const previousCursor = document.documentElement.style.cursor;
   // Re-anchoring a review zone (onPick) only ever needs an element, so gestures are annotation-only.
   const gesturesEnabled = onPick === undefined;
+  // Review re-anchoring has no Alt-mark concept: it is always effectively armed so a click picks.
+  const isReview = !gesturesEnabled;
 
   let active = true;
+  // The base interaction mode. Passive (false, the default) lets clicks reach the app and only marks
+  // while Alt is held; armed (true) marks on click and passes clicks through only while Alt is held.
+  let armed = false;
+  let altHeld = false;
+  // Focus-trap enforcer bookkeeping — how many times, and since when, we have re-grabbed the caret.
+  let refocusCount = 0;
+  let refocusWindowStart = 0;
   let hovered: {box: Box; label: string | null} | null = null;
   let hoveredElement: Element | null = null;
   let pending: Pending | null = null;
@@ -94,8 +112,13 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     | {el: Element; tag: string; selector: string; position: {index: number; total: number} | null}
     | null = null;
 
-  const setCursor = (armed: boolean) => {
-    document.documentElement.style.cursor = armed ? 'crosshair' : previousCursor;
+  // XOR: passive+Alt or armed+no-Alt both mean "marking". Every marking behaviour gates on this, so
+  // the overlay is inert (pure passthrough) whenever it is false — it just keeps listening for Alt.
+  const effectiveArmed = (): boolean => isReview || armed !== altHeld;
+  const marking = (): boolean => active && effectiveArmed();
+
+  const setCursor = (crosshair: boolean) => {
+    document.documentElement.style.cursor = crosshair ? 'crosshair' : previousCursor;
   };
 
   const clearHover = () => {
@@ -109,6 +132,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     stroke = null;
     strokeStrike = false;
     mark = null;
+    refocusCount = 0;
     clearHover();
     paint();
   };
@@ -139,7 +163,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   };
 
   const paint = () => {
-    const idle = active && !pending && !capturing && stroke === null;
+    const idle = active && effectiveArmed() && !pending && !capturing && stroke === null;
     const strikeBox = strikeHighlightBox();
     const view = markView();
     const pendingBox = pending ? (view?.box ?? toBox(pending.el)) : null;
@@ -168,7 +192,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         ) : null}
         {stroke ? <GestureStroke points={stroke} strike={strokeStrike} /> : null}
         {view ? <GestureStroke points={view.stroke} strike={view.variant === 'strike'} /> : null}
-        {idle ? <Badge /> : null}
+        {idle ? <Badge armed={armed || isReview} /> : null}
         {idle ? <Hud /> : null}
         {placement?.leader ? (
           <svg class="caliper-leader" width={window.innerWidth} height={window.innerHeight}>
@@ -215,7 +239,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     if (frame !== null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
-      if (!active || pending || stroke !== null) return;
+      if (!marking() || pending || stroke !== null) return;
       updateHover(force);
     });
   };
@@ -226,6 +250,21 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       strokeFrame = null;
       paint();
     });
+  };
+
+  // Alt flips the effective mode without any pointer movement, so recompute the highlight and cursor
+  // the instant it changes — the mark preview and crosshair must appear/vanish under a stationary mouse.
+  const syncAlt = (next: boolean) => {
+    if (altHeld === next) return;
+    altHeld = next;
+    const live = marking();
+    setCursor(live);
+    if (live && !pending && stroke === null) {
+      updateHover(true);
+      return;
+    }
+    clearHover();
+    paint();
   };
 
   const openPending = async (
@@ -394,6 +433,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
 
   const onPointerMove = (event: PointerEvent) => {
     if (!active) return;
+    syncAlt(readAlt(event));
     if (stroke) {
       event.preventDefault();
       stroke.push({x: event.clientX, y: event.clientY});
@@ -408,11 +448,9 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   };
 
   const onPointerDown = (event: PointerEvent) => {
-    if (!active || pending || capturing || event.button !== 0) return;
+    syncAlt(readAlt(event));
+    if (!marking() || pending || capturing || event.button !== 0) return;
     if (isOverlayEvent(event)) return;
-    // Alt lets the click reach the app instead of marking — open its selects/modals to navigate to
-    // what you want to mark, without disarming.
-    if (event.altKey) return;
     event.preventDefault();
     stroke = [{x: event.clientX, y: event.clientY}];
     strokeStrike = false;
@@ -429,9 +467,11 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     finishGesture(points);
   };
 
-  // Selection happens on pointerup; swallow the page's own click so armed marking never navigates.
+  // Selection happens on pointerup; swallow the page's own click so marking never navigates. When the
+  // overlay is inert (passive without Alt, or armed with Alt held) the click falls through to the app.
   const onClick = (event: MouseEvent) => {
-    if (!active || isOverlayEvent(event) || event.altKey) return;
+    syncAlt(readAlt(event));
+    if (!marking() || isOverlayEvent(event)) return;
     event.preventDefault();
     event.stopPropagation();
   };
@@ -454,6 +494,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    syncAlt(readAlt(event));
     if (event.key === 'Escape') {
       if (pending) {
         reset();
@@ -474,8 +515,8 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       return;
     }
 
-    // Keyboard marking: only while armed and idle, and never over the popover or a page input.
-    if (!gesturesEnabled || !active || pending || stroke !== null) return;
+    // Keyboard marking: only while effectively armed and idle, never over the popover or a page input.
+    if (!gesturesEnabled || !marking() || pending || stroke !== null) return;
     if (isOverlayEvent(event) || editableFocused()) return;
 
     if (event.key.startsWith('Arrow')) {
@@ -491,19 +532,59 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     }
   };
 
+  const onKeyUp = (event: KeyboardEvent) => {
+    syncAlt(readAlt(event));
+  };
+
+  // Alt released while the window is blurred (Alt-Tab away) fires no keyup here, so it would stick on.
+  const onWindowBlur = () => {
+    syncAlt(false);
+  };
+
+  const overlayContains = (node: EventTarget | null): boolean =>
+    node instanceof Element && node.closest('[data-caliper-overlay]') !== null;
+
   // Apps whose modals trap focus (Bootstrap _enforceFocus, CDK / focus-trap, hand-rolled) yank focus
   // back into the modal the instant it lands outside. The popover lives in a shadow host on <html> —
-  // always "outside" — so its note field would lose the caret the moment it gained it. Swallow focus
-  // events in the capture phase before the app's enforcer can react: both when focus LANDS on our host
-  // (focusin/focus target = host) and when focus MOVES TO it from the modal (focusout whose
-  // relatedTarget = host) — the latter is how a trap that re-focuses on its own focusout steals the caret.
+  // always "outside" — so its note field would lose the caret the moment it gained it. Two defences:
+  //
+  // 1. Capture-phase swallow: stop the focus event before the app's enforcer can see it — both when
+  //    focus LANDS on our host (focusin/focus target = host) and when it MOVES TO it from the modal
+  //    (focusout whose relatedTarget = host, how a trap that re-focuses on its own focusout steals it).
+  // 2. Active enforcer: a trap inside a shadow root (Ionic `ion-modal`) never surfaces to (1). While a
+  //    popover is open, if focus is pulled OUT of our field to a non-overlay target, put it back next
+  //    frame. `refocusCount` caps the fight so a trap that re-steals can't spin an infinite focus war
+  //    and hang the tab — a couple of flickers are acceptable, a freeze is not. Best-effort; a live
+  //    modal is needed to confirm it, so this is unverifiable in a headless build.
   const focusTargetsOverlay = (event: FocusEvent): boolean =>
-    isOverlayEvent(event) ||
-    (event.relatedTarget instanceof Element &&
-      event.relatedTarget.closest('[data-caliper-overlay]') !== null);
+    isOverlayEvent(event) || overlayContains(event.relatedTarget);
+
+  const requestRefocus = () => {
+    const now = Date.now();
+    if (now - refocusWindowStart > REFOCUS_WINDOW_MS) {
+      refocusWindowStart = now;
+      refocusCount = 0;
+    }
+    if (refocusCount >= REFOCUS_LIMIT) return;
+    refocusCount += 1;
+    requestAnimationFrame(() => {
+      if (!pending) return;
+      const field = host.root.querySelector('.caliper-pop__text');
+      if (field instanceof HTMLElement) field.focus();
+    });
+  };
 
   const onFocusCapture = (event: FocusEvent) => {
-    if (focusTargetsOverlay(event)) event.stopImmediatePropagation();
+    if (!focusTargetsOverlay(event)) return;
+    event.stopImmediatePropagation();
+    if (
+      pending &&
+      event.type === 'focusout' &&
+      isOverlayEvent(event) &&
+      !overlayContains(event.relatedTarget)
+    ) {
+      requestRefocus();
+    }
   };
 
   document.addEventListener('focusin', onFocusCapture, true);
@@ -514,10 +595,12 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
   document.addEventListener('pointerup', onPointerUp, true);
   document.addEventListener('click', onClick, true);
   document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('keyup', onKeyUp, true);
   document.addEventListener('scroll', onScroll, true);
   window.addEventListener('resize', onScroll, true);
+  window.addEventListener('blur', onWindowBlur);
 
-  setCursor(true);
+  setCursor(marking());
   paint();
 
   return {
@@ -534,15 +617,17 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       document.removeEventListener('pointerup', onPointerUp, true);
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('keyup', onKeyUp, true);
       document.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onScroll, true);
+      window.removeEventListener('blur', onWindowBlur);
       setCursor(false);
       render(null, container);
       host.destroy();
     },
     setActive: (next: boolean) => {
       active = next;
-      setCursor(next);
+      setCursor(marking());
       if (!next) {
         clearHover();
         pending = null;
@@ -552,6 +637,12 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         mark = null;
         focus = null;
       }
+      paint();
+    },
+    setArmed: (next: boolean) => {
+      armed = next;
+      setCursor(marking());
+      clearHover();
       paint();
     },
   };

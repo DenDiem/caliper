@@ -59,13 +59,24 @@ export const bootDesign = (): void => {
   const marks: CaliperAnnotation[] = [];
   let sent = false;
   let handle: OverlayHandle | null = null;
+  // Passive by default: the picker mounts inert so you can drive the app; "Arm picker" flips it to
+  // arm-picker (clicks mark, Alt reaches the app) and back.
+  let picking = false;
+
+  const toggleArm = (): void => {
+    picking = !picking;
+    handle?.setActive(true);
+    handle?.setArmed(picking);
+    paint();
+  };
 
   const paint = (): void => {
     render(
       <DesignPanel
         marks={marks}
         sent={sent}
-        onArm={() => handle?.setActive(true)}
+        armed={picking}
+        onArm={toggleArm}
         onSubmit={() => void submit()}
       />,
       container,
@@ -91,6 +102,10 @@ export const bootDesign = (): void => {
       marks.push(annotation);
       paint();
       void postMark(annotation).catch(() => undefined);
+    },
+    onExit: () => {
+      picking = false;
+      paint();
     },
   });
 
