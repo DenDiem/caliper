@@ -7,6 +7,24 @@ import {DesignPanel} from './design-panel';
 import {postCapture, postMark, postSubmit} from './sink';
 import designStyles from './design.css?inline';
 
+// The sidebar is an injected fixed panel — a page script can't claim real browser side-panel space the
+// way the extension does — so reserve room by shifting the page left while design mode is open, else it
+// overlaps the right edge of the app. Width matches `.caliper-design-panel` in design.css.
+const PANEL_WIDTH = 340;
+
+const reservePageSpace = (): (() => void) => {
+  const root = document.documentElement;
+  const previousMargin = root.style.marginRight;
+  const previousTransition = root.style.transition;
+  const width = Math.min(PANEL_WIDTH, Math.round(window.innerWidth * 0.9));
+  root.style.transition = 'margin-right 0.15s ease';
+  root.style.marginRight = `${width}px`;
+  return () => {
+    root.style.marginRight = previousMargin;
+    root.style.transition = previousTransition;
+  };
+};
+
 const toAnnotation = (draft: AnnotationDraft): CaliperAnnotation => ({
   id: crypto.randomUUID(),
   createdAt: new Date().toISOString(),
@@ -36,6 +54,7 @@ export const bootDesign = (): void => {
   const host = createOverlayHost(designStyles, 'caliper-design-panel-host');
   const container = document.createElement('div');
   host.root.append(container);
+  const restorePageSpace = reservePageSpace();
 
   const marks: CaliperAnnotation[] = [];
   let sent = false;
@@ -61,6 +80,7 @@ export const bootDesign = (): void => {
     } catch {
       // Marks already reached the server as they were made; close the window regardless.
     }
+    restorePageSpace();
     window.close();
   };
 
