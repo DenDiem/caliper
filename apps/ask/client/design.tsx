@@ -3,7 +3,7 @@ import {mountOverlay} from '@caliper/overlay';
 import type {AnnotationDraft, OverlayHandle} from '@caliper/overlay';
 import {createOverlayHost} from '@caliper/overlay/review';
 import {render} from 'preact';
-import {postMark, postSubmit} from './sink';
+import {postCapture, postMark, postSubmit} from './sink';
 import designStyles from './design.css?inline';
 
 const toAnnotation = (draft: AnnotationDraft): CaliperAnnotation => ({
@@ -20,6 +20,7 @@ const toAnnotation = (draft: AnnotationDraft): CaliperAnnotation => ({
   verdict: null,
   ...(draft.region ? {region: draft.region} : {}),
   ...(draft.figmaUrl ? {figmaUrl: draft.figmaUrl} : {}),
+  ...(draft.screenshot ? {screenshot: draft.screenshot} : {}),
   page: {
     url: location.href,
     title: document.title,
@@ -95,6 +96,7 @@ export const bootDesign = (): void => {
   };
 
   handle = mountOverlay({
+    capture: (box) => postCapture(box),
     onSubmit: (draft) => {
       count += 1;
       paint();

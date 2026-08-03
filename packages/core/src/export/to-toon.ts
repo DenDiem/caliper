@@ -91,6 +91,9 @@ const annotationBlock = (annotation: CaliperAnnotation, showUrl: boolean): strin
     lines.push(`    anchor: ${annotation.anchor} → ${cell(annotation.anchorTarget)}`);
   }
   lines.push(`    comment: ${cell(annotation.comment)}`);
+  if (annotation.screenshot) {
+    lines.push(`    screenshot: ${cell(annotation.screenshot)}`);
+  }
 
   return lines.join('\n');
 };

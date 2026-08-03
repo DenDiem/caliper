@@ -1,4 +1,4 @@
-import type {ElementContext} from '@caliper/core';
+import type {Box, ElementContext} from '@caliper/core';
 
 const scriptSrc = (): string =>
   document.currentScript instanceof HTMLScriptElement ? document.currentScript.src : location.href;
@@ -96,6 +96,21 @@ export const postMark = (annotation: unknown) =>
     headers: authHeaders(),
     body: JSON.stringify(annotation),
   }).then(assertOk);
+
+const isImageResponse = (value: unknown): value is {image: string | null} =>
+  isRecord(value) && (typeof value.image === 'string' || value.image === null);
+
+// Best-effort: the server crops the region over CDP and returns {image}. Any failure resolves null
+// so marking proceeds without a screenshot.
+export const postCapture = (box: Box): Promise<string | null> =>
+  fetch(`${endpoint('/capture')}?t=${token}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(box),
+  })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((json: unknown) => (isImageResponse(json) ? (json.image ?? null) : null))
+    .catch(() => null);
 
 export const postSubmit = () =>
   fetch(`${endpoint('/submit')}?t=${token}`, {method: 'POST', headers: authHeaders()}).then(assertOk);

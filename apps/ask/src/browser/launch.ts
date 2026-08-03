@@ -1,11 +1,14 @@
 import type {ChildProcess} from 'node:child_process';
-import {mkdtempSync, rmSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import open, {apps, openApp} from 'open';
 
 const LAUNCH_ERROR_TIMEOUT_MS = 3000;
 const TEMP_PROFILE_PREFIX = 'caliper-ask-profile-';
+const DEVTOOLS_PORT_FILE = 'DevToolsActivePort';
+const PORT_POLL_TIMEOUT_MS = 3000;
+const PORT_POLL_INTERVAL_MS = 100;
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -90,9 +93,10 @@ export const launchReviewBrowser = async (url: string): Promise<void> => {
 
 export interface BrowserWindow {
   close: () => void;
+  debugPort: number | null;
 }
 
-const closer = (subprocess: ChildProcess): BrowserWindow => ({
+const closer = (subprocess: ChildProcess, debugPort: number | null): BrowserWindow => ({
   close: () => {
     try {
       subprocess.kill();
@@ -100,19 +104,50 @@ const closer = (subprocess: ChildProcess): BrowserWindow => ({
       // best-effort — the design client also closes itself with window.close() on submit
     }
   },
+  debugPort,
 });
 
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Chrome writes DevToolsActivePort once the debugging endpoint is listening: line 1 is the port it
+// actually bound (we ask for 0, so it picks a free one). Poll briefly for the file to appear.
+const readDebugPort = (profileDir: string): number | null => {
+  try {
+    const firstLine = readFileSync(join(profileDir, DEVTOOLS_PORT_FILE), 'utf8').split('\n', 1)[0] ?? '';
+    const port = Number.parseInt(firstLine.trim(), 10);
+    return Number.isInteger(port) && port > 0 ? port : null;
+  } catch {
+    return null;
+  }
+};
+
+const pollDebugPort = async (profileDir: string): Promise<number | null> => {
+  const deadline = Date.now() + PORT_POLL_TIMEOUT_MS;
+  for (;;) {
+    const port = readDebugPort(profileDir);
+    if (port !== null) return port;
+    if (Date.now() >= deadline) return null;
+    await delay(PORT_POLL_INTERVAL_MS);
+  }
+};
+
 // Design mode opens the review as a chromeless --app window in a throwaway profile and returns a
-// handle to close it when the developer submits. Falls back to a normal window (no close handle) when
-// an isolated Chrome/Edge app window isn't available.
+// handle to close it when the developer submits, plus the DevTools debugging port for CDP
+// screenshots (null when unavailable). Falls back to a normal window (no close handle, no debug
+// port) when an isolated Chrome/Edge app window isn't available.
 export const launchDesignBrowser = async (url: string): Promise<BrowserWindow> => {
   const profileDir = createTempProfileDir();
   if (profileDir) {
-    const appArgs = [`--app=${url}`, `--user-data-dir=${profileDir}`, ...CLEAN_LAUNCH_FLAGS];
+    const appArgs = [
+      `--app=${url}`,
+      `--user-data-dir=${profileDir}`,
+      '--remote-debugging-port=0',
+      ...CLEAN_LAUNCH_FLAGS,
+    ];
     for (const name of [apps.chrome, apps.edge]) {
       try {
         const subprocess = await openApp(name, {arguments: appArgs});
-        if (await survivedLaunch(subprocess)) return closer(subprocess);
+        if (await survivedLaunch(subprocess)) return closer(subprocess, await pollDebugPort(profileDir));
       } catch {
         // try the next browser
       }
@@ -120,5 +155,5 @@ export const launchDesignBrowser = async (url: string): Promise<BrowserWindow> =
   }
 
   await launchReviewBrowser(url);
-  return {close: () => undefined};
+  return {close: () => undefined, debugPort: null};
 };
