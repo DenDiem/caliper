@@ -1,4 +1,4 @@
-import type {AnnotationIntent, ElementContext, Region, Severity} from '@caliper/core';
+import type {Anchor, AnnotationIntent, ElementContext, MarkType, Region, Severity} from '@caliper/core';
 import {useState} from 'preact/hooks';
 
 export interface AnnotationDraft {
@@ -6,6 +6,9 @@ export interface AnnotationDraft {
   comment: string;
   severity: Severity;
   intent: AnnotationIntent;
+  markType: MarkType;
+  anchor: Anchor | null;
+  anchorTarget: string | null;
   region?: Region;
   figmaUrl?: string;
   screenshot?: string | null;
@@ -15,6 +18,9 @@ interface PopoverProps {
   context: ElementContext;
   region: Region | null;
   intent: AnnotationIntent;
+  markType: MarkType;
+  anchor: Anchor | null;
+  anchorTarget: string | null;
   screenshot: string | null;
   top: number;
   left: number;
@@ -29,7 +35,18 @@ const token = (context: ElementContext): {text: string; ok: boolean} => {
   return matched ? {text: `${matched.token} ✓`, ok: true} : {text: 'no match ⚠', ok: false};
 };
 
-export const Popover = ({context, region, intent: initialIntent, top, left, onSubmit, onCancel}: PopoverProps) => {
+export const Popover = ({
+  context,
+  region,
+  intent: initialIntent,
+  markType,
+  anchor,
+  anchorTarget,
+  top,
+  left,
+  onSubmit,
+  onCancel,
+}: PopoverProps) => {
   const [comment, setComment] = useState('');
   const [severity, setSeverity] = useState<Severity>('major');
   const [intent, setIntent] = useState<AnnotationIntent>(initialIntent);
@@ -42,12 +59,15 @@ export const Popover = ({context, region, intent: initialIntent, top, left, onSu
 
   const submit = () => {
     const trimmed = comment.trim();
-    if (intent === 'change' && !trimmed) return;
+    if (intent !== 'remove' && !trimmed) return;
     onSubmit({
       context,
       comment: trimmed || 'Remove this element',
       severity,
       intent,
+      markType,
+      anchor: intent === 'add' ? anchor : null,
+      anchorTarget: intent === 'add' ? anchorTarget : null,
       region: region ?? undefined,
       figmaUrl: figmaUrl.trim() || undefined,
     });
@@ -69,7 +89,13 @@ export const Popover = ({context, region, intent: initialIntent, top, left, onSu
 
       <textarea
         class="caliper-pop__text"
-        placeholder={intent === 'remove' ? 'Why remove it? (optional)' : 'What is wrong?'}
+        placeholder={
+          intent === 'remove'
+            ? 'Why remove it? (optional)'
+            : intent === 'add'
+              ? 'What to add here?'
+              : 'What is wrong?'
+        }
         value={comment}
         onInput={(event) => setComment(event.currentTarget.value)}
         onKeyDown={(event) => {
@@ -107,6 +133,17 @@ export const Popover = ({context, region, intent: initialIntent, top, left, onSu
           <button
             type="button"
             class={
+              intent === 'add'
+                ? 'caliper-pop__intent-opt caliper-pop__intent-opt--active caliper-pop__intent-opt--add'
+                : 'caliper-pop__intent-opt'
+            }
+            onClick={() => setIntent('add')}
+          >
+            Add
+          </button>
+          <button
+            type="button"
+            class={
               intent === 'remove'
                 ? 'caliper-pop__intent-opt caliper-pop__intent-opt--active caliper-pop__intent-opt--remove'
                 : 'caliper-pop__intent-opt'
@@ -138,7 +175,7 @@ export const Popover = ({context, region, intent: initialIntent, top, left, onSu
             Cancel
           </button>
           <button class="caliper-pop__save" onClick={submit} disabled={!canSubmit}>
-            {intent === 'remove' ? 'Mark removal' : 'Save defect'}
+            {intent === 'remove' ? 'Mark removal' : intent === 'add' ? 'Add here' : 'Save defect'}
           </button>
         </div>
       </div>

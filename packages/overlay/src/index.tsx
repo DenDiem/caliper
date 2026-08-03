@@ -1,5 +1,5 @@
 import {classifyGesture, collectTokens, elementAt, extractContext, pathBounds} from '@caliper/core';
-import type {AnnotationIntent, Box, ElementContext, Point, Region} from '@caliper/core';
+import type {Anchor, AnnotationIntent, Box, ElementContext, MarkType, Point, Region} from '@caliper/core';
 import {render} from 'preact';
 import {Badge} from './badge';
 import {FocusCursor} from './focus-cursor';
@@ -9,7 +9,7 @@ import {createOverlayHost} from './overlay-host';
 import {placePopover} from './place-popover';
 import {Popover} from './popover';
 import type {AnnotationDraft} from './popover';
-import {anchorForRegion} from './region';
+import {anchorForRegion, anchorRelation, coversForBox} from './region';
 import {GestureStroke} from './stroke';
 import overlayStyles from './overlay.css?inline';
 
@@ -29,11 +29,20 @@ export interface OverlayHandle {
   setActive(active: boolean): void;
 }
 
+interface MarkMeta {
+  markType: MarkType;
+  anchor: Anchor | null;
+  anchorTarget: string | null;
+}
+
 interface Pending {
   el: Element;
   context: ElementContext;
   intent: AnnotationIntent;
   region: Region | null;
+  markType: MarkType;
+  anchor: Anchor | null;
+  anchorTarget: string | null;
 }
 
 const toBox = (element: Element): Box => {
@@ -176,6 +185,9 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
             context={pending.context}
             region={pending.region}
             intent={pending.intent}
+            markType={pending.markType}
+            anchor={pending.anchor}
+            anchorTarget={pending.anchorTarget}
             screenshot={screenshot}
             top={placement.top}
             left={placement.left}
@@ -221,13 +233,14 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     context: ElementContext,
     intent: AnnotationIntent,
     region: Region | null,
+    meta: MarkMeta,
   ) => {
     if (onPick) {
       onPick(context);
       return;
     }
     if (!capture) {
-      pending = {el, context, intent, region};
+      pending = {el, context, intent, region, ...meta};
       clearHover();
       paint();
       return;
@@ -242,7 +255,7 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     screenshot = await capture(region?.box ?? context.box);
     host.setHidden(false);
     capturing = false;
-    pending = {el, context, intent, region};
+    pending = {el, context, intent, region, ...meta};
     paint();
   };
 
@@ -253,7 +266,12 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     if (kind === 'pick') {
       const first = points[0] ?? {x: pointerX, y: pointerY};
       const element = elementAt(document, first.x, first.y);
-      if (element) void openPending(element, extractContext(element, tokens), 'change', null);
+      if (element)
+        void openPending(element, extractContext(element, tokens), 'change', null, {
+          markType: 'element',
+          anchor: null,
+          anchorTarget: null,
+        });
       else paint();
       return;
     }
@@ -269,20 +287,25 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
       }
       const anchorBox = toBox(contained);
       mark = {el: contained, anchorBox, frameBox: anchorBox, variant: 'strike', stroke: points};
-      void openPending(contained, extractContext(contained, tokens), 'remove', null);
+      void openPending(contained, extractContext(contained, tokens), 'remove', null, {
+        markType: 'strike',
+        anchor: null,
+        anchorTarget: null,
+      });
       return;
     }
 
     // An area is defined by its lassoed box, not a single element. When nothing encloses the loop
     // — drawing over empty space below the app's own content, where the only element is <html>/
     // <body> — anchor to <body> so the region is still marked instead of silently dropped.
-    const anchor = contained ?? document.body;
-    const anchorBox = toBox(anchor);
-    mark = {el: anchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
-    void openPending(anchor, extractContext(anchor, tokens), 'change', {
-      box,
-      path: points,
-      enclosedSelectors: [],
+    const areaAnchor = contained ?? document.body;
+    const anchorBox = toBox(areaAnchor);
+    mark = {el: areaAnchor, anchorBox, frameBox: box, variant: 'area', stroke: points};
+    const context = extractContext(areaAnchor, tokens);
+    void openPending(areaAnchor, context, 'change', {box, path: points, covers: coversForBox(document, box)}, {
+      markType: 'area',
+      anchor: anchorRelation(box, areaAnchor),
+      anchorTarget: context.selector,
     });
   };
 
@@ -340,7 +363,11 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
     mark = null;
     if (variant === 'remove') {
       mark = {el: element, anchorBox: box, frameBox: box, variant: 'strike', stroke: []};
-      void openPending(element, context, 'remove', null);
+      void openPending(element, context, 'remove', null, {
+        markType: 'element',
+        anchor: null,
+        anchorTarget: null,
+      });
     } else if (variant === 'area') {
       const path: Point[] = [
         {x: box.x, y: box.y},
@@ -350,9 +377,17 @@ export const mountOverlay = ({onSubmit, capture, onPick, onExit}: OverlayOptions
         {x: box.x, y: box.y},
       ];
       mark = {el: element, anchorBox: box, frameBox: box, variant: 'area', stroke: []};
-      void openPending(element, context, 'change', {box, path, enclosedSelectors: []});
+      void openPending(element, context, 'change', {box, path, covers: coversForBox(document, box)}, {
+        markType: 'area',
+        anchor: null,
+        anchorTarget: null,
+      });
     } else {
-      void openPending(element, context, 'change', null);
+      void openPending(element, context, 'change', null, {
+        markType: 'element',
+        anchor: null,
+        anchorTarget: null,
+      });
     }
   };
 

@@ -89,7 +89,7 @@ describe('caliperAnnotationSchema', () => {
       },
     });
     expect(parsed.region?.path).toHaveLength(3);
-    expect(parsed.region?.enclosedSelectors).toEqual([]);
+    expect(parsed.region?.covers).toEqual([]);
   });
 
   it('defaults an empty session to schemaVersion 1', () => {
