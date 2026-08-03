@@ -25,6 +25,12 @@ interface ActiveSession {
   // can't self-close a --new-window). A no-op placeholder until ensureSession launches the browser.
   window: BrowserWindow;
   close: () => void;
+  // Guards teardown so the window/server close exactly once, whether the submit subscription or
+  // settle's completed branch observes completion first.
+  closed: boolean;
+  // Drops the registry subscription that closes the window on submit; a no-op placeholder until
+  // ensureSession wires the real subscription after launching the browser.
+  unsubscribe: () => void;
 }
 
 const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]']);
@@ -118,6 +124,7 @@ export class ReviewRunner {
       this.starting = this.startSession(target)
         .then(async (session) => {
           session.window = await launchReviewBrowser(session.reviewUrl);
+          session.unsubscribe = this.registry.subscribe(session.id, () => this.closeIfAnswered(session));
           return session;
         })
         .finally(() => {
@@ -148,6 +155,8 @@ export class ReviewRunner {
             snippetNotice: null,
             window: {close: () => undefined, debugPort: null, isAlive: () => false},
             close,
+            closed: false,
+            unsubscribe: () => undefined,
           };
           this.active = session;
           resolve(session);
@@ -183,6 +192,8 @@ export class ReviewRunner {
             snippetNotice,
             window: {close: () => undefined, debugPort: null, isAlive: () => false},
             close,
+            closed: false,
+            unsubscribe: () => undefined,
           };
           this.active = session;
           resolve(session);
@@ -205,6 +216,26 @@ export class ReviewRunner {
     ].join('\n');
   }
 
+  // Driven by the registry subscription: closes the window the moment the review becomes fully
+  // answered, independent of whether a settle() is currently awaiting. Without this the window
+  // survives when the developer submits between tool calls (no active waiter to trigger settle).
+  private closeIfAnswered(session: ActiveSession): void {
+    const state = this.registry.get(session.id);
+    if (state && allAnswered(state)) this.teardown(session);
+  }
+
+  // Kills the review window, closes the proxy/snippet server, and clears the active session — once.
+  // Both the submit subscription and settle's completed branch call this; the closed guard makes the
+  // second call a no-op so the two paths never double-close or race.
+  private teardown(session: ActiveSession): void {
+    if (session.closed) return;
+    session.closed = true;
+    session.unsubscribe();
+    session.window.close();
+    session.close();
+    if (this.active?.id === session.id) this.active = null;
+  }
+
   private async settle(session: ActiveSession): Promise<AskResult> {
     const state = await this.registry.wait(session.id, ASK_WINDOW_MS);
     const completed = allAnswered(state);
@@ -216,9 +247,7 @@ export class ReviewRunner {
         '`caliper init --mode snippet` and add the snippet tag instead.'
       : '';
     if (completed) {
-      session.window.close();
-      session.close();
-      if (this.active?.id === session.id) this.active = null;
+      this.teardown(session);
       // The review url is omitted on the final result — the window has already closed, so it is only
       // actionable on the PENDING responses that precede completion.
       return {
