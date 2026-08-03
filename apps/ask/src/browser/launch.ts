@@ -93,7 +93,7 @@ const closer = (subprocess: ChildProcess, debugPort: number | null): BrowserWind
       try {
         subprocess.kill();
       } catch {
-        // best-effort — the design client also closes itself with window.close() on submit
+        // best-effort — the review/design client also closes itself with window.close() on completion
       }
     },
     debugPort,
@@ -106,22 +106,26 @@ const closer = (subprocess: ChildProcess, debugPort: number | null): BrowserWind
 // relaunch would just open a second default-browser tab; the PENDING note tells the developer instead.
 const detachedWindow = (): BrowserWindow => ({close: () => undefined, debugPort: null, isAlive: () => true});
 
-// Opens the review URL in an isolated --new-window and returns a handle to close it — the ask flow's
-// injected page script can't close a --new-window itself (only an --app window), so the server kills
-// the browser process when the review completes. ask needs no CDP screenshots, so debugPort is null.
+// Opens the review URL as an isolated --app window and returns a handle to close it. --app makes the
+// window self-closable, so the review client can close it on completion (a --new-window can't be
+// closed by its own page script); the server-side process kill remains a fallback. ask needs no CDP
+// screenshots, so debugPort is null.
 export const launchReviewBrowser = async (url: string): Promise<BrowserWindow> => {
   const profileDir = createTempProfileDir();
   if (profileDir) {
-    const isolatedArgs = [
-      '--new-window',
+    const appArgs = [
+      `--app=${url}`,
       `--user-data-dir=${profileDir}`,
-      '--start-maximized',
       ...CLEAN_LAUNCH_FLAGS,
     ];
-    const chrome = await tryOpen(url, apps.chrome, isolatedArgs);
-    if (chrome) return closer(chrome, null);
-    const edge = await tryOpen(url, apps.edge, isolatedArgs);
-    if (edge) return closer(edge, null);
+    for (const name of [apps.chrome, apps.edge]) {
+      try {
+        const subprocess = await openApp(name, {arguments: appArgs});
+        if (await survivedLaunch(subprocess)) return closer(subprocess, null);
+      } catch {
+        // try the next browser
+      }
+    }
   }
 
   const priv = await tryOpen(url, apps.browserPrivate, []);

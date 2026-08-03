@@ -21,8 +21,9 @@ interface ActiveSession {
   reviewUrl: string;
   // Non-null in snippet mode: a status line reminding the developer the app must carry the snippet tag.
   snippetNotice: string | null;
-  // The isolated browser window; killed on completion so the ask window closes (its page script
-  // can't self-close a --new-window). A no-op placeholder until ensureSession launches the browser.
+  // The isolated --app browser window. The review client closes it on completion via window.close();
+  // killing this process is a fallback that also frees resources. A no-op placeholder until
+  // ensureSession launches the browser.
   window: BrowserWindow;
   close: () => void;
   // Guards teardown so the window/server close exactly once, whether the submit subscription or

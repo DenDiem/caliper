@@ -1,5 +1,5 @@
 import {render} from 'preact';
-import {collectTokens} from '@caliper/core';
+import {allAnswered, collectTokens} from '@caliper/core';
 import type {ReviewSessionState} from '@caliper/core';
 import {AnswerPopover, createOverlayHost, HighlightLayer} from '@caliper/overlay/review';
 import type {OverlayHost} from '@caliper/overlay/review';
@@ -58,6 +58,9 @@ const boot = async (): Promise<void> => {
   store.hydrate(await fetchState());
   store.autoActivateFirstZoneOnBoot();
 
+  // The window is launched with --app, so the client may close it once the server confirms every zone
+  // is answered — mirroring design mode's self-close. Guarded so it fires a single time.
+  let closedOnCompletion = false;
   const stream = events();
   stream.addEventListener('state', (event: MessageEvent<string>) => {
     let state: ReviewSessionState;
@@ -68,6 +71,10 @@ const boot = async (): Promise<void> => {
     }
     store.setSyncNotice(null);
     store.hydrate(state);
+    if (!closedOnCompletion && allAnswered(state)) {
+      closedOnCompletion = true;
+      window.close();
+    }
   });
 
   stream.addEventListener('error', () => {
