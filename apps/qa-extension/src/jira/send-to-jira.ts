@@ -4,6 +4,7 @@ import {devSend} from './jira-dev';
 import {postComment, resolveMediaId, setDescription, updateComment, uploadAttachment} from './jira-client';
 import {STORAGE} from './jira-config';
 import {addSend, type SendRecord} from './jira-history';
+import {buildJiraManifest} from '../export/export-session';
 
 export type JiraTarget = 'comment' | 'description';
 
@@ -16,6 +17,15 @@ export interface SendOptions {
 }
 
 const toBlob = async (dataUrl: string): Promise<Blob> => (await fetch(dataUrl)).blob();
+
+const manifestFilename = (session: CaliperSession): string => `caliper-${session.id.slice(0, 8)}.session.json`;
+
+// Attaches the machine-readable session so a downstream agent can reconstruct the review offline via
+// `caliper pull` — the generic Jira MCP reads the human comment but cannot pull binary attachments.
+const uploadManifest = async (session: CaliperSession, issueKey: string): Promise<void> => {
+  const blob = new Blob([buildJiraManifest(session)], {type: 'application/json'});
+  await uploadAttachment(issueKey, manifestFilename(session), blob);
+};
 
 const uploadScreenshots = async (
   session: CaliperSession,
@@ -54,6 +64,7 @@ export const sendSessionToJira = async (
   const {issueKey, target, attachScreenshots, updateCommentId, onProgress} = options;
 
   const media = attachScreenshots ? await uploadScreenshots(session, issueKey, onProgress) : {};
+  await uploadManifest(session, issueKey);
   const body = sessionToJiraComment(session, media);
 
   let commentId: string | null = null;

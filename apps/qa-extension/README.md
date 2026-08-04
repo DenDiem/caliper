@@ -39,16 +39,16 @@ produces the same directory without the dev server.
 | Input | Action |
 | --- | --- |
 | Toolbar icon | Open or close the side panel |
-| `Alt+Shift+C` | Arm or disarm the picker |
+| `Alt+Shift+C` | Switch the picker between **Mark** and **Browse** |
 | `Alt+Shift+P` | Open the side panel |
-| `Escape` | Dismiss the popover, then disarm the picker |
+| `Escape` | Dismiss the open popover |
 
-The picker is armed from the panel's **Arm picker** button or the shortcut — never by opening the
-panel, so the icon stays a safe thing to click.
+Opening the panel mounts the picker in **Browse** — clicks pass through to the app, hold **Alt** to
+mark. The footer toggle, or `Alt+Shift+C`, switches it to **Mark** — clicks mark, hold **Alt** to
+reach the app. Closing the panel unmounts it.
 
-Rebind them at `chrome://extensions/shortcuts`. The picker only inspects the page while it is armed,
-and recomputes at most once per animation frame, and only when the cursor crosses into a different
-element.
+Rebind the shortcuts at `chrome://extensions/shortcuts`. While active, the picker recomputes at most
+once per animation frame, and only when the cursor crosses into a different element.
 
 ## Export
 
@@ -82,4 +82,6 @@ issue URL), choose whether to add the defects as a **comment** or the issue **de
 send. Each screenshot is uploaded as an attachment, and one structured comment lists every defect
 (severity · component · `selector` · your note).
 
-Screenshots land in the issue's **Attachments** panel — not inline in the comment body.
+Screenshots land in the issue's **Attachments** panel — not inline in the comment body. Alongside
+them a machine-readable `caliper-<id>.session.json` is attached, so an agent can reconstruct the whole
+review offline with [`caliper pull`](../ask/README.md#fix-from-a-jira-ticket) — no running app needed.

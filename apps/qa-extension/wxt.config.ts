@@ -34,7 +34,7 @@ export default defineConfig({
     commands: {
       'toggle-picker': {
         suggested_key: {default: 'Alt+Shift+C'},
-        description: 'Arm or disarm the Caliper picker',
+        description: 'Switch the Caliper picker between Mark and Browse',
       },
       'open-panel': {
         suggested_key: {default: 'Alt+Shift+P'},
