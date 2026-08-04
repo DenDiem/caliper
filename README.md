@@ -28,7 +28,7 @@ to act on without decoding a screenshot. Two products put that to work in opposi
 A Chrome extension for manual QA. A reviewer marks broken UI on the live app; the export is a compact
 payload — selector, component, token-matched styles — an agent fixes straight from the file.
 
-![Arming the picker, clicking an element, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
+![Marking an element on the live app, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
 
 ### 💬 Agent → human — [`@dendiem/caliper`](apps/ask/README.md)
 
@@ -65,8 +65,8 @@ same directory: it registers the content script at runtime through the dev serve
 declaring it in the manifest, so the picker stops working the moment that server is gone. If the
 shortcut list shows `Alt+R — Reload the extension during development`, you are running the dev build.
 
-Click the toolbar icon to arm the picker, click an element, describe the defect, save. Open the side
-panel to review and export.
+Click the toolbar icon to open the side panel, mark an element, describe the defect, and save — then
+review and export from the panel.
 
 **The MCP server** — see [`apps/ask`](apps/ask/README.md) for setup, the proxy/snippet modes, and the
 agent contract.

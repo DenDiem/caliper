@@ -25,8 +25,8 @@ the agent as structured data. It also ships a **design mode** for the reverse di
 npx @dendiem/caliper init
 ```
 
-This registers the MCP server with your coding agent and installs the `caliper-ask` skill so
-the agent knows when and how to use it.
+This registers the MCP server with your coding agent and installs the `caliper-ask` and `caliper-fix`
+skills so the agent knows when and how to use it.
 
 By default the registered entry **auto-updates**: it runs `npx -y @dendiem/caliper@latest serve`,
 so each agent launch resolves the latest published version (the same way big MCP servers such as
@@ -86,6 +86,22 @@ the window closes.
 It is the design-review loop Cursor's Design Mode popularised, but native to Claude Code, Codex and
 any MCP client — precise, element-pinned and text-first, so the agent fixes from the file rather than
 a screenshot.
+
+## Fix from a Jira ticket
+
+Caliper's [QA extension](../qa-extension/README.md) files marked-up defects to a Jira issue, attaching
+the session as `caliper-<id>.session.json`. Point the agent at that ticket and it fixes offline — no
+running app:
+
+```bash
+npx @dendiem/caliper pull <jira-url|key>
+```
+
+`pull` reads the newest such attachment, writes its screenshots to `.caliper/<id>/`, and prints the
+same TOON work list `caliper_design` returns. It reaches Jira directly with a read-scoped API token,
+set once in the environment: `CALIPER_JIRA_SITE`, `CALIPER_JIRA_EMAIL`, `CALIPER_JIRA_TOKEN`. It only
+reads — moving the ticket's status stays yours. The `caliper-fix` skill, installed by `init`, tells
+the agent to do this when handed a ticket.
 
 ## Remote / containers
 
