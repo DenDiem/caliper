@@ -1,0 +1,19 @@
+{
+  "name": "caliper",
+  "description": "Element-pinned UI review + offline Jira fix handoff for AI coding agents.",
+  "author": {
+    "name": "DenDiem",
+    "url": "https://github.com/DenDiem/caliper"
+  },
+  "homepage": "https://github.com/DenDiem/caliper",
+  "repository": "https://github.com/DenDiem/caliper",
+  "license": "MIT",
+  "keywords": ["code-review", "design", "annotation", "jira", "mcp", "ui"],
+  "skills": ["./apps/ask/skills/caliper-ask", "./apps/ask/skills/caliper-fix"],
+  "mcpServers": {
+    "caliper": {
+      "command": "npx",
+      "args": ["-y", "@dendiem/caliper@latest", "serve"]
+    }
+  }
+}

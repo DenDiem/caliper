@@ -46,6 +46,20 @@ Flags:
 
 `caliper uninstall [--global] [--agent <id>]` removes the registration and installed guidance.
 
+### Claude Code plugin (alternative)
+
+In Claude Code you can skip `init` and install everything — both skills and the MCP server — from the
+marketplace:
+
+```
+/plugin marketplace add DenDiem/caliper
+/plugin install caliper@dendiem
+```
+
+Export `CALIPER_TARGET` (your loopback dev URL) in your shell first: the bundled MCP server reads it,
+but unlike `init` the plugin doesn't pin it for you. This path is Claude Code-only — Codex and Cursor
+users use `init` above.
+
 ## Modes
 
 **Proxy** (default) — Caliper runs a loopback HTTP proxy in front of your dev server and injects
