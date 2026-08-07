@@ -27,6 +27,7 @@ const draftBodySchema = z.object({
 const resolveBodySchema = z.object({
   ref: z.string(),
   target: elementContextSchema,
+  route: z.string().nullish(),
 });
 
 const answersBodySchema = z.object({
@@ -37,6 +38,9 @@ const answersBodySchema = z.object({
       verdict: verdictSchema.nullish(),
     }),
   ),
+  // "Send & finish": after the drafted answers are posted, mark the session complete so unanswered
+  // zones become `skipped` and the window closes. Absent/false keeps the legacy answer-only behaviour.
+  final: z.boolean().nullish(),
 });
 
 const tokenFromRequest = (req: IncomingMessage, url: URL): string | null => {
@@ -128,7 +132,7 @@ export const makeApiHandlers = (
             respondBadRequest(res);
             return;
           }
-          registry.resolve(sessionId, parsed.data.ref, parsed.data.target);
+          registry.resolve(sessionId, parsed.data.ref, parsed.data.target, parsed.data.route ?? null);
           res.writeHead(204).end();
         })
         .catch(() => respondBadRequest(res));
@@ -144,6 +148,7 @@ export const makeApiHandlers = (
             return;
           }
           registry.submit(sessionId, parsed.data.answers);
+          if (parsed.data.final) registry.finalize(sessionId);
           res.writeHead(204).end();
         })
         .catch(() => respondBadRequest(res));

@@ -235,6 +235,12 @@ const OrientationLine = ({store, pageCount}: OrientationLineProps) => {
   );
 };
 
+const submitLabel = (store: ReviewClientStore, answered: number): string => {
+  if (store.isSent()) return '✓ Sent';
+  if (store.isSubmitting()) return 'Sending…';
+  return `Send ${answered} & finish`;
+};
+
 const CollapsedTab = ({store}: PanelProps) => {
   const {answered, total} = store.progress();
 
@@ -308,14 +314,14 @@ export const Panel = ({store}: PanelProps) => {
         <button
           type="button"
           class="caliper-panel__submit"
-          disabled={store.isSubmitting()}
+          disabled={store.isSubmitting() || store.isSent()}
           onClick={() => void store.submit()}
         >
-          {store.isSubmitting() ? 'Submitting…' : `Send ${progress.answered} answers to the agent`}
+          {submitLabel(store, progress.answered)}
         </button>
         {progress.answered < progress.total ? (
           <p class="caliper-panel__submit-hint">
-            {progress.total - progress.answered} unanswered will stay pending — the agent keeps waiting.
+            {progress.total - progress.answered} unanswered will be sent as skipped.
           </p>
         ) : null}
       </div>

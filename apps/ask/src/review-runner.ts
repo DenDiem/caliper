@@ -1,4 +1,4 @@
-import {allAnswered, pendingRefs, toReviewToon, unresolvedRefs} from '@caliper/core';
+import {isComplete, pendingRefs, toReviewToon, unresolvedRefs} from '@caliper/core';
 import type {AskPayload, ReviewSessionState} from '@caliper/core';
 import {launchReviewBrowser} from './browser/launch';
 import type {BrowserWindow} from './browser/launch';
@@ -101,7 +101,7 @@ export class ReviewRunner {
       };
     }
 
-    if (allAnswered(restored)) {
+    if (isComplete(restored)) {
       return {completed: true, ticket, text: toReviewToon(restored)};
     }
 
@@ -229,7 +229,7 @@ export class ReviewRunner {
   // survives when the developer submits between tool calls (no active waiter to trigger settle).
   private closeIfAnswered(session: ActiveSession): void {
     const state = this.registry.get(session.id);
-    if (state && allAnswered(state)) this.teardown(session);
+    if (state && isComplete(state)) this.teardown(session);
   }
 
   // Kills the review window, closes the proxy/snippet server, and clears the active session — once.
@@ -246,7 +246,7 @@ export class ReviewRunner {
 
   private async settle(session: ActiveSession): Promise<AskResult> {
     const state = await this.registry.wait(session.id, ASK_WINDOW_MS);
-    const completed = allAnswered(state);
+    const completed = isComplete(state);
     const reviewUrlLine = `review url: ${session.reviewUrl}`;
     const noticeLine = session.snippetNotice ? `\n${session.snippetNotice}` : '';
     const warningLine = this.injectionRisk

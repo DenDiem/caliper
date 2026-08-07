@@ -8,6 +8,9 @@ export interface ReviewZoneState {
   question: string;
   severity: Severity | null;
   resolvedTarget: ElementContext | null;
+  // The route (location.pathname) the developer was actually on when this zone resolved on screen.
+  // Null until resolved; compared against the expected `route` to detect a guard redirect.
+  resolvedRoute: string | null;
   answer: string | null;
   verdict: Verdict | null;
   answered: boolean;
@@ -19,6 +22,9 @@ export interface ReviewSessionState {
   target: string;
   createdAt: string;
   zones: ReviewZoneState[];
+  // Set when the developer sends via "Send & finish": unanswered zones become `skipped` rather than
+  // staying pending, and the session counts as complete even though not every zone was answered.
+  finalized: boolean;
 }
 
 const toZoneState = (zone: ReviewZone): ReviewZoneState => ({
@@ -28,6 +34,7 @@ const toZoneState = (zone: ReviewZone): ReviewZoneState => ({
   question: zone.question,
   severity: zone.severity ?? null,
   resolvedTarget: null,
+  resolvedRoute: null,
   answer: null,
   verdict: null,
   answered: false,
@@ -47,7 +54,7 @@ export const createSession = (init: {
   token: string;
   target: string;
   createdAt: string;
-}): ReviewSessionState => ({...init, zones: []});
+}): ReviewSessionState => ({...init, zones: [], finalized: false});
 
 export const addZones = (state: ReviewSessionState, zones: readonly ReviewZone[]): ReviewSessionState => {
   let next = state.zones;
@@ -58,7 +65,16 @@ export const addZones = (state: ReviewSessionState, zones: readonly ReviewZone[]
       index === -1
         ? [...next, incoming]
         : next.map((existing, position) =>
-            position === index ? {...incoming, resolvedTarget: existing.resolvedTarget, answer: existing.answer, verdict: existing.verdict, answered: existing.answered} : existing,
+            position === index
+              ? {
+                  ...incoming,
+                  resolvedTarget: existing.resolvedTarget,
+                  resolvedRoute: existing.resolvedRoute,
+                  answer: existing.answer,
+                  verdict: existing.verdict,
+                  answered: existing.answered,
+                }
+              : existing,
           );
   }
   return {...state, zones: next};
@@ -75,8 +91,12 @@ export const setDraft = (
     verdict: patch.verdict === undefined ? zone.verdict : patch.verdict,
   }));
 
-export const resolveZone = (state: ReviewSessionState, ref: string, target: ElementContext): ReviewSessionState =>
-  mapZone(state, ref, (zone) => ({...zone, resolvedTarget: target}));
+export const resolveZone = (
+  state: ReviewSessionState,
+  ref: string,
+  target: ElementContext,
+  route: string | null,
+): ReviewSessionState => mapZone(state, ref, (zone) => ({...zone, resolvedTarget: target, resolvedRoute: route}));
 
 export const submitAnswers = (
   state: ReviewSessionState,
@@ -105,3 +125,9 @@ export const unresolvedRefs = (state: ReviewSessionState): string[] =>
 
 export const allAnswered = (state: ReviewSessionState): boolean =>
   state.zones.length > 0 && state.zones.every((zone) => zone.answered);
+
+export const finalizeSession = (state: ReviewSessionState): ReviewSessionState => ({...state, finalized: true});
+
+// A review is complete once every zone is answered OR the developer explicitly finished it — the
+// latter leaves unanswered zones as `skipped` instead of blocking the agent forever.
+export const isComplete = (state: ReviewSessionState): boolean => allAnswered(state) || state.finalized;
