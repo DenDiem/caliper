@@ -1,8 +1,15 @@
 import {describe, expect, it} from 'vitest';
-import {addZones, createSession, submitAnswers} from './session';
+import {addZones, createSession, finalizeSession, resolveZone, submitAnswers} from './session';
 import {toReviewToon} from './to-review-toon';
+import type {ElementContext} from '../schema/annotation.schema';
 
 const base = () => createSession({id: 's1', token: 't', target: 'http://localhost:3000', createdAt: '2026-07-24T00:00:00.000Z'});
+
+const target = (selector: string): ElementContext => ({
+  selector, selectorStrategy: 'testid', selectorConfidence: 'high', tagName: 'div',
+  componentName: null, componentSource: null, componentChain: [], text: '', attributes: {},
+  box: {x: 0, y: 0, width: 10, height: 10}, styles: {},
+});
 
 describe('toReviewToon', () => {
   it('renders a header with target and zone count', () => {
@@ -32,7 +39,7 @@ describe('toReviewToon', () => {
   it('does not echo the zone question back to the agent', () => {
     const s = submitAnswers(addZones(base(), [{ref: 'z1', question: 'Right label copy?'}]), [{ref: 'z1', answer: 'Use Save'}]);
     const out = toReviewToon(s);
-    expect(out).toContain('zones[1]{ref,answer,status}:');
+    expect(out).toContain('zones[1]{ref,answer,status,route}:');
     expect(out).not.toContain('Right label copy?');
   });
 
@@ -52,5 +59,34 @@ describe('toReviewToon', () => {
       {ref: 'z1', answer: 'irrelevant to the redesign', verdict: 'dismissed'},
     ]);
     expect(toReviewToon(s)).toContain('z1,irrelevant to the redesign,dismissed');
+  });
+
+  it('marks an unanswered zone as skipped once the session is finalized', () => {
+    const s = finalizeSession(addZones(base(), [{ref: 'z1', question: 'q'}]));
+    expect(toReviewToon(s)).toContain('z1,null,skipped,null');
+    expect(toReviewToon(s)).toContain('status=skipped means');
+  });
+
+  it('surfaces the route the zone was resolved on', () => {
+    const s = resolveZone(
+      addZones(base(), [{ref: 'z1', question: 'q', route: '/orders'}]),
+      'z1',
+      target('div'),
+      '/orders',
+    );
+    expect(toReviewToon(s)).toContain('z1,null,pending,/orders');
+    expect(toReviewToon(s)).not.toContain('redirects[');
+  });
+
+  it('flags a zone resolved on a different route than expected', () => {
+    const s = resolveZone(
+      addZones(base(), [{ref: 'z1', question: 'q', route: '/orders'}]),
+      'z1',
+      target('div'),
+      '/login',
+    );
+    const out = toReviewToon(s);
+    expect(out).toContain('redirects[1]:');
+    expect(out).toContain('z1: answered on /login, expected /orders');
   });
 });

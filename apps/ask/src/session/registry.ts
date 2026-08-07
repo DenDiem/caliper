@@ -1,6 +1,6 @@
 import {randomUUID, timingSafeEqual} from 'node:crypto';
 import type {IncomingMessage} from 'node:http';
-import {addZones, allAnswered, createSession, resolveZone, setDraft, submitAnswers} from '@caliper/core';
+import {addZones, createSession, finalizeSession, isComplete, resolveZone, setDraft, submitAnswers} from '@caliper/core';
 import type {ElementContext, ReviewSessionState, ReviewZone, Verdict} from '@caliper/core';
 import {load, persist} from './persistence';
 
@@ -48,9 +48,9 @@ export class SessionRegistry {
     return entry.state;
   }
 
-  public resolve(id: string, ref: string, target: ElementContext): ReviewSessionState {
+  public resolve(id: string, ref: string, target: ElementContext, route: string | null): ReviewSessionState {
     const entry = this.require(id);
-    entry.state = resolveZone(entry.state, ref, target);
+    entry.state = resolveZone(entry.state, ref, target, route);
     persist(entry.state);
     this.flushSse(entry);
     return entry.state;
@@ -81,9 +81,20 @@ export class SessionRegistry {
     return entry.state;
   }
 
+  // "Send & finish": marks the session complete so unanswered zones read as `skipped`, then wakes any
+  // waiter and SSE subscriber so the runner tears the window down and caliper_ask returns COMPLETED.
+  public finalize(id: string): ReviewSessionState {
+    const entry = this.require(id);
+    entry.state = finalizeSession(entry.state);
+    persist(entry.state);
+    entry.waiters.splice(0).forEach((notify) => notify());
+    this.flushSse(entry);
+    return entry.state;
+  }
+
   public wait(id: string, ms: number): Promise<ReviewSessionState> {
     const entry = this.require(id);
-    if (allAnswered(entry.state)) return Promise.resolve(entry.state);
+    if (isComplete(entry.state)) return Promise.resolve(entry.state);
     return new Promise((resolve) => {
       let settled = false;
       const finish = () => {

@@ -34,6 +34,7 @@ export interface ReviewClientStore {
   isAnswered: (ref: string) => boolean;
   isResolved: (ref: string) => boolean;
   isSubmitting: () => boolean;
+  isSent: () => boolean;
   submitError: () => string | null;
   syncNotice: () => string | null;
   isCollapsed: () => boolean;
@@ -122,6 +123,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const animateQuestionSignal = signal(false);
   const collapsedSignal = signal(false);
   const submittingSignal = signal(false);
+  const sentSignal = signal(false);
   const submitErrorSignal = signal<string | null>(null);
   const syncNoticeSignal = signal<string | null>(null);
   const orientationDismissedSignal = signal<boolean>(readOrientationDismissed());
@@ -153,7 +155,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
       resolvedElements.set(zone.ref, element);
       const context = extractContext(element, tokens);
       setContext(zone.ref, context);
-      void postResolve(zone.ref, context).catch(() => {});
+      void postResolve(zone.ref, context, location.pathname).catch(() => {});
     }
   };
 
@@ -406,7 +408,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     setContext(ref, context);
     if (!element) return;
     resolvedElements.set(ref, element);
-    void postResolve(ref, context).catch(() => {});
+    void postResolve(ref, context, location.pathname).catch(() => {});
   };
 
   const reanchor = (ref: string): void => {
@@ -445,7 +447,10 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
 
     submittingSignal.value = true;
     try {
-      await postAnswers(answers);
+      // "Send & finish": post the drafted answers and finalize in one call — unanswered zones become
+      // skipped server-side and the window closes, so the agent stops waiting.
+      await postAnswers(answers, true);
+      sentSignal.value = true;
     } catch (error) {
       submitErrorSignal.value = error instanceof Error ? error.message : 'Submit failed';
     } finally {
@@ -467,6 +472,7 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     isAnswered: (ref) => hasAnswer(draftsSignal.value[ref]),
     isResolved: (ref) => Boolean(contextsSignal.value[ref]),
     isSubmitting: () => submittingSignal.value,
+    isSent: () => sentSignal.value,
     submitError: () => submitErrorSignal.value,
     syncNotice: () => syncNoticeSignal.value,
     isCollapsed: () => collapsedSignal.value,

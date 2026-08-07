@@ -74,18 +74,18 @@ export const postDraft = (ref: string, answer: string, verdict?: string) =>
     body: JSON.stringify({ref, answer, verdict}),
   }).then(assertOk);
 
-export const postAnswers = (answers: {ref: string; answer: string; verdict?: string}[]) =>
+export const postAnswers = (answers: {ref: string; answer: string; verdict?: string}[], final?: boolean) =>
   fetch(`${endpoint('/answers')}?t=${token}`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({answers}),
+    body: JSON.stringify({answers, final}),
   }).then(assertOk);
 
-export const postResolve = (ref: string, target: ElementContext) =>
+export const postResolve = (ref: string, target: ElementContext, route: string) =>
   fetch(`${endpoint('/resolve')}?t=${token}`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ref, target}),
+    body: JSON.stringify({ref, target, route}),
   }).then(assertOk);
 
 export const events = () => new EventSource(`${endpoint('/events')}?t=${token}`);
