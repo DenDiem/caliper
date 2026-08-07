@@ -7,6 +7,7 @@ import {SessionRegistry} from './session/registry';
 import {startProxyServer} from './http/proxy-server';
 import {startSnippetServer} from './http/snippet-server';
 import {makeApiHandlers} from './http/api';
+import {resolveTarget} from './targets';
 import {ASK_WINDOW_MS, buildSnippetTag, resolveMode, resolveSnippetPort} from './config';
 
 export interface AskResult {
@@ -72,7 +73,7 @@ export class ReviewRunner {
       return this.settle(active);
     }
 
-    const target = payload.target ?? this.defaultTarget();
+    const target = resolveTarget(payload.target);
     if (!target) throw noTargetError();
     if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
     if (!(await isTargetReachable(target))) throw unreachableTargetError(target);
@@ -113,10 +114,6 @@ export class ReviewRunner {
         'Error: this review session did not survive an MCP server restart — its browser page is gone. ' +
         `Call caliper_ask again with the remaining zones: ${remainingRefs}`,
     };
-  }
-
-  private defaultTarget(): string | undefined {
-    return process.env.CALIPER_TARGET;
   }
 
   private async ensureSession(target: string): Promise<ActiveSession> {

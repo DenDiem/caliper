@@ -75,6 +75,32 @@ npx @dendiem/caliper snippet
 
 Remove the tag once the review is done.
 
+## Named targets (multi-app repos)
+
+A single pinned `CALIPER_TARGET` is fine for one app, but a monorepo with several dev servers
+(`client` on `:4201`, `kiosk` on `:4200`, …) and many worktrees can have it silently open the wrong
+one. Map short **names** to loopback URLs instead, and pass the name as `target`.
+
+Commit a `caliper.targets.json` at the project root (it travels to every worktree checked out beneath
+it — Caliper walks up from the cwd to find it):
+
+```json
+{
+  "client": "http://localhost:4201",
+  "kiosk": "http://localhost:4200"
+}
+```
+
+Or set the same map inline via the `CALIPER_TARGETS` env (JSON), which overrides file entries:
+
+```bash
+export CALIPER_TARGETS='{"client":"http://localhost:4201","kiosk":"http://localhost:4200"}'
+```
+
+Then the `target` argument accepts **either** a name (`target: "client"`) **or** a loopback URL
+(`target: "http://localhost:4201"`). With no `target`, the single `CALIPER_TARGET` is still used as the
+default, so existing setups keep working unchanged.
+
 ## Using it from an agent
 
 1. Anchor each zone with an ordinary CSS selector for an element already on the page — never

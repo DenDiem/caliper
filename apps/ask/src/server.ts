@@ -20,8 +20,10 @@ const pinnedNote = (): string =>
 
 const targetParamDescription = (): string =>
   PINNED_TARGET
-    ? `Loopback dev-server URL to open (default: the CALIPER_TARGET pinned by \`caliper init\` — currently ${PINNED_TARGET}).`
-    : 'Loopback dev-server URL to open (default: the CALIPER_TARGET pinned by `caliper init`; none is set, so pass one).';
+    ? 'A named target (from caliper.targets.json / CALIPER_TARGETS — e.g. `client`, `kiosk`) or a ' +
+      `loopback dev-server URL to open (default: the CALIPER_TARGET pinned by \`caliper init\` — currently ${PINNED_TARGET}).`
+    : 'A named target (from caliper.targets.json / CALIPER_TARGETS) or a loopback dev-server URL to ' +
+      'open (default: the CALIPER_TARGET pinned by `caliper init`; none is set, so pass one).';
 
 const ASK_DESCRIPTION =
   '**You** have specific questions about UI regions you are unsure how to build; you pin them and ' +
@@ -51,6 +53,10 @@ const waitInputSchema = z.object({
   ticket: z.string().min(1).describe('The session id returned as "ticket" by a PENDING caliper_ask result.'),
 });
 
+const askInputSchema = askPayloadSchema.extend({
+  target: z.string().optional().describe(targetParamDescription()),
+});
+
 const designInputSchema = z.object({
   target: z.string().optional().describe(targetParamDescription()),
 });
@@ -63,7 +69,7 @@ const server = new McpServer({name: 'caliper', version: CALIPER_VERSION}, {capab
 
 server.registerTool(
   'caliper_ask',
-  {description: `${ASK_DESCRIPTION} ${pinnedNote()}`, inputSchema: askPayloadSchema},
+  {description: `${ASK_DESCRIPTION} ${pinnedNote()}`, inputSchema: askInputSchema},
   async (payload) => {
     try {
       const result = await runner.ask(payload);

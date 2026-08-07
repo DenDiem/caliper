@@ -10,7 +10,7 @@ export const reviewZoneSchema = z.object({
 });
 
 export const askPayloadSchema = z.object({
-  target: z.string().url().optional(),
+  target: z.string().optional(),
   zones: z.array(reviewZoneSchema).min(1),
 });
 
