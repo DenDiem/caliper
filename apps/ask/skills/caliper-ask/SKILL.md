@@ -44,6 +44,11 @@ configuration, never from a framework's default port:
 Then pass `target` explicitly. Both tools accept an optional `target` (`http://localhost:<port>`); it
 must be a loopback URL.
 
+In a multi-app repo (e.g. `client` on one port, `kiosk` on another), pass the app **name** matching the
+app you're working on instead of a URL — `target: "client"`, `target: "kiosk"`. Names are resolved from
+`caliper.targets.json` (at the project root) or the `CALIPER_TARGETS` env; this avoids a single pinned
+`CALIPER_TARGET` silently opening the wrong app across worktrees.
+
 ## Opening design mode (caliper_design)
 
 Call `caliper_design` when the developer says they've marked up / annotated the page, or asks to

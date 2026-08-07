@@ -12,6 +12,7 @@ import {startProxyServer} from './http/proxy-server';
 import {DesignRegistry} from './session/design-registry';
 import type {DesignSessionState} from './session/design-registry';
 import {isLoopbackTarget} from './review-runner';
+import {resolveTarget} from './targets';
 import {ASK_WINDOW_MS, CALIPER_VERSION} from './config';
 
 const ID_SHORT = 8;
@@ -59,7 +60,7 @@ export class DesignRunner {
       return this.settle(this.active, note);
     }
 
-    const target = payload.target ?? process.env.CALIPER_TARGET;
+    const target = resolveTarget(payload.target);
     if (!target) throw noTargetError();
     if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
     if (!(await isTargetReachable(target))) throw unreachableTargetError(target);
