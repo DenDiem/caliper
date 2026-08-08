@@ -104,6 +104,11 @@ const buildCaliperSection = (config: InstallConfig): string =>
       'call the `caliper_design` MCP tool instead — it opens the review window and returns their marks. ' +
       'While the result says status: PENDING, call `caliper_design` again to keep waiting until they submit.',
     '',
+    'To review a page behind a route guard (auth / app-state / feature flag), add a `setup` snippet to ' +
+      'that zone — JavaScript that puts the app into the state where the guard passes (dispatch the ' +
+      "store action / seed the flag), never a bypass. The developer sees it and chooses run-or-skip " +
+      'before it executes, so keep it minimal.',
+    '',
     'To fix UI defects filed to a Jira issue (a URL or key, with or without the word "Caliper"), run ' +
       '`caliper pull <jira-url|key>` (or `npx -y @dendiem/caliper@latest pull <url>`). It fetches the QA ' +
       'session Caliper attached to the ticket, materialises its screenshots under `.caliper/<id>/`, and ' +
