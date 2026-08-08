@@ -7,6 +7,9 @@ export interface ReviewZoneState {
   route: string | null;
   question: string;
   severity: Severity | null;
+  // Agent-authored JS the client runs (behind a consent gate) before navigating to `route`, to bring
+  // the app into a state where the route guard passes. Null when the zone declared no `setup`.
+  setup: string | null;
   resolvedTarget: ElementContext | null;
   // The route (location.pathname) the developer was actually on when this zone resolved on screen.
   // Null until resolved; compared against the expected `route` to detect a guard redirect.
@@ -33,6 +36,7 @@ const toZoneState = (zone: ReviewZone): ReviewZoneState => ({
   route: zone.route ?? null,
   question: zone.question,
   severity: zone.severity ?? null,
+  setup: zone.setup ?? null,
   resolvedTarget: null,
   resolvedRoute: null,
   answer: null,
