@@ -5,6 +5,7 @@ import {mountOverlay} from '@caliper/overlay';
 import type {OverlayHandle} from '@caliper/overlay';
 import type {AnswerPopoverProps, HighlightBoxState} from '@caliper/overlay/review';
 import {postAnswers, postDraft, postResolve} from './sink';
+import {runSetup, waitForUrlStable} from './setup';
 
 export interface PageLedgerRow {
   readonly route: string | null;
@@ -49,6 +50,11 @@ export interface ReviewClientStore {
   dismissCompletionCard: () => void;
   submit: () => Promise<void>;
   reanchor: (ref: string) => void;
+  navigateToRoute: (route: string) => void;
+  pendingSetup: () => {route: string; snippet: string} | null;
+  setupNotice: () => string | null;
+  runPendingSetup: () => Promise<void>;
+  skipPendingSetup: () => void;
   dismissOrientation: () => void;
   autoActivateFirstZoneOnBoot: () => void;
   hydrate: (state: ReviewSessionState) => void;
@@ -128,6 +134,8 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
   const syncNoticeSignal = signal<string | null>(null);
   const orientationDismissedSignal = signal<boolean>(readOrientationDismissed());
   const completionCardSignal = signal<CompletionCardState>(null);
+  const pendingSetupSignal = signal<{route: string; snippet: string} | null>(null);
+  const setupNoticeSignal = signal<string | null>(null);
 
   const resolvedElements = new Map<string, Element>();
   const seenPopoverRefs = new Set<string>();
@@ -458,6 +466,60 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     }
   };
 
+  const collectSetup = (route: string): string => {
+    const setups = zonesSignal.value
+      .filter((zone) => zone.route === route)
+      .map((zone) => zone.setup)
+      .filter((snippet): snippet is string => snippet !== null && snippet.trim().length > 0);
+    return Array.from(new Set(setups)).join('\n\n');
+  };
+
+  // The single entry point the panel's "Open →" buttons use. A route carrying a `setup` snippet routes
+  // through the consent gate before it can navigate; a plain route navigates straight there. So a guarded
+  // route can never be opened without the gate first offering to run (or skip) its setup.
+  const navigateToRoute = (route: string): void => {
+    const snippet = collectSetup(route);
+    if (snippet) {
+      setupNoticeSignal.value = null;
+      pendingSetupSignal.value = {route, snippet};
+    } else {
+      location.assign(route);
+    }
+  };
+
+  // Run (from the gate): execute the approved snippet, then navigate CLIENT-SIDE (pushState + popstate)
+  // so the app instance — and the state the snippet just set — survives to the guarded route; a full
+  // reload would discard it. Then watch the URL settle and report a guard redirect instead of leaving
+  // the zone silently unreachable.
+  const runPendingSetup = async (): Promise<void> => {
+    const pending = pendingSetupSignal.value;
+    if (!pending) return;
+    pendingSetupSignal.value = null;
+
+    const result = runSetup(pending.snippet);
+    setupNoticeSignal.value = result.ok
+      ? null
+      : result.csp
+        ? "Setup didn't run — the app's Content-Security-Policy blocks injected scripts. Reach the page manually."
+        : `Setup errored: ${result.message}`;
+
+    history.pushState({}, '', pending.route);
+    dispatchEvent(new PopStateEvent('popstate'));
+
+    const settled = await waitForUrlStable(pending.route);
+    if (settled !== 'expected') {
+      setupNoticeSignal.value = `Guard redirected to ${location.pathname} — ${pending.route} unreachable.`;
+    }
+  };
+
+  const skipPendingSetup = (): void => {
+    if (!pendingSetupSignal.value) return;
+    const {route} = pendingSetupSignal.value;
+    pendingSetupSignal.value = null;
+    setupNoticeSignal.value = null;
+    location.assign(route);
+  };
+
   return {
     zones: () => zonesSignal.value,
     boxes: () => boxesSignal.value,
@@ -495,6 +557,11 @@ export const startController = ({tokens}: {tokens: TokenMap}): ReviewClientStore
     },
     submit,
     reanchor,
+    navigateToRoute,
+    pendingSetup: () => pendingSetupSignal.value,
+    setupNotice: () => setupNoticeSignal.value,
+    runPendingSetup,
+    skipPendingSetup,
     dismissOrientation: () => {
       orientationDismissedSignal.value = true;
       writeOrientationDismissed();

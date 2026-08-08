@@ -91,14 +91,17 @@ const PanelItem = ({zone, number, store}: PanelItemProps) => {
 
 interface InlineOpenButtonProps {
   route: string;
+  store: ReviewClientStore;
   class?: string;
 }
 
-const InlineOpenButton = ({route, class: className}: InlineOpenButtonProps) => (
+// Navigation goes through the controller (not a bare `location.assign`) so a route carrying a `setup`
+// snippet can open its consent gate first instead of navigating straight into a guard.
+const InlineOpenButton = ({route, store, class: className}: InlineOpenButtonProps) => (
   <button
     type="button"
     class={className ?? 'caliper-panel__ledger-open'}
-    onClick={() => location.assign(route)}
+    onClick={() => store.navigateToRoute(route)}
   >
     Open →
   </button>
@@ -109,9 +112,10 @@ const renderLedgerDots = (total: number, answeredCount: number): string =>
 
 interface PageLedgerRowItemProps {
   row: PageLedgerRow;
+  store: ReviewClientStore;
 }
 
-const PageLedgerRowItem = ({row}: PageLedgerRowItemProps) => {
+const PageLedgerRowItem = ({row, store}: PageLedgerRowItemProps) => {
   const label = row.route ?? 'Anywhere';
   const showOpen = !row.isCurrent && row.route !== null;
 
@@ -136,7 +140,7 @@ const PageLedgerRowItem = ({row}: PageLedgerRowItemProps) => {
         <span class="caliper-panel__ledger-count">
           {row.answeredCount}/{row.total}
         </span>
-        {showOpen && row.route !== null ? <InlineOpenButton route={row.route} /> : null}
+        {showOpen && row.route !== null ? <InlineOpenButton route={row.route} store={store} /> : null}
       </div>
     </li>
   );
@@ -144,14 +148,15 @@ const PageLedgerRowItem = ({row}: PageLedgerRowItemProps) => {
 
 interface PageLedgerSectionProps {
   ledger: readonly PageLedgerRow[];
+  store: ReviewClientStore;
 }
 
-const PageLedgerSection = ({ledger}: PageLedgerSectionProps) => (
+const PageLedgerSection = ({ledger, store}: PageLedgerSectionProps) => (
   <>
     <span class="caliper-panel__section-title">Pages</span>
     <ul class="caliper-panel__ledger">
       {ledger.map((row) => (
-        <PageLedgerRowItem key={row.route ?? '__anywhere__'} row={row} />
+        <PageLedgerRowItem key={row.route ?? '__anywhere__'} row={row} store={store} />
       ))}
     </ul>
   </>
@@ -162,9 +167,10 @@ const findNextPendingRoute = (ledger: readonly PageLedgerRow[]): PageLedgerRow |
 
 interface EmptyPageStateProps {
   ledger: readonly PageLedgerRow[];
+  store: ReviewClientStore;
 }
 
-const EmptyPageState = ({ledger}: EmptyPageStateProps) => {
+const EmptyPageState = ({ledger, store}: EmptyPageStateProps) => {
   const next = findNextPendingRoute(ledger);
 
   if (!next || next.route === null) {
@@ -181,7 +187,7 @@ const EmptyPageState = ({ledger}: EmptyPageStateProps) => {
       <p class="caliper-panel__empty-text">
         No questions on this page. First stop: {route} ({next.total})
       </p>
-      <InlineOpenButton route={route} class="caliper-panel__empty-open" />
+      <InlineOpenButton route={route} store={store} class="caliper-panel__empty-open" />
     </div>
   );
 };
@@ -204,7 +210,7 @@ const CompletionNudge = ({store}: CompletionNudgeProps) => {
     const route = next.route;
     return (
       <p class="caliper-panel__nudge">
-        ✓ {currentLabel} done — next: {route} <InlineOpenButton route={route} class="caliper-panel__nudge-open" />
+        ✓ {currentLabel} done — next: {route} <InlineOpenButton route={route} store={store} class="caliper-panel__nudge-open" />
       </p>
     );
   }
@@ -257,6 +263,35 @@ const CollapsedTab = ({store}: PanelProps) => {
   );
 };
 
+// The consent gate for a zone's `setup` snippet. It shows the exact JavaScript verbatim and never runs
+// it until the developer clicks Run — the whole security model of the feature is this visibility +
+// per-open consent. Skip navigates without running anything.
+const SetupGate = ({store}: PanelProps) => {
+  const pending = store.pendingSetup();
+  if (!pending) return null;
+
+  return (
+    <div class="caliper-panel__setup-gate">
+      <p class="caliper-panel__setup-title">
+        Run setup to reach <code>{pending.route}</code>?
+      </p>
+      <p class="caliper-panel__setup-note">
+        Runs agent-supplied JavaScript in your app so a route guard passes — review it first. It never
+        runs on its own.
+      </p>
+      <pre class="caliper-panel__setup-code">{pending.snippet}</pre>
+      <div class="caliper-panel__setup-actions">
+        <button type="button" class="caliper-panel__setup-run" onClick={() => void store.runPendingSetup()}>
+          Run &amp; open
+        </button>
+        <button type="button" class="caliper-panel__setup-skip" onClick={() => store.skipPendingSetup()}>
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const Panel = ({store}: PanelProps) => {
   if (store.isCollapsed()) return <CollapsedTab store={store} />;
 
@@ -292,13 +327,15 @@ export const Panel = ({store}: PanelProps) => {
       <OrientationLine store={store} pageCount={realPageCount} />
 
       {store.syncNotice() ? <p class="caliper-panel__notice">{store.syncNotice()}</p> : null}
+      {store.setupNotice() ? <p class="caliper-panel__setup-warning">{store.setupNotice()}</p> : null}
+      <SetupGate store={store} />
 
       <div class="caliper-panel__body">
-        {realPageCount > 1 ? <PageLedgerSection ledger={ledger} /> : null}
+        {realPageCount > 1 ? <PageLedgerSection ledger={ledger} store={store} /> : null}
 
         <span class="caliper-panel__section-title">On this page ({onPageZones.length})</span>
         {onPageZones.length === 0 ? (
-          <EmptyPageState ledger={ledger} />
+          <EmptyPageState ledger={ledger} store={store} />
         ) : (
           <ul class="caliper-panel__list">
             {onPageZones.map((zone, index) => (
