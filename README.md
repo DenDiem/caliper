@@ -52,7 +52,11 @@ Both products share the same element-picking core and in-page overlay:
 
 ## Quick start
 
-**The extension** — [install from the Chrome Web Store](https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm), or build it locally:
+Two independent tools — set up whichever direction you work in (or both).
+
+### 🐞 The extension — you mark, the agent fixes
+
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm), or build it locally:
 
 ```bash
 pnpm install
@@ -69,8 +73,18 @@ shortcut list shows `Alt+R — Reload the extension during development`, you are
 Click the toolbar icon to open the side panel, mark an element, describe the defect, and save — then
 review and export from the panel.
 
-**The MCP server** — see [`apps/ask`](apps/ask/README.md) for setup, the proxy/snippet modes, and the
-agent contract.
+### 💬 The MCP server — the agent asks, you answer
+
+Register it with your coding agent (Claude Code, Codex, Cursor, any MCP client) — one command, and it
+auto-updates on each launch:
+
+```bash
+npx @dendiem/caliper init
+```
+
+That installs the `caliper_ask` and `caliper_design` tools plus the `caliper-ask` / `caliper-fix`
+skills. In Claude Code you can instead add it as a plugin: `/plugin marketplace add DenDiem/caliper`.
+See [`apps/ask`](apps/ask/README.md) for the proxy/snippet modes, named targets, and the agent contract.
 
 ## Output
 
