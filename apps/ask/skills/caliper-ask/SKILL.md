@@ -41,8 +41,10 @@ configuration, never from a framework's default port:
 - the project's own dev-server config — `angular.json` → `serve.options.port`, `vite.config.*` →
   `server.port`, the `dev`/`serve` script in `package.json` — not a remembered "Angular is 4200".
 
-Then pass `target` explicitly. Both tools accept an optional `target` (`http://localhost:<port>`); it
-must be a loopback URL.
+Then pass `target` explicitly. Both tools accept an optional `target` (`http://localhost:<port>`). In
+proxy mode (the default) it must be a loopback URL; in snippet mode `caliper_ask` accepts any host,
+including a custom hostname or an HTTPS dev server (snippet mode doesn't proxy, so the origin doesn't
+shift).
 
 In a multi-app repo (e.g. `client` on one port, `kiosk` on another), pass the app **name** matching the
 app you're working on instead of a URL — `target: "client"`, `target: "kiosk"`. Names are resolved from

@@ -56,8 +56,9 @@ const noTargetError = (): Error =>
 
 const nonLoopbackTargetError = (target: string): Error =>
   new Error(
-    `Refusing to proxy "${target}": caliper_ask only proxies loopback dev servers ` +
-      '(127.0.0.1 / localhost / [::1]). Point CALIPER_TARGET (or the "target" argument) at your local dev server.',
+    `Refusing to proxy "${target}": proxy mode only fronts loopback dev servers ` +
+      '(127.0.0.1 / localhost / [::1]). For a custom hostname or an HTTPS dev server, use snippet mode ' +
+      '(`caliper init --mode snippet`) — it does not proxy, so any origin works — or point the target at a loopback URL.',
   );
 
 export class ReviewRunner {
@@ -75,8 +76,15 @@ export class ReviewRunner {
 
     const target = resolveTarget(payload.target);
     if (!target) throw noTargetError();
-    if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
-    if (!(await isTargetReachable(target))) throw unreachableTargetError(target);
+    // Proxy mode fronts the target with a loopback proxy and injects our client, so it must only ever
+    // proxy a local dev server — hence the loopback + reachability gate. Snippet mode doesn't proxy: the
+    // developer's own server serves the app at its real origin and we only hand back a <script> tag, so
+    // any host works (custom hostname, HTTPS) and the origin never shifts — no proxy-mode CORS or
+    // third-party-key breakage. So the gate applies to proxy mode only.
+    if (resolveMode() === 'proxy') {
+      if (!isLoopbackTarget(target)) throw nonLoopbackTargetError(target);
+      if (!(await isTargetReachable(target))) throw unreachableTargetError(target);
+    }
 
     const session = this.active ?? (await this.ensureSession(target));
     this.registry.merge(session.id, payload.zones);
