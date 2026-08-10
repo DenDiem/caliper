@@ -105,6 +105,28 @@ for it. Never add it to existing elements solely to satisfy Caliper.
 <button class="bulk-delete" type="button">...</button>
 ```
 
+## Reaching a page behind a route guard (setup)
+
+If a zone's `route` is behind a guard (auth, app-state, a feature flag) so the developer would be
+redirected away before the element ever mounts, add a `setup` snippet to that zone — JavaScript that
+brings the app into the state where the guard *passes* (dispatch the store action, seed the flag it
+reads), never a bypass. When the developer opens that route, Caliper shows the snippet and asks them to
+run or skip it; on run it applies the setup and navigates client-side so the state survives.
+
+```json
+{
+  "ref": "service-logs",
+  "route": "/service-menu/logs",
+  "selector": ".sk-logs-page__title",
+  "setup": "ng.getComponent(document.querySelector('sk-root')).idleService.store.dispatch({type:'[serviceAuth] Authorization Confirmed'})",
+  "question": "…"
+}
+```
+
+Add `setup` only when the route is genuinely guarded — a normal page needs none. The developer sees and
+approves the snippet every time, so keep it minimal and legible; several zones on one guarded route can
+share the same `setup`.
+
 ## Worked example
 
 ```json
