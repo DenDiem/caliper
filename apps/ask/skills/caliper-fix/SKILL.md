@@ -38,7 +38,7 @@ The output is the **same shape** `caliper_design` returns, so read it the same w
 (`element` vs a derived `area`/`strike`, where you trust `covers`/`bbox` over the selector), `intent`
 (`change`/`remove`/`add`, with the `add` `anchor` giving the insertion point), and the `styles` token
 table (match each `value` to the design-token variable of the same name before hardcoding). The
-**caliper-ask** skill has the full mark-reading guide and how to locate a mark's source file from its
+**caliper-design** skill has the full mark-reading guide and how to locate a mark's source file from its
 `component` + `selector` — the same reading applies here.
 
 Selectors were recorded against the page at review time, so treat them as best-effort against the
