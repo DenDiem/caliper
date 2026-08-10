@@ -13,10 +13,10 @@ import type {AgentAdapter, InstallConfig} from './types';
 // Pinned mode (--pinned) instead writes {"command": "node", "args": ["<abs>/dist/server.js"], ...}.
 const SERVER_ID = 'caliper';
 
-// caliper-ask covers the live review tools (caliper_ask/caliper_design); caliper-fix covers the offline
-// `caliper pull` handoff from a Jira ticket. Separate skills so each is surfaced by its own trigger
-// description, not folded into one whose description matches only the live flow.
-const SKILL_NAMES = ['caliper-ask', 'caliper-fix'] as const;
+// One skill per trigger so each is surfaced by its own description: caliper-ask (you have pinned
+// questions), caliper-design (the developer marks up / "design mode"), caliper-fix (the offline
+// `caliper pull` handoff from a Jira ticket).
+const SKILL_NAMES = ['caliper-ask', 'caliper-design', 'caliper-fix'] as const;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
