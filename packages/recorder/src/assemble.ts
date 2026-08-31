@@ -1,5 +1,6 @@
 import type {
   CaliperTrace,
+  TraceTruncation,
   Page,
   TraceConsoleEntry,
   TraceDetail,
@@ -17,6 +18,7 @@ export interface AssembleInput {
   startedAt: string;
   durationMs: number;
   truncated: boolean;
+  truncatedBy?: TraceTruncation | null;
   page: Page;
   sources: TraceSources;
   steps: readonly TraceStep[];
@@ -62,6 +64,7 @@ export const assembleTrace = (input: AssembleInput): {trace: CaliperTrace; detai
     startedAt: input.startedAt,
     durationMs: input.durationMs,
     truncated: input.truncated,
+    truncatedBy: input.truncatedBy ?? null,
     page: input.page,
     sources: input.sources,
     summary: {

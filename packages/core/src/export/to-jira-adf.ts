@@ -1,5 +1,6 @@
 import type {CaliperAnnotation, CaliperSession} from '../schema/annotation.schema';
 import type {CaliperTrace} from '../schema/trace.schema';
+import {truncationNote} from './trace-toon';
 
 export interface AdfNode {
   type: string;
@@ -98,7 +99,7 @@ const traceBullet = (trace: CaliperTrace): AdfNode => {
     lines.push({type: 'hardBreak'}, text('video: '), text(trace.files.video, [{type: 'code'}]));
   }
   if (trace.truncated) {
-    lines.push({type: 'hardBreak'}, text('recording hit its length limit — the earliest seconds were dropped'));
+    lines.push({type: 'hardBreak'}, text(`truncated: ${truncationNote(trace)}`));
   }
 
   return {type: 'listItem', content: [{type: 'paragraph', content: lines}]};

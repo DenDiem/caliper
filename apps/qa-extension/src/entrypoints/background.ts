@@ -5,6 +5,7 @@ import {dropTraceBlobs} from '../trace/blob-store';
 import {
   activeTraceElapsed,
   activeTraceTabId,
+  finishTraceForClosedTab,
   ingestBatch,
   startTrace,
   stopTrace,
@@ -93,6 +94,7 @@ export default defineBackground(() => {
     void getOwner().then((owner) => {
       if (owner === tabId) void setOwner(undefined);
     });
+    void finishTraceForClosedTab(tabId);
   });
 
   // A reload of the owner tab drops its content script and overlay — re-engage once it finishes so the
@@ -174,7 +176,7 @@ export default defineBackground(() => {
     }
 
     if (message.type === 'caliper/trace-batch') {
-      ingestBatch(message.batch);
+      ingestBatch(message.batch, _sender.tab?.id);
       sendResponse(true);
       return true;
     }

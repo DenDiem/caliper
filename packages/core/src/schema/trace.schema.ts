@@ -7,6 +7,11 @@ import {pageSchema} from './page.schema';
 export const traceSourceSchema = z.enum(['cdp', 'fallback']);
 export const traceStateSourceSchema = z.enum(['devtools-bridge', 'none']);
 export const traceStepKindSchema = z.enum(['click', 'input', 'key', 'navigation', 'scroll']);
+
+// Which end of the recording is missing, because "truncated" alone told every reader the wrong story:
+// the length limit stops the recording, so the **end** is gone, while a buffer overflow drops the
+// **head**. An agent told the wrong one trusts exactly the part of the timeline that is absent.
+export const traceTruncationSchema = z.enum(['length-limit', 'buffer-overflow', 'video-window']);
 export const traceConsoleLevelSchema = z.enum(['log', 'info', 'warn', 'error', 'debug']);
 
 // Every `t` is milliseconds from the trace's start, never wall-clock — a trace is read as a relative
@@ -71,6 +76,8 @@ export const caliperTraceSchema = z.object({
   startedAt: z.string().datetime(),
   durationMs: z.number(),
   truncated: z.boolean().default(false),
+  // Absent on a trace recorded before this was distinguished, and on one that is not truncated.
+  truncatedBy: traceTruncationSchema.nullish(),
   page: pageSchema,
   sources: traceSourcesSchema,
   summary: traceSummarySchema,
@@ -92,6 +99,7 @@ export const traceDetailSchema = z.object({
 export type TraceSource = z.infer<typeof traceSourceSchema>;
 export type TraceStateSource = z.infer<typeof traceStateSourceSchema>;
 export type TraceStepKind = z.infer<typeof traceStepKindSchema>;
+export type TraceTruncation = z.infer<typeof traceTruncationSchema>;
 export type TraceConsoleLevel = z.infer<typeof traceConsoleLevelSchema>;
 export type TraceStep = z.infer<typeof traceStepSchema>;
 export type TraceConsoleEntry = z.infer<typeof traceConsoleEntrySchema>;

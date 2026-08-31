@@ -31,6 +31,7 @@ interface ActiveTrace {
   cdp: CdpCollector | null;
   batches: TraceBatch[];
   stateStart: unknown;
+  stateEnd: unknown;
   stateStartSeen: boolean;
   stopping: boolean;
   overran: boolean;
@@ -49,14 +50,21 @@ const pageOf = async (tabId: number): Promise<Page> => {
 };
 
 const merge = (batches: readonly TraceBatch[]) => ({
-  steps: batches.flatMap((batch) => batch.steps),
-  console: batches.flatMap((batch) => batch.console),
-  network: batches.flatMap((batch) => batch.network),
-  state: batches.flatMap((batch) => batch.state),
-  replay: batches.flatMap((batch) => batch.replay),
+  steps: batches.flatMap((batch) => batch.steps ?? []),
+  console: batches.flatMap((batch) => batch.console ?? []),
+  network: batches.flatMap((batch) => batch.network ?? []),
+  state: batches.flatMap((batch) => batch.state ?? []),
+  replay: batches.flatMap((batch) => batch.replay ?? []),
 });
 
 export const activeTraceTabId = (): number | null => active?.tabId ?? null;
+
+// The traced tab closing ends the capture and leaves the recording with no way to finish itself; the
+// trace recorded up to that point is still worth keeping, so it is closed out rather than stranded.
+export const finishTraceForClosedTab = async (tabId: number): Promise<void> => {
+  if (active?.tabId !== tabId) return;
+  await stopTrace();
+};
 
 // How far into the trace a newly loaded document is joining, or null when nothing is recording there.
 export const activeTraceElapsed = (tabId: number): number | null =>
@@ -66,8 +74,9 @@ export const traceStatus = (): TraceStatusMessage => {
   if (!active) return IDLE_STATUS;
 
   const merged = merge(active.batches);
-  const consoleEntries = active.cdp ? active.cdp.console : merged.console;
-  const network = active.cdp ? active.cdp.network : merged.network;
+  const live = active.cdp !== null && active.cdp.attached() ? active.cdp : null;
+  const consoleEntries = live ? live.console : merged.console;
+  const network = live ? live.network : merged.network;
 
   return {
     type: 'caliper/trace-status',
@@ -78,11 +87,18 @@ export const traceStatus = (): TraceStatusMessage => {
   };
 };
 
-export const ingestBatch = (batch: TraceBatch): void => {
-  if (!active) return;
+// Only the tab being recorded may contribute. Without this any page in any other tab could post a
+// batch of its own invention, and the fabricated steps would reach the agent as recorded fact.
+export const ingestBatch = (batch: TraceBatch, tabId: number | undefined): void => {
+  if (!active || tabId !== active.tabId) return;
+
   if (!active.stateStartSeen && batch.stateSnapshot !== undefined) {
     active.stateStart = batch.stateSnapshot;
     active.stateStartSeen = true;
+  }
+  if (batch.snapshotOnly === true) {
+    active.stateEnd = batch.stateSnapshot;
+    return;
   }
   active.batches.push(batch);
 };
@@ -103,6 +119,7 @@ export const startTrace = async (tabId: number, label: string): Promise<boolean>
     cdp: options.enableCdp ? await attachCdp(tabId, () => Date.now() - startedAtMs) : null,
     batches: [],
     stateStart: undefined,
+    stateEnd: undefined,
     stateStartSeen: false,
     stopping: false,
     overran: false,
@@ -151,6 +168,12 @@ export const stopTrace = async (): Promise<boolean> => {
   await new Promise((resolve) => setTimeout(resolve, FINAL_FLUSH_GRACE_MS));
   active = null;
 
+  // A session Chrome took away mid-trace holds only what arrived before that moment, while the in-page
+  // collectors kept recording throughout. Preferring the truncated CDP arrays — and labelling them
+  // `cdp` — would hand the agent a half-empty channel described as the trustworthy one. Probed before
+  // the teardown below, since asking afterwards would always answer "dead".
+  const cdp = current.cdp !== null && (await current.cdp.isLive()) ? current.cdp : null;
+
   await current.cdp?.detach();
   const video = await stopVideo();
   const options = await readTraceOptions();
@@ -159,13 +182,19 @@ export const stopTrace = async (): Promise<boolean> => {
   const base = `caliper-${current.id.slice(0, ID_LENGTH)}`;
   // Truncation is a property of the trace, not only of its video: a recording that overran its limit or
   // overflowed a collector buffer is incomplete however the video turned out.
-  const truncated =
-    video.truncated ||
-    current.overran ||
-    current.batches.some((batch) => batch.dropped === true);
+  // Ordered by how much it costs the reader: a stopped recording loses the end of the reproduction, an
+  // overflow loses the head of a channel, and a trimmed video loses nothing the trace itself carries.
+  const truncatedBy = current.overran
+    ? 'length-limit'
+    : current.batches.some((batch) => batch.dropped === true)
+      ? 'buffer-overflow'
+      : video.truncated
+        ? 'video-window'
+        : null;
+  const truncated = truncatedBy !== null;
   const sources: TraceSources = {
-    network: current.cdp ? 'cdp' : 'fallback',
-    console: current.cdp ? 'cdp' : 'fallback',
+    network: cdp ? 'cdp' : 'fallback',
+    console: cdp ? 'cdp' : 'fallback',
     state: merged.state.length > 0 ? 'devtools-bridge' : 'none',
   };
 
@@ -175,16 +204,14 @@ export const stopTrace = async (): Promise<boolean> => {
     startedAt: current.startedAt,
     durationMs: Date.now() - current.startedAtMs,
     truncated,
+    truncatedBy,
     page: current.page,
     sources,
     steps: merged.steps,
-    console: current.cdp ? current.cdp.console : merged.console,
-    network: current.cdp ? current.cdp.network : merged.network,
+    console: cdp ? cdp.console : merged.console,
+    network: cdp ? cdp.network : merged.network,
     state: merged.state,
-    stateSnapshots: {
-      start: current.stateStart,
-      end: current.batches[current.batches.length - 1]?.stateSnapshot,
-    },
+    stateSnapshots: {start: current.stateStart, end: current.stateEnd},
     files: {
       trace: `${base}.trace.json`,
       replay: merged.replay.length > 0 ? `${base}.replay.ndjson.gz` : undefined,

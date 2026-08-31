@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'preact/hooks';
 import type {CaliperTrace} from '@caliper/core';
+import {truncationNote} from '@caliper/core';
 import {getBlob} from '../../trace/blob-store';
 
 const MS_PER_SECOND = 1000;
@@ -66,9 +67,7 @@ export const TraceCard = ({trace, onRename, onRemove}: Props) => {
         </p>
       ) : null}
 
-      {trace.truncated ? (
-        <p class="trace__note">Recording hit its length limit — the earliest seconds were dropped.</p>
-      ) : null}
+      {trace.truncated ? <p class="trace__note">{truncationNote(trace)}</p> : null}
     </li>
   );
 };

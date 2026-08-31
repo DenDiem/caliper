@@ -75,25 +75,33 @@ export default defineContentScript({
       window.addEventListener(type, onEvent, {capture: true, passive: true});
     }
 
+    // postMessage structured-clones the batch, and an app's store legitimately holds functions, DOM
+    // nodes and proxies — none of which clone. Sending the snapshot separately means a store that
+    // cannot cross the boundary costs the snapshot alone, not the second of steps, console, network,
+    // state and replay that was drained alongside it.
+    const post = (batch: unknown): boolean => {
+      try {
+        window.postMessage({source: COLLECTOR_SOURCE, kind: 'batch', batch}, '*');
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     const flush = (): void => {
-      window.postMessage(
-        {
-          source: COLLECTOR_SOURCE,
-          kind: 'batch',
-          batch: {
-            dropped: [steps, consoleEntries, network, state, replay].some(
-              (buffer) => buffer.dropped,
-            ),
-            steps: steps.drain(),
-            console: consoleEntries.drain(),
-            network: network.drain(),
-            state: state.drain(),
-            replay: replay.drain(),
-            stateSnapshot: bridge.snapshot(),
-          },
-        },
-        '*',
-      );
+      const batch = {
+        dropped: [steps, consoleEntries, network, state, replay].some((buffer) => buffer.dropped),
+        steps: steps.drain(),
+        console: consoleEntries.drain(),
+        network: network.drain(),
+        state: state.drain(),
+        replay: replay.drain(),
+      };
+
+      if (!post(batch)) return;
+
+      const snapshot = bridge.snapshot();
+      if (snapshot !== undefined) post({snapshotOnly: true, stateSnapshot: snapshot});
     };
 
     const start = async (elapsedMs: number): Promise<void> => {

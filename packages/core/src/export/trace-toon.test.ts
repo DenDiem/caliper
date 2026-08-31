@@ -39,6 +39,29 @@ describe('traceBlock', () => {
   });
 
   it('flags truncation', () => {
-    expect(traceBlock({...trace, truncated: true})).toContain('truncated: true');
+    expect(traceBlock({...trace, truncated: true})).toContain('truncated:');
+  });
+
+  // The whole point of recording the cause: the length limit stops the recording, so the END is gone,
+  // while an overflow drops the head. Saying the wrong one sends the agent to the missing half.
+  it('says the end is missing when the length limit stopped the recording', () => {
+    const block = traceBlock({...trace, truncated: true, truncatedBy: 'length-limit'});
+    expect(block).toContain('END of the reproduction is missing');
+    expect(block).not.toContain('EARLIEST');
+  });
+
+  it('says the earliest events went when a buffer overflowed', () => {
+    const block = traceBlock({...trace, truncated: true, truncatedBy: 'buffer-overflow'});
+    expect(block).toContain('EARLIEST events were dropped');
+  });
+
+  it('says the channels are intact when only the video window was trimmed', () => {
+    const block = traceBlock({...trace, truncated: true, truncatedBy: 'video-window'});
+    expect(block).toContain('trace channels themselves are complete');
+  });
+
+  it('admits it does not know on a trace recorded before the cause was kept', () => {
+    const block = traceBlock({...trace, truncated: true});
+    expect(block).toContain('which end is missing was not recorded');
   });
 });

@@ -57,8 +57,10 @@ Two notes a summary may carry:
 - `network captured in fallback mode` — `chrome.debugger` could not attach while recording (DevTools
   was open on the tab), so request and response **bodies may be missing**. Statuses and timings are
   still accurate.
-- `truncated: true` — the recording hit its length limit and the earliest seconds were dropped. The
-  beginning of the reproduction is not in the file.
+- `truncated: …` — part of the recording is missing, and the note says **which end**. `length-limit`
+  means the recording was stopped and the **end** of the reproduction is absent (the start is intact);
+  `buffer-overflow` means the **earliest** events were dropped; `video-window` costs only the video.
+  Read the note rather than assuming: trusting the wrong half is the whole reason it is spelled out.
 
 A trace's steps were recorded against the page as it was, so treat their selectors the same way you
 treat a mark's: best-effort against the current source.

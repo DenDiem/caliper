@@ -12,6 +12,13 @@ const SCREENCAST = {format: 'jpeg', quality: 50, maxWidth: 1280, maxHeight: 800,
 export interface CdpCollector {
   readonly console: TraceConsoleEntry[];
   readonly network: TraceNetworkEntry[];
+  // False once Chrome took the session away mid-trace — opening DevTools on the tab does exactly that,
+  // and the design assumes QA keeps DevTools open. The arrays simply stop growing, so without this the
+  // trace would be stamped `cdp` while missing everything after the detach.
+  readonly attached: () => boolean;
+  // Asked before the collected arrays are trusted. onDetach covers the detaches Chrome announces, but
+  // not every way a session can die, so liveness is confirmed rather than assumed.
+  readonly isLive: () => Promise<boolean>;
   // Video without activeTab. chrome.tabCapture needs the extension to have been invoked on the tab from
   // the toolbar, and Chrome revokes that on navigation — but the debugger is already attached for the
   // duration of the trace, and a screencast off that session needs no such grant.
@@ -86,6 +93,13 @@ export const attachCdp = async (
   };
 
   let onScreencastFrame: ((dataUrl: string) => void) | null = null;
+  let attached = true;
+
+  const onDetach = (source: chrome.debugger.Debuggee): void => {
+    if (source.tabId !== tabId) return;
+    attached = false;
+    onScreencastFrame = null;
+  };
 
   const onEvent = (source: chrome.debugger.Debuggee, method: string, params?: object): void => {
     if (source.tabId !== tabId) return;
@@ -155,6 +169,7 @@ export const attachCdp = async (
   };
 
   chrome.debugger.onEvent.addListener(onEvent);
+  chrome.debugger.onDetach.addListener(onDetach);
   try {
     await chrome.debugger.sendCommand(target, 'Runtime.enable');
     await chrome.debugger.sendCommand(target, 'Network.enable');
@@ -162,6 +177,7 @@ export const attachCdp = async (
     // Attaching succeeded but the domains did not (the tab navigated, or the target went away). Leaving
     // the session attached would keep Chrome's debugging banner up for a trace that is not collecting.
     chrome.debugger.onEvent.removeListener(onEvent);
+    chrome.debugger.onDetach.removeListener(onDetach);
     await chrome.debugger.detach(target).catch(() => undefined);
     return null;
   }
@@ -199,6 +215,17 @@ export const attachCdp = async (
   return {
     console: consoleEntries,
     network,
+    attached: () => attached,
+    isLive: async () => {
+      if (!attached) return false;
+      try {
+        await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {expression: '0'});
+        return true;
+      } catch {
+        attached = false;
+        return false;
+      }
+    },
     startScreencast: async (onFrame) => {
       try {
         await chrome.debugger.sendCommand(target, 'Page.enable');
@@ -211,9 +238,10 @@ export const attachCdp = async (
     },
     stopScreencast,
     detach: async () => {
-      await stopScreencast();
+      if (attached) await stopScreencast();
       chrome.debugger.onEvent.removeListener(onEvent);
-      await chrome.debugger.detach(target).catch(() => undefined);
+      chrome.debugger.onDetach.removeListener(onDetach);
+      if (attached) await chrome.debugger.detach(target).catch(() => undefined);
     },
   };
 };
