@@ -1,9 +1,24 @@
-import type {CaliperTrace} from '../schema/trace.schema';
+import type {CaliperTrace, TraceTruncation} from '../schema/trace.schema';
 
 const ID_LENGTH = 8;
 const MS_PER_SECOND = 1000;
 
 const seconds = (ms: number): string => `${(ms / MS_PER_SECOND).toFixed(1)}s`;
+
+const TRUNCATION: Record<TraceTruncation, string> = {
+  'length-limit':
+    'the recording hit its length limit and was stopped — the END of the reproduction is missing, the start is intact',
+  'buffer-overflow':
+    'a collector buffer overflowed — the EARLIEST events were dropped, the end is intact',
+  'video-window': 'the video kept only its final seconds — the trace channels themselves are complete',
+};
+
+// A trace recorded before the cause was distinguished says only that something was lost, which is the
+// honest thing to say about it.
+export const truncationNote = (trace: CaliperTrace): string =>
+  trace.truncatedBy
+    ? TRUNCATION[trace.truncatedBy]
+    : 'the recording was cut short — which end is missing was not recorded';
 
 const plural = (count: number, noun: string): string => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
@@ -30,9 +45,7 @@ export const traceBlock = (trace: CaliperTrace): string => {
 
   if (trace.files.replay) lines.push(`    replay: ${trace.files.replay}`);
   if (trace.truncated) {
-    lines.push(
-      '    truncated: true — the recording exceeded its limit and the earliest seconds were dropped',
-    );
+    lines.push(`    truncated: ${truncationNote(trace)}`);
   }
   if (trace.sources.network === 'fallback') {
     lines.push(

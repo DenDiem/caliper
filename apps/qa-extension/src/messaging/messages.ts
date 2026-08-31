@@ -55,11 +55,15 @@ export interface SetModeTabMessage {
 export interface TraceBatch {
   // Set once any of the collector's ring buffers has discarded an event.
   dropped?: boolean;
-  steps: TraceStep[];
-  console: TraceConsoleEntry[];
-  network: TraceNetworkEntry[];
-  state: TraceStateEntry[];
-  replay: string[];
+  // A snapshot-only batch carries the store and nothing else; it is posted separately so that a store
+  // which cannot be structured-cloned never costs the event channels.
+  snapshotOnly?: boolean;
+  // Absent on a snapshot-only batch, which is why every reader defaults them.
+  steps?: TraceStep[];
+  console?: TraceConsoleEntry[];
+  network?: TraceNetworkEntry[];
+  state?: TraceStateEntry[];
+  replay?: string[];
   stateSnapshot?: unknown;
 }
 

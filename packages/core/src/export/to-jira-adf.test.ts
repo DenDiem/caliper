@@ -139,9 +139,12 @@ describe('sessionToJiraComment', () => {
     expect(JSON.stringify(doc)).toContain('caliper-a3f0c1d2.webm');
   });
 
-  it('says so when the recording was cut short', () => {
-    const doc = sessionToJiraComment({...session([]), traces: [{...trace(), truncated: true}]});
-    expect(JSON.stringify(doc)).toContain('hit its length limit');
+  it('tells a reader which end of a cut-short recording is missing', () => {
+    const doc = sessionToJiraComment({
+      ...session([]),
+      traces: [{...trace(), truncated: true, truncatedBy: 'length-limit'}],
+    });
+    expect(JSON.stringify(doc)).toContain('END of the reproduction is missing');
   });
 });
 

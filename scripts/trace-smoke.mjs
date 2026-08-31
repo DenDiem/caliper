@@ -7,11 +7,12 @@
  * invisible to every build and test in the repo.
  *
  * Needs the demo server running: `pnpm --filter @dendiem/caliper demo`.
- * Usage: node scripts/trace-smoke.mjs [--no-cdp] [--save-video]
+ * Usage: node scripts/trace-smoke.mjs [--no-cdp] [--detach-midway] [--save-video]
  *
  * `--no-cdp` runs the same reproduction with the debugger collector turned off in the options — the
- * supported setting, and the same path a tab with DevTools already open falls onto. Both modes are
- * worth running: they assert different things.
+ * supported setting, and the same path a tab with DevTools already open falls onto.
+ * `--detach-midway` tears the debugger session down halfway, which is what Chrome does when DevTools
+ * opens on the tab being recorded. All three modes are worth running: they assert different things.
  *
  * Branded Chrome refuses --load-extension, so this points at the plain Chromium Playwright caches.
  * Playwright is not a dependency of this repo — it is resolved from a global @playwright/cli install.
@@ -80,6 +81,7 @@ const main = async () => {
   // options is the supported way to get the in-page collectors, and it is the same code path a tab with
   // DevTools already open falls onto.
   const withDebugger = !process.argv.includes('--no-cdp');
+  const detachMidway = process.argv.includes('--detach-midway');
 
   const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'caliper-')), {
     headless: false,
@@ -141,6 +143,15 @@ const main = async () => {
 
   await page.click('#place-order');
   await wait(1400);
+
+  // Chrome takes the debugger away when DevTools opens on the tab, which the design expects QA to do.
+  // Automation cannot open DevTools, so the session is torn down the same way from the worker to prove
+  // the trace demotes itself to the in-page collectors instead of reporting half-empty CDP arrays.
+  if (detachMidway) {
+    await worker.evaluate(async ([id]) => chrome.debugger.detach({tabId: id}), [tabId]);
+    await wait(600);
+  }
+
   await page.fill('#quantity', '2');
   await wait(500);
   await page.click('#place-order');
@@ -202,13 +213,24 @@ const main = async () => {
     'the 409 is flagged failed',
     detail.network.some((entry) => entry.status === 409 && entry.failed),
   );
+  const expectCdp = withDebugger && !detachMidway;
   check(
-    `sources reflect the mode`,
-    trace.sources.network === (withDebugger ? 'cdp' : 'fallback'),
+    'sources reflect the mode',
+    trace.sources.network === (expectCdp ? 'cdp' : 'fallback'),
     trace.sources.network,
   );
 
-  if (withDebugger) {
+  if (detachMidway) {
+    // The point of the fix: losing the debugger mid-trace demotes the label and keeps the in-page
+    // capture, instead of shipping half-empty CDP arrays stamped as the trustworthy source.
+    check(
+      'a mid-trace detach demotes the trace instead of losing the tail',
+      trace.sources.network === 'fallback' &&
+        detail.network.some((entry) => entry.status === 409 && entry.failed),
+    );
+  }
+
+  if (expectCdp) {
     check(
       'the thrown TypeError was captured with a stack',
       detail.console.some((entry) => entry.level === 'error' && entry.stack),

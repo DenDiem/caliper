@@ -110,6 +110,20 @@ const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): boolean => {
   return true;
 };
 
+const finalise = (active: MediaRecorder, resolve: (result: VideoResult) => void): void => {
+  for (const track of active.stream.getTracks()) track.stop();
+  const blob = new Blob(chunks, {type: mimeType()});
+  recorder = null;
+  chunks = [];
+  frameCanvas = null;
+  frameTrack = null;
+
+  const reader = new FileReader();
+  reader.onload = () => resolve({dataUrl: String(reader.result), truncated});
+  reader.onerror = () => resolve({dataUrl: null, truncated});
+  reader.readAsDataURL(blob);
+};
+
 const pushFrame = async (dataUrl: string): Promise<void> => {
   const canvas = frameCanvas;
   const track = frameTrack;
@@ -137,20 +151,19 @@ const stop = (): Promise<VideoResult> =>
       resolve({dataUrl: null, truncated: false});
       return;
     }
-    active.onstop = () => {
-      for (const track of active.stream.getTracks()) track.stop();
-      frameCanvas = null;
-      frameTrack = null;
-      const blob = new Blob(chunks, {type: mimeType()});
-      recorder = null;
-      chunks = [];
-
-      const reader = new FileReader();
-      reader.onload = () => resolve({dataUrl: String(reader.result), truncated});
-      reader.onerror = () => resolve({dataUrl: null, truncated});
-      reader.readAsDataURL(blob);
-    };
-    active.stop();
+    // The capture ends on its own when the traced tab closes, so by the time Stop arrives the recorder
+    // may already be inactive: assigning onstop would then wait for an event that has been and gone,
+    // and calling stop() throws. Take what was captured instead of hanging the caller.
+    if (active.state === 'inactive') {
+      finalise(active, resolve);
+      return;
+    }
+    active.onstop = () => finalise(active, resolve);
+    try {
+      active.stop();
+    } catch {
+      finalise(active, resolve);
+    }
   });
 
 chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
