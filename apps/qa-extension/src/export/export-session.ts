@@ -110,10 +110,24 @@ const toJiraAnnotation = (
 // uploadScreenshots already attaches — and screenshotId/assets are dropped: the id would dangle into an
 // empty asset map, and its mere presence triggers toToon's extension-only "use Download" help line on the
 // read side, which is wrong once the PNGs are materialised to disk.
-export const buildJiraManifest = (session: CaliperSession): string => {
+// `delivered` is the set of filenames that actually uploaded. A manifest naming a file the ticket does
+// not have sends the agent after a path that cannot resolve, and it has no way to tell that apart from
+// a file it simply has not opened yet — so the reference is dropped instead.
+export const buildJiraManifest = (session: CaliperSession, delivered?: ReadonlySet<string>): string => {
+  const keep = (filename: string | undefined): boolean =>
+    filename !== undefined && (delivered === undefined || delivered.has(filename));
+
   const manifest: CaliperSession = {
     ...session,
     annotations: session.annotations.map((annotation, index) => toJiraAnnotation(annotation, index, session)),
+    traces: session.traces.map((trace) => ({
+      ...trace,
+      files: {
+        trace: trace.files.trace,
+        ...(keep(trace.files.replay) ? {replay: trace.files.replay} : {}),
+        ...(keep(trace.files.video) ? {video: trace.files.video} : {}),
+      },
+    })),
     assets: {},
   };
   return JSON.stringify(manifest, null, 2);

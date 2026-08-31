@@ -63,7 +63,8 @@ export const TraceCard = ({trace, onRename, onRemove}: Props) => {
       {trace.files.video === undefined ? (
         <p class="trace__note">
           No video for this trace. Tab capture needs the panel to have been opened from the toolbar icon
-          on this tab — Chrome revokes that after a navigation. The recorded trace itself is unaffected.
+          on this tab (Chrome revokes that after a navigation), and the debugger screencast that would
+          otherwise stand in was unavailable too. The recorded trace itself is unaffected.
         </p>
       ) : null}
 

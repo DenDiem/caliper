@@ -1,5 +1,5 @@
 import {mkdirSync, readFileSync, readdirSync, statSync, writeFileSync} from 'node:fs';
-import {join} from 'node:path';
+import {basename, join} from 'node:path';
 import {caliperSessionSchema, toToon} from '@caliper/core';
 import type {CaliperSession} from '@caliper/core';
 import {unzipSync} from 'fflate';
@@ -10,7 +10,9 @@ const ID_SHORT = 8;
 
 const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 
-const basename = (name: string): string => name.split('/').pop() ?? name;
+// Zip entries always use '/', whatever the host platform — distinct from node's basename, which is
+// for the archive's own filesystem path.
+const entryName = (name: string): string => name.split('/').pop() ?? name;
 
 interface Archive {
   files: Record<string, Uint8Array>;
@@ -52,16 +54,38 @@ const materializeTraces = (session: CaliperSession, files: Record<string, Uint8A
   mkdirSync(outDir, {recursive: true});
 
   for (const [name, bytes] of Object.entries(files)) {
-    const base = basename(name);
+    const base = entryName(name);
     if (SKIP.has(base)) continue;
     writeFileSync(join(outDir, base), bytes);
   }
+
 
   for (const trace of session.traces) {
     trace.files.trace = `.caliper/${short}/${trace.files.trace}`;
     if (trace.files.replay) trace.files.replay = `.caliper/${short}/${trace.files.replay}`;
     if (trace.files.video) trace.files.video = `.caliper/${short}/${trace.files.video}`;
   }
+};
+
+// Screenshots were written out with the trace files but their annotation references still pointed at the
+// bare names from inside the zip, so the TOON handed the agent paths that resolve to nothing.
+const materializeScreenshots = (session: CaliperSession, files: Record<string, Uint8Array>): void => {
+  const short = session.id.slice(0, ID_SHORT);
+  const present = new Set(Object.keys(files).map(entryName));
+
+  for (const annotation of session.annotations) {
+    const filename = annotation.screenshot;
+    if (!filename) continue;
+    const base = entryName(filename);
+    if (present.has(base)) annotation.screenshot = `.caliper/${short}/${base}`;
+    else delete annotation.screenshot;
+  }
+};
+
+const composition = (session: CaliperSession): string => {
+  const marks = session.annotations.length;
+  const traces = session.traces.length;
+  return `${marks} mark${marks === 1 ? '' : 's'}, ${traces} trace${traces === 1 ? '' : 's'}`;
 };
 
 // The offline half of the two delivery paths: QA hands the archive over directly, and the agent reads
@@ -75,6 +99,7 @@ export const readArchive = async (path: string): Promise<string> => {
   const session = caliperSessionSchema.parse(raw);
 
   materializeTraces(session, archive.files);
+  materializeScreenshots(session, archive.files);
 
-  return toToon(session);
+  return [`${basename(path)}: ${composition(session)}`, '', toToon(session)].join('\n');
 };

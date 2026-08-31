@@ -12,6 +12,8 @@ export default defineConfig({
     permissions: [
       'storage',
       'unlimitedStorage',
+      // The trace length limit has to survive the service worker being unloaded mid-recording.
+      'alarms',
       'activeTab',
       'sidePanel',
       'scripting',

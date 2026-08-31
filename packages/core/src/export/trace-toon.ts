@@ -52,8 +52,10 @@ export const traceBlock = (trace: CaliperTrace): string => {
       '    note: network captured in fallback mode — request/response bodies may be missing',
     );
   }
-  if (trace.sources.state === 'none') {
-    lines.push('    note: no store state captured — the app exposes no Redux/NgRx devtools hook');
+  if (trace.summary.stateActions === 0) {
+    lines.push(
+      '    note: no store actions in this window — either the app dispatched none, or it uses no Redux/NgRx devtools hook',
+    );
   }
 
   return lines.join('\n');

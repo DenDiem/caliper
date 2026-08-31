@@ -108,6 +108,7 @@ const traceBullet = (trace: CaliperTrace): AdfNode => {
 export const sessionToJiraComment = (
   session: CaliperSession,
   media?: Record<number, MediaRef>,
+  undelivered?: readonly string[],
 ): AdfDoc => {
   const content: AdfNode[] = [
     {type: 'heading', attrs: {level: 3}, content: [text(heading(session))]},
@@ -134,6 +135,17 @@ export const sessionToJiraComment = (
         ],
       },
     );
+  }
+
+  if (undelivered && undelivered.length > 0) {
+    content.push({
+      type: 'paragraph',
+      content: [
+        text('Not attached (too large or refused by Jira): '),
+        text(undelivered.join(', '), [{type: 'code'}]),
+        text('. The rest of the session is here and complete.'),
+      ],
+    });
   }
 
   return {type: 'doc', version: 1, content};

@@ -8,6 +8,12 @@ import {readTraceOptions} from './options';
 import {pushVideoFrame, startFrameVideo, startVideo, stopVideo} from './video';
 
 const ID_LENGTH = 8;
+// A service worker can be unloaded whenever it goes quiet — and the page hanging is a plausible thing
+// for the bug being recorded to do. setTimeout dies with the worker; an alarm does not.
+const LIMIT_ALARM = 'caliper.trace.limit';
+// Written on every batch so a restarted worker can tell that a trace was in progress and say so,
+// rather than the recording evaporating with the panel still claiming nothing is wrong.
+const ACTIVE_KEY = 'caliper.trace.active';
 const MAX_STATE_DIFF_BYTES = 2048;
 // The collector's last flush travels page -> bridge -> background, so it lands a hop after Stop is
 // sent. Tearing the trace down synchronously threw away everything recorded since the previous tick.
@@ -35,16 +41,62 @@ interface ActiveTrace {
   stateStartSeen: boolean;
   stopping: boolean;
   overran: boolean;
-  limit: ReturnType<typeof setTimeout> | null;
+  dpr: number;
+}
+
+interface ActiveMarker {
+  id: string;
+  tabId: number;
+  label: string;
+  startedAt: string;
 }
 
 let active: ActiveTrace | null = null;
+
+const markActive = (trace: ActiveTrace | null): void => {
+  if (!trace) {
+    void chrome.storage.session.remove(ACTIVE_KEY);
+    return;
+  }
+  const marker: ActiveMarker = {
+    id: trace.id,
+    tabId: trace.tabId,
+    label: trace.label,
+    startedAt: trace.startedAt,
+  };
+  void chrome.storage.session.set({[ACTIVE_KEY]: marker});
+};
+
+// Called when the worker starts. If a marker survives with no trace in memory, the worker was unloaded
+// mid-recording: the events collected since are gone and cannot be recovered, so the recording is
+// closed out and the tab told to stop rather than left running against nothing.
+export const recoverInterruptedTrace = async (): Promise<void> => {
+  if (active) return;
+  const raw: unknown = (await chrome.storage.session.get(ACTIVE_KEY))[ACTIVE_KEY];
+  if (typeof raw !== 'object' || raw === null) return;
+
+  const tabId = Reflect.get(raw, 'tabId');
+  if (typeof tabId === 'number') {
+    await chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-stop'}).catch(() => undefined);
+  }
+  await chrome.alarms.clear(LIMIT_ALARM).catch(() => undefined);
+  await chrome.storage.session.remove(ACTIVE_KEY);
+};
+
+// The alarm is the length limit. It fires even if the worker was unloaded in between, which a
+// setTimeout would not.
+export const onLimitAlarm = async (name: string): Promise<void> => {
+  if (name !== LIMIT_ALARM) return;
+  if (active) active.overran = true;
+  await stopTrace();
+};
 
 const pageOf = async (tabId: number): Promise<Page> => {
   const tab = await chrome.tabs.get(tabId);
   return {
     url: tab.url ?? '',
     title: tab.title ?? '',
+    // Replaced at stop with the value the page reported; chrome.tabs has no pixel ratio to give.
     viewport: {width: tab.width ?? 0, height: tab.height ?? 0, dpr: 1},
   };
 };
@@ -100,6 +152,7 @@ export const ingestBatch = (batch: TraceBatch, tabId: number | undefined): void 
     active.stateEnd = batch.stateSnapshot;
     return;
   }
+  if (typeof batch.dpr === 'number') active.dpr = batch.dpr;
   active.batches.push(batch);
 };
 
@@ -123,16 +176,13 @@ export const startTrace = async (tabId: number, label: string): Promise<boolean>
     stateStartSeen: false,
     stopping: false,
     overran: false,
-    limit: null,
+    dpr: 1,
   };
 
+  markActive(active);
   // "Maximum trace length" used to bound only the encoder, so the trace itself — and the batches piling
   // up in this worker — grew without limit. It now stops the recording and says the trace was cut.
-  const started = active;
-  started.limit = setTimeout(() => {
-    started.overran = true;
-    void stopTrace();
-  }, options.maxDurationMs);
+  await chrome.alarms.create(LIMIT_ALARM, {when: Date.now() + options.maxDurationMs});
 
   const videoOptions = {
     maxDurationMs: options.maxDurationMs,
@@ -142,15 +192,18 @@ export const startTrace = async (tabId: number, label: string): Promise<boolean>
   // tabCapture is the better picture, but it needs the extension to have been invoked on this tab from
   // the toolbar and Chrome revokes that on navigation. When it is not available the already-attached
   // debugger session can screencast instead, so a trace only loses its video when neither is possible.
+  // Sent before the capture setup, which takes long enough that a fast first click landed with the
+  // buffers still closed — a network request with no step to explain it.
+  await chrome.tabs
+    .sendMessage(tabId, {type: 'caliper/collector-start', elapsedMs: Date.now() - startedAtMs})
+    .catch(() => undefined);
+
   const captured = await startVideo(tabId, videoOptions);
   if (!captured && active.cdp) {
     const encoding = await startFrameVideo(videoOptions);
     if (encoding) await active.cdp.startScreencast(pushVideoFrame);
   }
 
-  await chrome.tabs
-    .sendMessage(tabId, {type: 'caliper/collector-start', elapsedMs: Date.now() - startedAtMs})
-    .catch(() => undefined);
   return true;
 };
 
@@ -161,12 +214,13 @@ export const stopTrace = async (): Promise<boolean> => {
   if (!current || current.stopping) return false;
   current.stopping = true;
 
-  if (current.limit) clearTimeout(current.limit);
+  await chrome.alarms.clear(LIMIT_ALARM).catch(() => undefined);
 
   const {tabId} = current;
   await chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-stop'}).catch(() => undefined);
   await new Promise((resolve) => setTimeout(resolve, FINAL_FLUSH_GRACE_MS));
   active = null;
+  markActive(null);
 
   // A session Chrome took away mid-trace holds only what arrived before that moment, while the in-page
   // collectors kept recording throughout. Preferring the truncated CDP arrays — and labelling them
@@ -195,7 +249,10 @@ export const stopTrace = async (): Promise<boolean> => {
   const sources: TraceSources = {
     network: cdp ? 'cdp' : 'fallback',
     console: cdp ? 'cdp' : 'fallback',
-    state: merged.state.length > 0 ? 'devtools-bridge' : 'none',
+    // The bridge is installed on every page; whether the app dispatched anything in the window is a
+    // different question, and reporting 'none' for a quiet store told the agent something false about
+    // the application.
+    state: 'devtools-bridge',
   };
 
   const {trace, detail} = assembleTrace({
@@ -205,7 +262,7 @@ export const stopTrace = async (): Promise<boolean> => {
     durationMs: Date.now() - current.startedAtMs,
     truncated,
     truncatedBy,
-    page: current.page,
+    page: {...current.page, viewport: {...current.page.viewport, dpr: current.dpr}},
     sources,
     steps: merged.steps,
     console: cdp ? cdp.console : merged.console,

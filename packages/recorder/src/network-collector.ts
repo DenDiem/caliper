@@ -4,6 +4,10 @@ export interface FetchHost {
   fetch: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 }
 
+export interface BeaconHost {
+  navigator: {sendBeacon: (url: string | URL, data?: BodyInit | null) => boolean};
+}
+
 const OK_FLOOR = 200;
 const OK_CEILING = 300;
 const NETWORK_ERROR_STATUS = 0;
@@ -58,5 +62,32 @@ export const patchFetch = (
 
   return () => {
     target.fetch = original;
+  };
+};
+
+// Analytics and "last gasp" error reports leave this way, and an unload beacon is often the only record
+// that the page gave up at all. It is fire-and-forget, so the entry is what the call returned.
+export const patchSendBeacon = (
+  target: BeaconHost,
+  sink: (entry: TraceNetworkEntry) => void,
+  now: () => number,
+): (() => void) => {
+  const original = target.navigator.sendBeacon.bind(target.navigator);
+
+  target.navigator.sendBeacon = (url: string | URL, data?: BodyInit | null): boolean => {
+    const accepted = original(url, data);
+    sink({
+      t: now(),
+      method: 'POST',
+      url: typeof url === 'string' ? url : url.href,
+      status: accepted ? 202 : 0,
+      durationMs: 0,
+      failed: !accepted,
+    });
+    return accepted;
+  };
+
+  return () => {
+    target.navigator.sendBeacon = original;
   };
 };

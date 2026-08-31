@@ -333,7 +333,7 @@ const styleEntries = (annotations: readonly CaliperAnnotation[]): StyleEntry[] =
     selector: string,
     styles: Record<string, StyleValue>,
   ): void => {
-    const key = `${scope} ${selector}`;
+    const key = `${scope}\u0000${selector}`;
     if (seen.has(key)) return;
     seen.add(key);
     for (const [property, style] of foldStyles(styles)) {

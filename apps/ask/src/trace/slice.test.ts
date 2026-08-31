@@ -61,3 +61,54 @@ describe('sliceTrace', () => {
     expect(output).toContain('nothing recorded in this window');
   });
 });
+
+describe('sliceTrace --full', () => {
+  const rich: TraceDetail = {
+    ...detail,
+    console: [
+      {t: 12_500, level: 'error', text: 'TypeError: order is undefined', stack: 'at submit (app.js:12)'},
+    ],
+    network: [
+      {
+        t: 12_450,
+        method: 'POST',
+        url: 'https://api.test/orders',
+        status: 409,
+        durationMs: 120,
+        failed: true,
+        headers: {authorization: 'Bearer demo'},
+        requestBody: '{"quantity":2}',
+        responseBody: 'x'.repeat(900),
+      },
+    ],
+    state: [{t: 12_460, action: '[Orders] Save Failure', diff: {orders: 1}}],
+    stateSnapshots: {start: {orders: 0}, end: {orders: 1}},
+  };
+
+  const slice = (full: boolean, aroundMs: number | null = null): string =>
+    sliceTrace(rich, {channels: all, aroundMs, windowMs: 2000, full});
+
+  // Without --full the reader could not show any of this, so an agent that needed it had to open the
+  // whole file — the outcome the summary-first design exists to prevent.
+  it('shows request headers and bodies only when asked', () => {
+    expect(slice(false)).not.toContain('authorization');
+    expect(slice(true)).toContain('authorization: Bearer demo');
+    expect(slice(true)).toContain('request: {"quantity":2}');
+  });
+
+  it('shows the console stack and the state diff only when asked', () => {
+    expect(slice(false)).not.toContain('at submit');
+    expect(slice(true)).toContain('at submit (app.js:12)');
+    expect(slice(true)).toContain('diff: {"orders":1}');
+  });
+
+  it('marks a preview as cut instead of letting it read as malformed data', () => {
+    expect(slice(false)).toContain('[truncated, --full for all of it]');
+    expect(slice(true)).not.toContain('[truncated');
+  });
+
+  it('adds the store snapshots to a whole-trace read, not a windowed one', () => {
+    expect(slice(true)).toContain('state.start:');
+    expect(slice(true, 12_450)).not.toContain('state.start:');
+  });
+});

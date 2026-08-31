@@ -10,7 +10,12 @@ import type {
   TraceStateEntry,
   TraceStep,
 } from '@caliper/core';
-import {redactNetworkEntry} from './redact';
+import {
+  redactConsoleEntry,
+  redactNetworkEntry,
+  redactSnapshot,
+  redactStateEntry,
+} from './redact';
 
 export interface AssembleInput {
   id: string;
@@ -52,11 +57,15 @@ const capDiff = (entry: TraceStateEntry, maxBytes: number): TraceStateEntry => {
 
 export const assembleTrace = (input: AssembleInput): {trace: CaliperTrace; detail: TraceDetail} => {
   const steps = byTime(input.steps);
-  const consoleEntries = byTime(input.console);
+  const consoleEntries = byTime(input.console).map((entry) =>
+    redactConsoleEntry(entry, input.redactSecrets),
+  );
   const network = byTime(input.network).map((entry) =>
     redactNetworkEntry(entry, input.redactSecrets),
   );
-  const state = byTime(input.state).map((entry) => capDiff(entry, input.maxStateDiffBytes));
+  const state = byTime(input.state)
+    .map((entry) => redactStateEntry(entry, input.redactSecrets))
+    .map((entry) => capDiff(entry, input.maxStateDiffBytes));
 
   const trace: CaliperTrace = {
     id: input.id,
@@ -83,7 +92,10 @@ export const assembleTrace = (input: AssembleInput): {trace: CaliperTrace; detai
     console: consoleEntries,
     network,
     state,
-    stateSnapshots: input.stateSnapshots,
+    stateSnapshots: {
+      start: redactSnapshot(input.stateSnapshots.start, input.redactSecrets),
+      end: redactSnapshot(input.stateSnapshots.end, input.redactSecrets),
+    },
   };
 
   return {trace, detail};

@@ -67,4 +67,55 @@ describe('readArchive', () => {
     const dir = mkdtempSync(join(tmpdir(), 'caliper-'));
     await expect(readArchive(dir)).rejects.toThrow(/No Caliper session/);
   });
+
+  it('opens with what the archive contains, the way caliper pull does', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'caliper-'));
+    writeFileSync(join(dir, 'session.json'), JSON.stringify(session));
+
+    const [first] = (await readArchive(dir)).split('\n');
+    expect(first).toContain('0 marks, 1 trace');
+  });
+
+  // The PNGs are written out beside the trace files, so leaving the annotation pointing at the bare
+  // name from inside the zip handed the agent a path that resolves to nothing.
+  it('repoints screenshots at the files it just wrote', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'caliper-'));
+    const withShot = {
+      ...session,
+      annotations: [
+        {
+          id: 'a1',
+          createdAt: '2026-08-31T10:00:00.000Z',
+          comment: 'wrong colour',
+          severity: 'minor',
+          intent: 'change',
+          markType: 'element',
+          anchor: null,
+          anchorTarget: null,
+          author: 'human',
+          concernType: null,
+          verdict: null,
+          screenshot: 'caliper-01-badge.png',
+          page: {url: 'https://app.test/', title: 'x', viewport: {width: 1, height: 1, dpr: 1}},
+          target: {
+            selector: '.badge',
+            selectorStrategy: 'nth-path',
+            selectorConfidence: 'low',
+            tagName: 'span',
+            componentName: null,
+            componentSource: null,
+            componentChain: [],
+            text: 'In stock',
+            attributes: {},
+            box: {x: 0, y: 0, width: 1, height: 1},
+            styles: {},
+          },
+        },
+      ],
+    };
+    writeFileSync(join(dir, 'session.json'), JSON.stringify(withShot));
+    writeFileSync(join(dir, 'caliper-01-badge.png'), Buffer.from([1, 2, 3]));
+
+    expect(await readArchive(dir)).toContain('.caliper/a3f0c1d2/caliper-01-badge.png');
+  });
 });
