@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import type {CaliperAnnotation, CaliperSession} from '../schema/annotation.schema';
+import type {CaliperTrace} from '../schema/trace.schema';
 import type {AdfDoc, AdfNode} from './to-jira-adf';
 import {screenshotFilename, sessionToJiraComment} from './to-jira-adf';
 
@@ -48,6 +49,18 @@ const bulletListOf = (doc: AdfDoc): AdfNode => {
   if (!node) throw new Error('expected a bullet list at content[1]');
   return node;
 };
+
+const trace = (): CaliperTrace => ({
+  id: 'a3f0c1d2-0000-4000-8000-000000000001',
+  label: 'Place order fails on the second submit',
+  startedAt: '2026-08-31T10:00:00.000Z',
+  durationMs: 6000,
+  truncated: false,
+  page: {url: 'https://app.test/checkout', title: 'Checkout', viewport: {width: 1280, height: 800, dpr: 1}},
+  sources: {network: 'cdp', console: 'cdp', state: 'devtools-bridge'},
+  summary: {steps: 5, consoleErrors: 1, failedRequests: 1, stateActions: 4},
+  files: {trace: 'caliper-a3f0c1d2.trace.json', video: 'caliper-a3f0c1d2.webm'},
+});
 
 describe('sessionToJiraComment', () => {
   it('builds a level-3 heading with the defect count', () => {
@@ -102,10 +115,33 @@ describe('sessionToJiraComment', () => {
     expect(JSON.stringify(list)).toContain('#01 [minor] b: ');
   });
 
-  it('produces an empty bullet list for a session with no annotations', () => {
+  // ADF requires a bulletList to hold at least one listItem, so an empty session is a heading alone.
+  it('emits no bullet list at all for a session with nothing in it', () => {
     const doc = sessionToJiraComment(session([]));
-    expect(doc.content[1]).toMatchObject({type: 'bulletList', content: []});
+    expect(doc.content).toHaveLength(1);
     expect(JSON.stringify(doc.content[0])).toContain('0 defects');
+  });
+
+  it('announces a trace-only session instead of claiming it is empty', () => {
+    const doc = sessionToJiraComment({...session([]), traces: [trace()]});
+    const rendered = JSON.stringify(doc);
+
+    expect(rendered).toContain('0 defects, 1 trace');
+    expect(rendered).toContain('Recorded traces');
+    expect(rendered).toContain('Place order fails on the second submit');
+    expect(rendered).toContain('5 steps, 1 console error, 1 failed request, 4 state actions');
+  });
+
+  // The video is the half made for the person reading the ticket, so unlike the agent-facing TOON this
+  // is the one output that names it.
+  it('names the video file so a reader knows which attachment to open', () => {
+    const doc = sessionToJiraComment({...session([]), traces: [trace()]});
+    expect(JSON.stringify(doc)).toContain('caliper-a3f0c1d2.webm');
+  });
+
+  it('says so when the recording was cut short', () => {
+    const doc = sessionToJiraComment({...session([]), traces: [{...trace(), truncated: true}]});
+    expect(JSON.stringify(doc)).toContain('hit its length limit');
   });
 });
 

@@ -1,4 +1,5 @@
 import type {CaliperAnnotation, CaliperSession} from '../schema/annotation.schema';
+import type {CaliperTrace} from '../schema/trace.schema';
 
 export interface AdfNode {
   type: string;
@@ -63,22 +64,76 @@ const bullet = (annotation: CaliperAnnotation, index: number, media?: Record<num
   return {type: 'listItem', content};
 };
 
+const MS_PER_SECOND = 1000;
+
+const plural = (count: number, noun: string): string =>
+  `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+const heading = (session: CaliperSession): string => {
+  const parts = [plural(session.annotations.length, 'defect')];
+  if (session.traces.length > 0) parts.push(plural(session.traces.length, 'trace'));
+  return `Caliper QA — ${parts.join(', ')}`;
+};
+
+// The video is the half of a trace made for whoever reads the ticket, so this is the one place its
+// filename belongs — the agent-facing TOON deliberately never names it. Without this the attachments
+// arrive silently and a trace-only session posts a comment claiming "0 defects" and nothing else.
+const traceBullet = (trace: CaliperTrace): AdfNode => {
+  const {steps, consoleErrors, failedRequests, stateActions} = trace.summary;
+  const summary = [
+    plural(steps, 'step'),
+    plural(consoleErrors, 'console error'),
+    plural(failedRequests, 'failed request'),
+    plural(stateActions, 'state action'),
+  ].join(', ');
+
+  const lines: AdfNode[] = [
+    text(`${trace.label} `),
+    text(`(${(trace.durationMs / MS_PER_SECOND).toFixed(1)}s)`),
+    {type: 'hardBreak'},
+    text(summary),
+  ];
+
+  if (trace.files.video) {
+    lines.push({type: 'hardBreak'}, text('video: '), text(trace.files.video, [{type: 'code'}]));
+  }
+  if (trace.truncated) {
+    lines.push({type: 'hardBreak'}, text('recording hit its length limit — the earliest seconds were dropped'));
+  }
+
+  return {type: 'listItem', content: [{type: 'paragraph', content: lines}]};
+};
+
 export const sessionToJiraComment = (
   session: CaliperSession,
   media?: Record<number, MediaRef>,
 ): AdfDoc => {
-  const count = session.annotations.length;
+  const content: AdfNode[] = [
+    {type: 'heading', attrs: {level: 3}, content: [text(heading(session))]},
+  ];
 
-  return {
-    type: 'doc',
-    version: 1,
-    content: [
+  // An empty bulletList is not valid ADF, so each list is emitted only when it has an item.
+  if (session.annotations.length > 0) {
+    content.push({
+      type: 'bulletList',
+      content: session.annotations.map((annotation, index) => bullet(annotation, index, media)),
+    });
+  }
+
+  if (session.traces.length > 0) {
+    content.push(
+      {type: 'heading', attrs: {level: 4}, content: [text('Recorded traces')]},
+      {type: 'bulletList', content: session.traces.map(traceBullet)},
       {
-        type: 'heading',
-        attrs: {level: 3},
-        content: [text(`Caliper QA — ${count} defect${count === 1 ? '' : 's'}`)],
+        type: 'paragraph',
+        content: [
+          text('Attached for the agent: '),
+          text('caliper pull ' + '<this issue>', [{type: 'code'}]),
+          text(' reconstructs the whole session offline.'),
+        ],
       },
-      {type: 'bulletList', content: session.annotations.map((annotation, index) => bullet(annotation, index, media))},
-    ],
-  };
+    );
+  }
+
+  return {type: 'doc', version: 1, content};
 };
