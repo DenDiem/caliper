@@ -35,8 +35,18 @@ export const getBlob = (key: string): Promise<string | undefined> =>
 export const deleteBlob = (key: string): Promise<undefined> =>
   withStore<undefined>('readwrite', (store) => store.delete(key));
 
-export const traceBlobKeys = (traceId: string): readonly string[] => [
+const traceBlobKeys = (traceId: string): readonly string[] => [
   `${traceId}:detail`,
   `${traceId}:replay`,
   `${traceId}:video`,
 ];
+
+// Best-effort: a blob that is already gone is the desired end state, so a failed delete is not worth
+// failing a user's "remove this trace" over.
+export const dropTraceBlobs = async (traceIds: readonly string[]): Promise<void> => {
+  for (const id of traceIds) {
+    for (const key of traceBlobKeys(id)) {
+      await deleteBlob(key).catch(() => undefined);
+    }
+  }
+};

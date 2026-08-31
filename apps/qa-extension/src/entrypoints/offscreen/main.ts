@@ -50,6 +50,8 @@ const tabConstraints = (streamId: string): MediaStreamConstraints => ({
 
 const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Promise<void> => {
   if (!streamId) throw new Error('tab capture needs a stream id');
+  // Two starts would orphan the first recorder and interleave both sources into one blob.
+  if (recorder) throw new Error('a recording is already running');
   const stream = await navigator.mediaDevices.getUserMedia(tabConstraints(streamId));
 
   // The budget is met at the encoder, not afterwards: MV3 has no cheap transcoder, so the stream is
@@ -80,7 +82,9 @@ const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Pro
 // The screencast path: frames arrive one at a time from the debugger session, so the canvas track is
 // created at rate 0 and each frame is pushed explicitly. That keeps the encoded timeline matched to the
 // frames that actually arrived instead of inventing a clock.
-const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): void => {
+const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): boolean => {
+  if (recorder) return false;
+
   frameCanvas = document.createElement('canvas');
   frameCanvas.width = FRAME_WIDTH;
   frameCanvas.height = FRAME_HEIGHT;
@@ -103,6 +107,7 @@ const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): void => {
     }
   };
   recorder.start(CHUNK_MS);
+  return true;
 };
 
 const pushFrame = async (dataUrl: string): Promise<void> => {
@@ -170,8 +175,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
       sendResponse(false);
       return true;
     }
-    startFrames(payload);
-    sendResponse(true);
+    sendResponse(startFrames(payload));
     return true;
   }
 

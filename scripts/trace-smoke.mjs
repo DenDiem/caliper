@@ -146,7 +146,14 @@ const main = async () => {
   await page.click('#place-order');
   await wait(1800);
 
-  await send({type: 'caliper/trace-stop', tabId});
+  // Crossing a page load mid-trace: the collector is replaced, and its clock has to continue the
+  // trace's rather than restart — otherwise late steps sort in front of the events that caused them.
+  await page.goto(`${DEMO_ORIGIN}/`, {waitUntil: 'domcontentloaded'});
+  await wait(1200);
+  await page.click('[data-caliper-ref="z-badge"]').catch(() => undefined);
+  await wait(1200);
+
+  await send({type: 'caliper/trace-stop'});
   await wait(3000);
 
   const result = await worker.evaluate(async () => {
@@ -222,6 +229,18 @@ const main = async () => {
     trace.sources.state === 'devtools-bridge' && detail.state.length >= 2,
     `${detail.state.length} actions`,
   );
+  const navigations = detail.steps.filter((step) => step.kind === 'navigation');
+  check('the navigation mid-trace was recorded', navigations.length >= 2, `${navigations.length}`);
+  check(
+    'the timeline continues across the navigation instead of restarting',
+    navigations.length >= 2 && navigations[navigations.length - 1].t > 2000,
+    `second navigation at ${navigations[navigations.length - 1]?.t}ms`,
+  );
+  check(
+    'steps stay ordered across the navigation',
+    detail.steps.every((step, index) => index === 0 || step.t >= detail.steps[index - 1].t),
+  );
+
   check('DOM replay recorded', result.replayEvents > 0, `${result.replayEvents} events`);
   check('summary matches the channels', trace.summary.failedRequests === 1);
   // tabCapture cannot be granted from automation, so this exercises the screencast fallback — the path

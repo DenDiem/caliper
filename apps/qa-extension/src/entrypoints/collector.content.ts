@@ -41,18 +41,32 @@ export default defineContentScript({
     const replay = createRingBuffer<string>(0);
 
     let startedAt: number | null = null;
+    let offsetMs = 0;
     let flushTimer: number | null = null;
     let stopReplay: (() => void) | null = null;
 
-    const now = (): number => (startedAt === null ? 0 : Math.round(performance.now() - startedAt));
+    // Offset by however long the trace had already been running when this document took over, so a
+    // reproduction that crosses a page load reads as one timeline.
+    const now = (): number =>
+      startedAt === null ? 0 : Math.round(offsetMs + performance.now() - startedAt);
 
     // Installed on load, not on Start: NgRx and Redux probe the devtools hook once during bootstrap,
     // so by the time the tester presses Start it is already far too late to be found.
     const bridge = installStateBridge(window, (entry) => state.push(entry), now);
-    patchConsole(console, (entry) => consoleEntries.push(entry), now);
+    patchConsole(
+      console,
+      (entry) => {
+        if (startedAt !== null) consoleEntries.push(entry);
+      },
+      now,
+    );
     patchFetch(window, (entry) => network.push(entry), now);
 
+    // buildSelector walks ancestors running querySelectorAll, and the console patch stringifies every
+    // argument. Both used to run on every page whether or not anything was recording, and only then push
+    // into a zero-capacity buffer — the cost the ring buffer was supposed to avoid.
     const onEvent = (event: Event): void => {
+      if (startedAt === null) return;
       const step = describeStep(event, now(), selectorOf);
       if (step) steps.push(step);
     };
@@ -67,6 +81,9 @@ export default defineContentScript({
           source: COLLECTOR_SOURCE,
           kind: 'batch',
           batch: {
+            dropped: [steps, consoleEntries, network, state, replay].some(
+              (buffer) => buffer.dropped,
+            ),
             steps: steps.drain(),
             console: consoleEntries.drain(),
             network: network.drain(),
@@ -79,16 +96,17 @@ export default defineContentScript({
       );
     };
 
-    const start = async (): Promise<void> => {
+    const start = async (elapsedMs: number): Promise<void> => {
       if (startedAt !== null) return;
       startedAt = performance.now();
+      offsetMs = elapsedMs;
 
       steps.setCapacity(CHANNEL_CAPACITY);
       consoleEntries.setCapacity(CHANNEL_CAPACITY);
       network.setCapacity(CHANNEL_CAPACITY);
       state.setCapacity(CHANNEL_CAPACITY);
       replay.setCapacity(REPLAY_CAPACITY);
-      steps.push(navigationStep(0, location.href));
+      steps.push(navigationStep(now(), location.href));
 
       // The periodic flush is armed before rrweb loads: a replay that fails to start must not also cost
       // the steps, console, network and state the rest of the collector is already recording.
@@ -110,6 +128,7 @@ export default defineContentScript({
       flush();
       for (const buffer of [steps, consoleEntries, network, state, replay]) buffer.setCapacity(0);
       startedAt = null;
+      offsetMs = 0;
     };
 
     window.addEventListener('message', (event: MessageEvent) => {
@@ -119,7 +138,10 @@ export default defineContentScript({
       if (Reflect.get(data, 'source') !== HOST_SOURCE) return;
 
       const kind = Reflect.get(data, 'kind');
-      if (kind === 'start') void start();
+      if (kind === 'start') {
+        const elapsed = Reflect.get(data, 'elapsedMs');
+        void start(typeof elapsed === 'number' ? elapsed : 0);
+      }
       if (kind === 'stop') stop();
     });
   },

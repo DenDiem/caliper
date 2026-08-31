@@ -31,4 +31,28 @@ describe('createRingBuffer', () => {
     buffer.setCapacity(2);
     expect(buffer.drain()).toEqual([4, 5]);
   });
+
+  it('reports nothing dropped while it is only discarding closed-buffer pushes', () => {
+    const buffer = createRingBuffer<number>(0);
+    buffer.push(1);
+    buffer.push(2);
+    expect(buffer.dropped).toBe(false);
+  });
+
+  it('reports a drop once an open buffer overflows', () => {
+    const buffer = createRingBuffer<number>(2);
+    buffer.push(1);
+    buffer.push(2);
+    expect(buffer.dropped).toBe(false);
+    buffer.push(3);
+    expect(buffer.dropped).toBe(true);
+  });
+
+  it('keeps reporting the drop after a drain', () => {
+    const buffer = createRingBuffer<number>(1);
+    buffer.push(1);
+    buffer.push(2);
+    buffer.drain();
+    expect(buffer.dropped).toBe(true);
+  });
 });

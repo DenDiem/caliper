@@ -3,6 +3,9 @@ export interface RingBuffer<T> {
   setCapacity(next: number): void;
   drain(): T[];
   readonly size: number;
+  // True once anything has been discarded. A trace that silently lost its earliest events would be read
+  // by an agent as a complete account of the reproduction, which is worse than a short one.
+  readonly dropped: boolean;
 }
 
 // Capacity 0 is the resting state. The collectors are installed on every page from document_start —
@@ -11,9 +14,13 @@ export interface RingBuffer<T> {
 export const createRingBuffer = <T>(capacity: number): RingBuffer<T> => {
   let items: T[] = [];
   let limit = Math.max(0, capacity);
+  let dropped = false;
 
   const trim = (): void => {
-    if (items.length > limit) items = items.slice(items.length - limit);
+    if (items.length <= limit) return;
+    // A trim while the buffer is closed (capacity 0, nothing recording) is not a loss.
+    if (limit > 0) dropped = true;
+    items = items.slice(items.length - limit);
   };
 
   return {
@@ -33,6 +40,9 @@ export const createRingBuffer = <T>(capacity: number): RingBuffer<T> => {
     },
     get size(): number {
       return items.length;
+    },
+    get dropped(): boolean {
+      return dropped;
     },
   };
 };

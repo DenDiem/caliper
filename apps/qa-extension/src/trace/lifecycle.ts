@@ -33,6 +33,8 @@ interface ActiveTrace {
   stateStart: unknown;
   stateStartSeen: boolean;
   stopping: boolean;
+  overran: boolean;
+  limit: ReturnType<typeof setTimeout> | null;
 }
 
 let active: ActiveTrace | null = null;
@@ -55,6 +57,10 @@ const merge = (batches: readonly TraceBatch[]) => ({
 });
 
 export const activeTraceTabId = (): number | null => active?.tabId ?? null;
+
+// How far into the trace a newly loaded document is joining, or null when nothing is recording there.
+export const activeTraceElapsed = (tabId: number): number | null =>
+  active && active.tabId === tabId ? Date.now() - active.startedAtMs : null;
 
 export const traceStatus = (): TraceStatusMessage => {
   if (!active) return IDLE_STATUS;
@@ -81,8 +87,8 @@ export const ingestBatch = (batch: TraceBatch): void => {
   active.batches.push(batch);
 };
 
-export const startTrace = async (tabId: number, label: string): Promise<void> => {
-  if (active) return;
+export const startTrace = async (tabId: number, label: string): Promise<boolean> => {
+  if (active) return false;
 
   const options = await readTraceOptions();
   const startedAtMs = Date.now();
@@ -99,7 +105,17 @@ export const startTrace = async (tabId: number, label: string): Promise<void> =>
     stateStart: undefined,
     stateStartSeen: false,
     stopping: false,
+    overran: false,
+    limit: null,
   };
+
+  // "Maximum trace length" used to bound only the encoder, so the trace itself — and the batches piling
+  // up in this worker — grew without limit. It now stops the recording and says the trace was cut.
+  const started = active;
+  started.limit = setTimeout(() => {
+    started.overran = true;
+    void stopTrace();
+  }, options.maxDurationMs);
 
   const videoOptions = {
     maxDurationMs: options.maxDurationMs,
@@ -115,14 +131,22 @@ export const startTrace = async (tabId: number, label: string): Promise<void> =>
     if (encoding) await active.cdp.startScreencast(pushVideoFrame);
   }
 
-  await chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-start'}).catch(() => undefined);
+  await chrome.tabs
+    .sendMessage(tabId, {type: 'caliper/collector-start', elapsedMs: Date.now() - startedAtMs})
+    .catch(() => undefined);
+  return true;
 };
 
-export const stopTrace = async (tabId: number): Promise<void> => {
+// Deliberately takes no tab: the background already knows which tab is recording, and requiring the
+// panel to supply it made Stop a silent no-op whenever the panel was looking at a different tab.
+export const stopTrace = async (): Promise<boolean> => {
   const current = active;
-  if (!current || current.tabId !== tabId || current.stopping) return;
+  if (!current || current.stopping) return false;
   current.stopping = true;
 
+  if (current.limit) clearTimeout(current.limit);
+
+  const {tabId} = current;
   await chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-stop'}).catch(() => undefined);
   await new Promise((resolve) => setTimeout(resolve, FINAL_FLUSH_GRACE_MS));
   active = null;
@@ -133,6 +157,12 @@ export const stopTrace = async (tabId: number): Promise<void> => {
 
   const merged = merge(current.batches);
   const base = `caliper-${current.id.slice(0, ID_LENGTH)}`;
+  // Truncation is a property of the trace, not only of its video: a recording that overran its limit or
+  // overflowed a collector buffer is incomplete however the video turned out.
+  const truncated =
+    video.truncated ||
+    current.overran ||
+    current.batches.some((batch) => batch.dropped === true);
   const sources: TraceSources = {
     network: current.cdp ? 'cdp' : 'fallback',
     console: current.cdp ? 'cdp' : 'fallback',
@@ -144,7 +174,7 @@ export const stopTrace = async (tabId: number): Promise<void> => {
     label: current.label,
     startedAt: current.startedAt,
     durationMs: Date.now() - current.startedAtMs,
-    truncated: video.truncated,
+    truncated,
     page: current.page,
     sources,
     steps: merged.steps,
@@ -169,4 +199,5 @@ export const stopTrace = async (tabId: number): Promise<void> => {
   if (video.dataUrl) await putBlob(`${current.id}:video`, video.dataUrl);
 
   await runOp({kind: 'pushTrace', trace});
+  return true;
 };

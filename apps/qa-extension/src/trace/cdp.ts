@@ -144,36 +144,49 @@ export const attachCdp = async (
       return;
     }
 
+    if (method === 'Network.loadingFinished') {
+      void collectBody(text(data.requestId));
+      return;
+    }
+
     if (method === 'Network.loadingFailed') {
       finish(text(data.requestId), 0, true);
     }
   };
 
   chrome.debugger.onEvent.addListener(onEvent);
-  await chrome.debugger.sendCommand(target, 'Runtime.enable');
-  await chrome.debugger.sendCommand(target, 'Network.enable');
+  try {
+    await chrome.debugger.sendCommand(target, 'Runtime.enable');
+    await chrome.debugger.sendCommand(target, 'Network.enable');
+  } catch {
+    // Attaching succeeded but the domains did not (the tab navigated, or the target went away). Leaving
+    // the session attached would keep Chrome's debugging banner up for a trace that is not collecting.
+    chrome.debugger.onEvent.removeListener(onEvent);
+    await chrome.debugger.detach(target).catch(() => undefined);
+    return null;
+  }
 
-  // Bodies are collected once, at Stop, and only for the entries most likely to explain a defect.
-  // Streaming every body during the trace would compete with the app being tested.
-  const collectBodies = async (): Promise<void> => {
-    const wanted = network
-      .map((entry, index) => ({entry, requestId: requestIdByEntry[index]}))
-      .filter((item) => item.requestId !== undefined)
-      .sort((left, right) => Number(right.entry.failed) - Number(left.entry.failed))
-      .slice(0, MAX_BODIES);
+  // Bodies are read as each response finishes, not swept at Stop: Chrome discards them on navigation, so
+  // a reproduction that crosses a page load would otherwise lose exactly the bodies that explain it.
+  // Bounded so a chatty page cannot turn this into a second download of the whole session.
+  let bodiesCollected = 0;
+  const collectBody = async (requestId: string): Promise<void> => {
+    if (bodiesCollected >= MAX_BODIES) return;
 
-    for (const item of wanted) {
-      try {
-        const result: unknown = await chrome.debugger.sendCommand(
-          target,
-          'Network.getResponseBody',
-          {requestId: item.requestId},
-        );
-        const body = text(asRecord(result).body);
-        if (body) item.entry.responseBody = body.slice(0, BODY_LIMIT);
-      } catch {
-        // A body evicted from the CDP buffer is simply absent; the entry keeps its status and timing.
-      }
+    const index = requestIdByEntry.indexOf(requestId);
+    const entry = index === -1 ? undefined : network[index];
+    if (!entry || entry.responseBody !== undefined) return;
+
+    try {
+      const result: unknown = await chrome.debugger.sendCommand(target, 'Network.getResponseBody', {
+        requestId,
+      });
+      const body = text(asRecord(result).body);
+      if (!body) return;
+      entry.responseBody = body.slice(0, BODY_LIMIT);
+      bodiesCollected += 1;
+    } catch {
+      // Already evicted, or a response with no body of its own; the entry keeps its status and timing.
     }
   };
 
@@ -199,7 +212,6 @@ export const attachCdp = async (
     stopScreencast,
     detach: async () => {
       await stopScreencast();
-      await collectBodies();
       chrome.debugger.onEvent.removeListener(onEvent);
       await chrome.debugger.detach(target).catch(() => undefined);
     },

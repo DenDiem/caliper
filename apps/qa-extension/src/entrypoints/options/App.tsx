@@ -10,6 +10,15 @@ import {
 
 const MS_PER_SECOND = 1000;
 const BITS_PER_KBIT = 1000;
+const MIN_TRACE_SECONDS = 10;
+const MIN_BITRATE_KBPS = 50;
+
+// An emptied number input reads as '' and Number('') is 0, which would persist a zero-length trace and a
+// zero-bitrate encoder. `min` on the element does not constrain what the change handler receives.
+const clamp = (raw: string, minimum: number, fallback: number): number => {
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= minimum ? value : fallback;
+};
 
 const ATTACH_KEY = 'caliper.jira.attachAs';
 
@@ -171,7 +180,14 @@ export const App = () => {
             min="10"
             value={Math.round(trace.maxDurationMs / MS_PER_SECOND)}
             onChange={(event) =>
-              saveTrace({maxDurationMs: Number(event.currentTarget.value) * MS_PER_SECOND})
+              saveTrace({
+                maxDurationMs:
+                  clamp(
+                    event.currentTarget.value,
+                    MIN_TRACE_SECONDS,
+                    DEFAULT_TRACE_OPTIONS.maxDurationMs / MS_PER_SECOND,
+                  ) * MS_PER_SECOND,
+              })
             }
           />
         </label>
@@ -183,7 +199,14 @@ export const App = () => {
             min="50"
             value={Math.round(trace.videoBitrate / BITS_PER_KBIT)}
             onChange={(event) =>
-              saveTrace({videoBitrate: Number(event.currentTarget.value) * BITS_PER_KBIT})
+              saveTrace({
+                videoBitrate:
+                  clamp(
+                    event.currentTarget.value,
+                    MIN_BITRATE_KBPS,
+                    DEFAULT_TRACE_OPTIONS.videoBitrate / BITS_PER_KBIT,
+                  ) * BITS_PER_KBIT,
+              })
             }
           />
         </label>

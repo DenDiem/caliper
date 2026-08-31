@@ -1,7 +1,9 @@
 import {isCaliperMessage} from '../messaging/messages';
 import {captureElement} from '../screenshot/capture';
 import {runOp} from '../sinks/store';
+import {dropTraceBlobs} from '../trace/blob-store';
 import {
+  activeTraceElapsed,
   activeTraceTabId,
   ingestBatch,
   startTrace,
@@ -108,7 +110,10 @@ export default defineBackground(() => {
   // by telling the tab again here.
   chrome.webNavigation.onCommitted.addListener(({tabId, frameId}) => {
     if (frameId !== 0 || activeTraceTabId() !== tabId) return;
-    void chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-start'}).catch(() => undefined);
+    const elapsedMs = activeTraceElapsed(tabId) ?? 0;
+    void chrome.tabs
+      .sendMessage(tabId, {type: 'caliper/collector-start', elapsedMs})
+      .catch(() => undefined);
   });
 
   chrome.commands.onCommand.addListener((command, tab) => {
@@ -152,13 +157,19 @@ export default defineBackground(() => {
       return true;
     }
 
+    // Both always answer. A rejection that never reached the panel used to leave its button disabled
+    // for good, with the trace half-started behind it.
     if (message.type === 'caliper/trace-start') {
-      void startTrace(message.tabId, message.label).then(() => sendResponse(true));
+      void startTrace(message.tabId, message.label)
+        .then((started) => sendResponse(started))
+        .catch(() => sendResponse(false));
       return true;
     }
 
     if (message.type === 'caliper/trace-stop') {
-      void stopTrace(message.tabId).then(() => sendResponse(true));
+      void stopTrace()
+        .then((stopped) => sendResponse(stopped))
+        .catch(() => sendResponse(false));
       return true;
     }
 
@@ -173,8 +184,14 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === 'caliper/trace-blobs-drop') {
+      void dropTraceBlobs(message.traceIds).then(() => sendResponse(true));
+      return true;
+    }
+
     if (message.type === 'caliper/trace-active') {
-      sendResponse(activeTraceTabId() === _sender.tab?.id);
+      const tabId = _sender.tab?.id;
+      sendResponse(typeof tabId === 'number' ? activeTraceElapsed(tabId) : null);
       return true;
     }
 

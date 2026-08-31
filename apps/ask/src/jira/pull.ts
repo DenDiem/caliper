@@ -1,5 +1,5 @@
 import {mkdirSync, writeFileSync} from 'node:fs';
-import {join} from 'node:path';
+import {basename, join} from 'node:path';
 import {caliperSessionSchema, toToon} from '@caliper/core';
 import type {CaliperSession} from '@caliper/core';
 
@@ -122,13 +122,14 @@ const materializeScreenshots = async (
       continue;
     }
 
+    const safe = basename(filename);
     const response = await fetchContent(creds, match.content);
     if (!created) {
       mkdirSync(dir, {recursive: true});
       created = true;
     }
-    writeFileSync(join(dir, filename), Buffer.from(await response.arrayBuffer()));
-    annotation.screenshot = `.caliper/${short}/${filename}`;
+    writeFileSync(join(dir, safe), Buffer.from(await response.arrayBuffer()));
+    annotation.screenshot = `.caliper/${short}/${safe}`;
   }
 };
 
@@ -158,9 +159,12 @@ const materializeTraces = async (
         continue;
       }
 
+      // The name comes from a manifest on the ticket, so it is untrusted: without this a crafted
+      // `../../` filename would be written anywhere under the working directory.
+      const safe = basename(filename);
       const response = await fetchContent(creds, match.content);
-      writeFileSync(join(dir, filename), Buffer.from(await response.arrayBuffer()));
-      trace.files[key] = `.caliper/${short}/${filename}`;
+      writeFileSync(join(dir, safe), Buffer.from(await response.arrayBuffer()));
+      trace.files[key] = `.caliper/${short}/${safe}`;
     }
   }
 };

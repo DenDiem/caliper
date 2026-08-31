@@ -53,6 +53,8 @@ export interface SetModeTabMessage {
 }
 
 export interface TraceBatch {
+  // Set once any of the collector's ring buffers has discarded an event.
+  dropped?: boolean;
   steps: TraceStep[];
   console: TraceConsoleEntry[];
   network: TraceNetworkEntry[];
@@ -76,7 +78,6 @@ export interface TraceStartMessage {
 
 export interface TraceStopMessage {
   type: 'caliper/trace-stop';
-  tabId: number;
 }
 
 export interface TraceStatusMessage {
@@ -94,8 +95,19 @@ export interface TraceActiveQueryMessage {
   type: 'caliper/trace-active';
 }
 
+// Blob cleanup runs in the background because IndexedDB here belongs to the extension origin and the
+// store op alone only drops the manifest entry — the megabytes would otherwise stay forever.
+export interface TraceBlobsDropMessage {
+  type: 'caliper/trace-blobs-drop';
+  traceIds: string[];
+}
+
 export interface CollectorControlMessage {
   type: 'caliper/collector-start' | 'caliper/collector-stop';
+  // Milliseconds already elapsed in the trace when this document started collecting. A navigation
+  // replaces the collector mid-trace, and without this its clock would restart at zero while the CDP
+  // channels keep counting — interleaving a late click in front of the events that caused it.
+  elapsedMs?: number;
 }
 
 export type StoreOp =
@@ -130,6 +142,7 @@ export type CaliperMessage =
   | TraceStopMessage
   | TraceStatusMessage
   | TraceActiveQueryMessage
+  | TraceBlobsDropMessage
   | CollectorControlMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
@@ -150,6 +163,7 @@ export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
     type === 'caliper/trace-stop' ||
     type === 'caliper/trace-status' ||
     type === 'caliper/trace-active' ||
+    type === 'caliper/trace-blobs-drop' ||
     type === 'caliper/collector-start' ||
     type === 'caliper/collector-stop'
   );

@@ -44,24 +44,29 @@ export const RecordBar = () => {
   // would demand a description of a defect the tester has not reproduced yet.
   const start = async (): Promise<void> => {
     setBusy(true);
-    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-    if (typeof tab?.id === 'number') {
-      await chrome.runtime.sendMessage({
-        type: 'caliper/trace-start',
-        tabId: tab.id,
-        label: tab.title ?? 'Bug trace',
-      });
+    try {
+      const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+      if (typeof tab?.id === 'number') {
+        await chrome.runtime.sendMessage({
+          type: 'caliper/trace-start',
+          tabId: tab.id,
+          label: tab.title ?? 'Bug trace',
+        });
+      }
+    } finally {
+      // Always cleared: a start that failed anywhere used to leave the button disabled with no way back.
+      setBusy(false);
     }
-    setBusy(false);
   };
 
+  // No tab id: the background stops whichever trace is running, so Stop works even from a panel that
+  // is looking somewhere else. The status is left to the poll rather than assumed.
   const stop = async (): Promise<void> => {
     setBusy(true);
-    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-    if (typeof tab?.id === 'number') {
-      await chrome.runtime.sendMessage({type: 'caliper/trace-stop', tabId: tab.id});
-    }
-    setStatus(IDLE);
+    const stopped: unknown = await chrome.runtime
+      .sendMessage({type: 'caliper/trace-stop'})
+      .catch(() => false);
+    if (stopped === true) setStatus(IDLE);
     setBusy(false);
   };
 

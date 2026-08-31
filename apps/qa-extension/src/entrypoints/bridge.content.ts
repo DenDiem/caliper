@@ -8,8 +8,8 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   runAt: 'document_start',
   main() {
-    const tell = (kind: 'start' | 'stop'): void => {
-      window.postMessage({source: HOST_SOURCE, kind}, '*');
+    const tell = (kind: 'start' | 'stop', elapsedMs = 0): void => {
+      window.postMessage({source: HOST_SOURCE, kind, elapsedMs}, '*');
     };
 
     window.addEventListener('message', (event: MessageEvent) => {
@@ -27,14 +27,19 @@ export default defineContentScript({
     chrome.runtime.onMessage.addListener((message: unknown) => {
       if (typeof message !== 'object' || message === null) return;
       const type = Reflect.get(message, 'type');
-      if (type === 'caliper/collector-start') tell('start');
+      if (type === 'caliper/collector-start') {
+        const elapsed = Reflect.get(message, 'elapsedMs');
+        tell('start', typeof elapsed === 'number' ? elapsed : 0);
+      }
       if (type === 'caliper/collector-stop') tell('stop');
     });
 
+    // A fresh document mid-trace asks how far in it is, so its timeline continues the trace's rather
+    // than starting again from zero.
     void chrome.runtime
       .sendMessage({type: 'caliper/trace-active'})
-      .then((active: unknown) => {
-        if (active === true) tell('start');
+      .then((elapsed: unknown) => {
+        if (typeof elapsed === 'number') tell('start', elapsed);
       })
       .catch(() => undefined);
   },

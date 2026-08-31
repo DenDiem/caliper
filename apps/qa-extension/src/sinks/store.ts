@@ -34,10 +34,18 @@ const isCaliperStore = (value: unknown): value is CaliperStore =>
   'activeId' in value &&
   typeof value.activeId === 'string';
 
+// Sessions persisted before traces existed have no `traces` key, and this read path never goes through
+// the zod schema — so its `.default([])` never runs. Without backfilling here, the first panel render
+// after an update destructures `undefined` and the whole side panel goes blank.
+const migrate = (store: CaliperStore): CaliperStore => ({
+  ...store,
+  sessions: store.sessions.map((session) => ({...session, traces: session.traces ?? []})),
+});
+
 export const readStore = async (): Promise<CaliperStore> => {
   const raw = await chrome.storage.local.get([STORE_KEY, LEGACY_KEY]);
   const stored = raw[STORE_KEY];
-  if (isCaliperStore(stored) && stored.sessions.length > 0) return stored;
+  if (isCaliperStore(stored) && stored.sessions.length > 0) return migrate(stored);
 
   const legacy = caliperSessionSchema.safeParse(raw[LEGACY_KEY]);
   const store = freshStore(legacy.success ? legacy.data : emptySession());
