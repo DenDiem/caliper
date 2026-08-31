@@ -24,7 +24,7 @@ to act on without decoding a screenshot. Two products put that to work in opposi
 
 ## Two directions
 
-### 🐞 Human → agent — [`@caliper/qa-extension`](apps/qa-extension/README.md)
+### 🐞 Human → agent — **Caliper QA** ([`@caliper/qa-extension`](apps/qa-extension/README.md))
 
 A Chrome extension for manual QA. A reviewer marks broken UI on the live app; the export is a compact
 payload — selector, component, token-matched styles — an agent fixes straight from the file.
@@ -54,7 +54,7 @@ Both products share the same element-picking core and in-page overlay:
 
 Two independent tools — set up whichever direction you work in (or both).
 
-### 🐞 The extension — you mark, the agent fixes
+### 🐞 Caliper QA — you mark, the agent fixes
 
 [Install from the Chrome Web Store](https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm), or build it locally:
 

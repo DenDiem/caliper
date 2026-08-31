@@ -4,9 +4,9 @@ export default defineConfig({
   srcDir: 'src',
   zip: {name: 'caliper'},
   manifest: {
-    name: 'Caliper — UI Annotation for AI Coding Agents',
+    name: 'Caliper QA — UI Marks & Bug Traces for AI Coding Agents',
     description:
-      'Mark up any web UI — click, strike, or lasso an element — and hand a precise defect to Claude Code, Cursor or any AI agent.',
+      'Mark up any web UI or record a full bug trace — DOM, console, network and store — and hand a precise, replayable defect to Claude Code, Cursor or any AI agent.',
     permissions: [
       'storage',
       'unlimitedStorage',
@@ -23,7 +23,7 @@ export default defineConfig({
       128: 'icon/128.png',
     },
     action: {
-      default_title: 'Toggle Caliper',
+      default_title: 'Toggle Caliper QA',
       default_icon: {
         16: 'icon/16.png',
         32: 'icon/32.png',

@@ -18,18 +18,19 @@ can be up to 75 chars. Use that budget for keywords.
 
 **Name** (≤75)
 ```
-Caliper — Design Mode & UI Annotation for AI Coding Agents
+Caliper QA — UI Marks & Bug Traces for AI Coding Agents
 ```
 
 **Summary** (≤132)
 ```
-Mark up any web UI — click, strike, or lasso an element — and hand a precise, element-pinned defect to Claude Code, Cursor or any AI agent.
+Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
 ```
 
 **Keywords to weave into the description** (the store has no separate tags field — the description
 body is what gets indexed):
 > design mode, UI annotation, visual feedback, AI coding agent, Claude Code, Cursor, MCP,
-> Model Context Protocol, QA, bug report, design review, human-in-the-loop, front-end, devtools
+> Model Context Protocol, QA, bug report, bug trace, session replay, repro, design review,
+> human-in-the-loop, front-end, devtools
 
 Lead the first two sentences of the description with the highest-value phrases ("Design Mode",
 "UI annotation for AI coding agents", "Claude Code / Cursor") — the store weights the opening.

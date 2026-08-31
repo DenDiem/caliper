@@ -8,13 +8,13 @@ design (it appears in the store URL). This is the value the `CHROME_EXTENSION_ID
 ## Name
 
 ```
-Caliper — Design Mode & UI Annotation for AI Coding Agents
+Caliper QA — UI Marks & Bug Traces for AI Coding Agents
 ```
 
 ## Summary (132 characters max)
 
 ```
-Mark up any web UI — click, strike, or lasso an element — and hand a precise, element-pinned defect to Claude Code, Cursor or any AI agent.
+Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
 ```
 
 > See `docs/seo.md` for the discoverability strategy behind this name/summary and the GitHub topics.

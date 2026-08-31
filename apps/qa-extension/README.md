@@ -11,7 +11,7 @@
   <a href="https://donatello.to/dendiem"><img alt="Tips" src="https://img.shields.io/badge/tips-%E2%98%95_buy_me_a_coffee-ff813f?labelColor=13161d"></a>
 </p>
 
-Chrome MV3 shell around `@caliper/core` and `@caliper/overlay`, built with [WXT](https://wxt.dev). A QA reviewer marks broken UI on the live app and exports it as a compact payload a coding agent fixes.
+**Caliper QA** — the Chrome MV3 shell around `@caliper/core` and `@caliper/overlay`, built with [WXT](https://wxt.dev). A QA reviewer marks broken UI on the live app and exports it as a compact payload a coding agent fixes.
 
 ![Mark a defect on the live app — comment and severity — then export it to your agent](../../docs/media/qa-extension/mark-defect.gif)
 

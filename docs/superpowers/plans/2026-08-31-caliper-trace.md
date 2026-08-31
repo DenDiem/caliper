@@ -116,10 +116,10 @@ Caliper QA — UI Marks & Bug Traces for AI Coding Agents
 and replace the summary block in both with:
 
 ```
-Mark up any web UI or record a full bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
+Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
 ```
 
-(129 characters — the store's summary limit is 132.)
+(128 characters — the store's summary limit is 132.)
 
 In `docs/seo.md`, add `bug trace`, `session replay` and `repro` to the "Keywords to weave into the description" list.
 
