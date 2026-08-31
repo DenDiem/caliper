@@ -34,6 +34,17 @@ jobs:
             exit 1
           fi
 
+          echo "item id: ${CHROME_EXTENSION_ID}"
+
+          for projection in DRAFT PUBLISHED; do
+            echo "--- ${projection} ---"
+            curl -sS \
+              -H "Authorization: Bearer ${token}" \
+              -H "x-goog-api-version: 2" \
+              "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=${projection}"
+            echo
+          done
+
           item=$(curl -sS \
             -H "Authorization: Bearer ${token}" \
             -H "x-goog-api-version: 2" \
