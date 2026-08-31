@@ -1,7 +1,9 @@
 import {defineConfig} from 'wxt';
+import {utf8SafeOutput} from './build/utf8-safe-output';
 
 export default defineConfig({
   srcDir: 'src',
+  vite: () => ({plugins: [utf8SafeOutput()]}),
   zip: {name: 'caliper'},
   manifest: {
     name: 'Caliper QA — UI Marks & Bug Traces for AI Coding Agents',

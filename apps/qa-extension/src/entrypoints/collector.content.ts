@@ -90,10 +90,16 @@ export default defineContentScript({
       replay.setCapacity(REPLAY_CAPACITY);
       steps.push(navigationStep(0, location.href));
 
-      const {record} = await import('rrweb');
-      stopReplay = record({emit: (event) => replay.push(JSON.stringify(event))}) ?? null;
-
+      // The periodic flush is armed before rrweb loads: a replay that fails to start must not also cost
+      // the steps, console, network and state the rest of the collector is already recording.
       flushTimer = window.setInterval(flush, FLUSH_INTERVAL_MS);
+
+      try {
+        const {record} = await import('rrweb');
+        stopReplay = record({emit: (event) => replay.push(JSON.stringify(event))}) ?? null;
+      } catch (error) {
+        console.warn('[caliper] DOM replay unavailable for this trace', error);
+      }
     };
 
     const stop = (): void => {

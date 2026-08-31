@@ -9,6 +9,9 @@ import {startVideo, stopVideo} from './video';
 
 const ID_LENGTH = 8;
 const MAX_STATE_DIFF_BYTES = 2048;
+// The collector's last flush travels page -> bridge -> background, so it lands a hop after Stop is
+// sent. Tearing the trace down synchronously threw away everything recorded since the previous tick.
+const FINAL_FLUSH_GRACE_MS = 400;
 
 const IDLE_STATUS: TraceStatusMessage = {
   type: 'caliper/trace-status',
@@ -29,6 +32,7 @@ interface ActiveTrace {
   batches: TraceBatch[];
   stateStart: unknown;
   stateStartSeen: boolean;
+  stopping: boolean;
 }
 
 let active: ActiveTrace | null = null;
@@ -94,6 +98,7 @@ export const startTrace = async (tabId: number, label: string): Promise<void> =>
     batches: [],
     stateStart: undefined,
     stateStartSeen: false,
+    stopping: false,
   };
 
   await startVideo(tabId, {
@@ -105,10 +110,13 @@ export const startTrace = async (tabId: number, label: string): Promise<void> =>
 
 export const stopTrace = async (tabId: number): Promise<void> => {
   const current = active;
-  if (!current || current.tabId !== tabId) return;
-  active = null;
+  if (!current || current.tabId !== tabId || current.stopping) return;
+  current.stopping = true;
 
   await chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-stop'}).catch(() => undefined);
+  await new Promise((resolve) => setTimeout(resolve, FINAL_FLUSH_GRACE_MS));
+  active = null;
+
   await current.cdp?.detach();
   const video = await stopVideo();
   const options = await readTraceOptions();

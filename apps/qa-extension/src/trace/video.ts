@@ -31,8 +31,12 @@ export const startVideo = async (tabId: number, options: VideoOptions): Promise<
       type: 'caliper/offscreen-start',
       payload: {streamId, ...options},
     });
+    if (started !== true) console.warn('[caliper] tab capture did not start');
     return started === true;
-  } catch {
+  } catch (error) {
+    // A trace without video is still a usable trace, so this never throws — but the reason belongs in
+    // the service-worker log rather than nowhere.
+    console.warn('[caliper] tab capture unavailable', error);
     return false;
   }
 };

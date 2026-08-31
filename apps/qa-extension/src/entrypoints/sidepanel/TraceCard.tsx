@@ -59,6 +59,13 @@ export const TraceCard = ({trace, onRename, onRemove}: Props) => {
         </p>
       ) : null}
 
+      {trace.files.video === undefined ? (
+        <p class="trace__note">
+          No video for this trace. Tab capture needs the panel to have been opened from the toolbar icon
+          on this tab — Chrome revokes that after a navigation. The recorded trace itself is unaffected.
+        </p>
+      ) : null}
+
       {trace.truncated ? (
         <p class="trace__note">Recording hit its length limit — the earliest seconds were dropped.</p>
       ) : null}
