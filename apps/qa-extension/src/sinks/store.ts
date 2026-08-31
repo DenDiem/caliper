@@ -80,6 +80,13 @@ const mutateSession = (session: CaliperSession, op: StoreOp): CaliperSession => 
     // so a mark-only session keeps declaring v1 and stays readable by an older caliper pull.
     case 'pushTrace':
       return {...session, schemaVersion: 2, traces: [...session.traces, op.trace]};
+    case 'renameTrace':
+      return {
+        ...session,
+        traces: session.traces.map((item) =>
+          item.id === op.id ? {...item, label: op.label} : item,
+        ),
+      };
     case 'removeTrace':
       return {...session, traces: session.traces.filter((item) => item.id !== op.id)};
     default:

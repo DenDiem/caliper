@@ -14,6 +14,7 @@ interface MultiSessionSink extends AnnotationSink {
   activateSession: (id: string) => Promise<void>;
   removeSession: (id: string) => Promise<void>;
   pushTrace: (trace: CaliperTrace) => Promise<void>;
+  renameTrace: (id: string, label: string) => Promise<void>;
   removeTrace: (id: string) => Promise<void>;
 }
 
@@ -37,6 +38,8 @@ export const chromeStorageSink: MultiSessionSink = {
   removeSession: (id: string) => dispatch({kind: 'removeSession', id}),
 
   pushTrace: (trace: CaliperTrace) => dispatch({kind: 'pushTrace', trace}),
+
+  renameTrace: (id: string, label: string) => dispatch({kind: 'renameTrace', id, label}),
 
   removeTrace: (id: string) => dispatch({kind: 'removeTrace', id}),
 };

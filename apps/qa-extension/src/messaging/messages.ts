@@ -107,6 +107,7 @@ export type StoreOp =
   | {kind: 'activateSession'; id: string}
   | {kind: 'removeSession'; id: string}
   | {kind: 'pushTrace'; trace: CaliperTrace}
+  | {kind: 'renameTrace'; id: string; label: string}
   | {kind: 'removeTrace'; id: string};
 
 export interface StoreOpMessage {

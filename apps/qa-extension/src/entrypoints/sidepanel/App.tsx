@@ -11,6 +11,8 @@ import {DefectCard} from './DefectCard';
 import {EmptyState} from './EmptyState';
 import {JiraSheet} from './JiraSheet';
 import {PanelFooter} from './PanelFooter';
+import {RecordBar} from './RecordBar';
+import {TraceCard} from './TraceCard';
 import {TaskSheet} from './TaskSheet';
 import {TitleBar} from './TitleBar';
 
@@ -71,7 +73,7 @@ export const App = () => {
   if (!store) return <div class="panel" />;
 
   const session = store.sessions.find((item) => item.id === store.activeId) ?? store.sessions[0];
-  const {annotations} = session;
+  const {annotations, traces} = session;
   const taskName =
     session.label ?? `Task ${store.sessions.findIndex((item) => item.id === session.id) + 1}`;
 
@@ -118,6 +120,8 @@ export const App = () => {
     <div class="panel">
       <TitleBar jiraKey={linkedKey} />
 
+      <RecordBar />
+
       <button class={taskSheet ? 'chip chip--open' : 'chip'} onClick={() => setTaskSheet(!taskSheet)}>
         <div class="chip__body">
           <div class="chip__label">TASK</div>
@@ -128,7 +132,7 @@ export const App = () => {
 
       {taskSheet ? (
         <TaskSheet store={store} onChange={refresh} onClose={() => setTaskSheet(false)} />
-      ) : annotations.length === 0 ? (
+      ) : annotations.length === 0 && traces.length === 0 ? (
         <EmptyState connected={!!connection} onConnect={() => void chrome.runtime.openOptionsPage()} />
       ) : (
         <>
@@ -136,6 +140,12 @@ export const App = () => {
             <div>
               <span class="count__num">{annotations.length}</span>
               <span class="count__unit">defect{annotations.length === 1 ? '' : 's'}</span>
+              {traces.length > 0 ? (
+                <span class="count__unit">
+                  {' '}
+                  · {traces.length} trace{traces.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
             </div>
             <div class="count__sev">
               <button class={chipClass('blocker')} onClick={() => toggleFilter('blocker')}>
@@ -155,11 +165,21 @@ export const App = () => {
             </div>
           </div>
 
-          <ul class="list">{shown.map(card)}</ul>
+          <ul class="list">
+            {traces.map((trace) => (
+              <TraceCard
+                key={trace.id}
+                trace={trace}
+                onRename={(id, label) => void chromeStorageSink.renameTrace(id, label).then(refresh)}
+                onRemove={(id) => void chromeStorageSink.removeTrace(id).then(refresh)}
+              />
+            ))}
+            {shown.map(card)}
+          </ul>
         </>
       )}
 
-      {!taskSheet && annotations.length > 0 ? (
+      {!taskSheet && (annotations.length > 0 || traces.length > 0) ? (
         <PanelFooter
           copied={copied}
           jiraLabel={jiraLabel}

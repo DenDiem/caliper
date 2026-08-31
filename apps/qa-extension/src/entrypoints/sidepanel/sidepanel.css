@@ -1347,3 +1347,193 @@ body {
   background: var(--cal-teal-10);
   color: var(--cal-teal);
 }
+
+/* ── trace recorder ────────────────────────────────────── */
+
+.record {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--cal-border-structure);
+  background: var(--cal-chrome);
+  color: var(--cal-text-secondary);
+  font: 600 11px/1 var(--cal-font-mono);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.record:hover:not(:disabled) {
+  color: var(--cal-text-strong);
+}
+
+.record:disabled {
+  color: var(--cal-text-disabled);
+  cursor: default;
+}
+
+.record__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--cal-radius-20);
+  background: var(--cal-blocker);
+}
+
+.record--live {
+  justify-content: space-between;
+  background: var(--cal-blocker-fill);
+  border-bottom-color: var(--cal-blocker-border);
+  color: var(--cal-text-strong);
+  cursor: default;
+}
+
+.record__stop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cal-blocker);
+  font: 600 11px/1 var(--cal-font-mono);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.record__square {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--cal-radius-3);
+  background: var(--cal-blocker);
+  animation: record-pulse 1.4s var(--cal-ease) infinite;
+}
+
+@keyframes record-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.record__timer {
+  font: 600 12px/1 var(--cal-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-text-strong);
+}
+
+.record__counts {
+  display: flex;
+  gap: 8px;
+}
+
+.record__count {
+  font: 400 11px/1 var(--cal-font-mono);
+  color: var(--cal-text-hint);
+}
+
+.record__count--hot {
+  color: var(--cal-blocker);
+}
+
+/* ── trace card ────────────────────────────────────────── */
+
+.trace {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+  list-style: none;
+}
+
+.trace__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trace__badge {
+  padding: 3px 6px;
+  border-radius: var(--cal-radius-4);
+  background: var(--cal-teal-12);
+  color: var(--cal-teal);
+  font: 600 9px/1 var(--cal-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.trace__label {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--cal-radius-4);
+  background: none;
+  color: var(--cal-text-body);
+  font: 500 12px/1.3 var(--cal-font-sans);
+}
+
+.trace__label:hover {
+  border-color: var(--cal-border-control);
+}
+
+.trace__label:focus {
+  outline: none;
+  border-color: var(--cal-teal-border-40);
+  background: var(--cal-input);
+}
+
+.trace__duration {
+  font: 400 11px/1 var(--cal-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-text-hint);
+}
+
+.trace__remove {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--cal-text-disabled);
+  font: 400 11px/1 var(--cal-font-mono);
+  cursor: pointer;
+}
+
+.trace__remove:hover {
+  color: var(--cal-blocker);
+}
+
+.trace__video {
+  width: 100%;
+  border-radius: var(--cal-radius-5);
+  background: var(--cal-ground);
+}
+
+.trace__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trace__chip {
+  padding: 3px 7px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-4);
+  color: var(--cal-text-micro);
+  font: 400 10px/1.4 var(--cal-font-mono);
+}
+
+.trace__chip--hot {
+  border-color: var(--cal-blocker-border);
+  background: var(--cal-blocker-fill);
+  color: var(--cal-blocker);
+}
+
+.trace__note {
+  margin: 0;
+  color: var(--cal-text-hint);
+  font: 400 11px/1.45 var(--cal-font-sans);
+}
