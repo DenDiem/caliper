@@ -1,0 +1,55 @@
+name: Store status
+
+# What the Chrome Web Store thinks of the item right now: which version it holds, whether the upload
+# succeeded, and any error it is holding against us. There is no way to see this from a checkout — the
+# credentials live in repository secrets — so asking used to mean opening the dashboard by hand.
+#
+# Read-only: it fetches a token and does a GET. It never uploads or publishes.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ask the Chrome Web Store
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          token=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${CHROME_CLIENT_ID}" \
+            -d "client_secret=${CHROME_CLIENT_SECRET}" \
+            -d "refresh_token=${CHROME_REFRESH_TOKEN}" \
+            -d "grant_type=refresh_token" | jq -r .access_token)
+
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "Could not exchange the refresh token — the OAuth chain needs re-authorising."
+            exit 1
+          fi
+
+          item=$(curl -sS \
+            -H "Authorization: Bearer ${token}" \
+            -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=DRAFT")
+
+          echo "$item" | jq '{uploadState, crxVersion, itemError}'
+
+          {
+            echo "### Chrome Web Store"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| version held | \`$(echo "$item" | jq -r '.crxVersion // "unknown"')\` |"
+            echo "| upload state | \`$(echo "$item" | jq -r '.uploadState // "unknown"')\` |"
+            echo "| errors | \`$(echo "$item" | jq -r 'if (.itemError // []) | length == 0 then "none" else (.itemError | map(.error_detail) | join("; ")) end')\` |"
+            echo ""
+            echo "\`uploadState: SUCCESS\` means the upload was accepted. Whether it is **published** is a"
+            echo "separate human review, which this API does not report."
+          } >> "$GITHUB_STEP_SUMMARY"
