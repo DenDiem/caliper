@@ -133,6 +133,12 @@ importers:
         specifier: ^10.24.0
         version: 10.29.7
 
+  packages/recorder:
+    dependencies:
+      '@caliper/core':
+        specifier: workspace:*
+        version: link:../core
+
 packages:
 
   '@1natsu/wait-element@4.2.0':
