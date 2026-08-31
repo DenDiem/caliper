@@ -58,6 +58,8 @@ once per animation frame, and only when the cursor crosses into a different elem
 
 ## Bug traces
 
+![Reproducing a bug that only happens on the second submit, then the trace an agent reads back](../../docs/media/qa-extension/trace-flow.gif)
+
 Some defects are a sequence, not a moment. **Start trace** in the side panel records the reproduction
 until you press **Stop**; the recording bar shows elapsed time and live counts of console errors and
 failed requests, so you can tell the bug actually fired before you stop.

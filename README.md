@@ -4,7 +4,7 @@
 
 <h1 align="center">Caliper</h1>
 
-<p align="center">Design Mode &amp; UI annotation for AI coding agents — precise, element-pinned hand-offs between you and Claude Code / Cursor, in both directions.</p>
+<p align="center">UI annotation and bug traces for AI coding agents — precise, element-pinned hand-offs between you and Claude Code / Cursor, in both directions.</p>
 
 <p align="center">
   <a href="https://chromewebstore.google.com/detail/caliper/biedcnpfkefnocikeonknogjcippdopm"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/biedcnpfkefnocikeonknogjcippdopm?label=chrome%20web%20store&labelColor=13161d&color=4f7cff&logo=googlechrome&logoColor=white"></a>
@@ -18,9 +18,12 @@
   <a href="https://donatello.to/dendiem"><img alt="Tips" src="https://img.shields.io/badge/tips-%E2%98%95_buy_me_a_coffee-ff813f?labelColor=13161d"></a>
 </p>
 
-Caliper is built on one idea: a clicked DOM element already carries a **stable selector**, its
-**owning component**, and **computed styles matched to your design tokens** — enough for an AI agent
-to act on without decoding a screenshot. Two products put that to work in opposite directions.
+Caliper is built on one idea: a running page already knows everything an agent needs. A clicked
+element carries a **stable selector**, its **owning component** and **computed styles matched to your
+design tokens**; a reproduction carries its **steps, DOM, console, network and store actions**. None of
+that survives a screenshot, and all of it is text an agent can act on directly.
+
+Two products put that to work in opposite directions.
 
 ## Two directions
 
@@ -29,10 +32,17 @@ to act on without decoding a screenshot. Two products put that to work in opposi
 A Chrome extension for manual QA. A reviewer marks broken UI on the live app; the export is a compact
 payload — selector, component, token-matched styles — an agent fixes straight from the file.
 
-Some defects are not a moment but a sequence — "save works, but only the second time". For those,
-**Start trace** records the reproduction: the steps taken, the DOM over time, console, network and
-store actions, plus a ~1 MB video. The trace is what the agent reads; the video is for the human
-reading the ticket.
+Some defects are not a moment but a sequence — *"save works, but only the second time"*. No
+screenshot will ever explain one. **Start trace** records the reproduction instead: the steps taken,
+the DOM as it changed, console with stack traces, every request with its status and body, and the
+actions the store dispatched — plus a ~1 MB video.
+
+The split is the point: **the trace is what the agent reads, the video is for the human.** Below, a
+second checkout submit comes back 409, the app dispatches `Save Succeeded` anyway, and a `TypeError`
+lands two milliseconds later — the agent sees all three, correlated by timestamp, without the app
+running.
+
+![Reproducing a bug that only happens on the second submit, then the trace an agent reads back](docs/media/qa-extension/trace-flow.gif)
 
 ![Marking an element on the live app, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
 
@@ -50,10 +60,11 @@ Both products share the same element-picking core and in-page overlay:
 
 | Package | Description |
 | --- | --- |
-| `packages/core` | Element → annotation logic. No `chrome.*`, no UI framework, portable to any shell. |
+| `packages/core` | Element → annotation logic and the session/trace schema. No `chrome.*`, no UI framework, portable to any shell. |
 | `packages/overlay` | In-page picker UI rendered in a Shadow DOM. |
+| `packages/recorder` | Trace collection — buffers, console/network collectors, the devtools state bridge. No `chrome.*`, so it is testable outside a browser. |
 | `apps/qa-extension` | Chrome MV3 extension for manual QA — [README](apps/qa-extension/README.md). |
-| `apps/ask` | MCP server for live agent→developer UI review — [README](apps/ask/README.md). |
+| `apps/ask` | MCP server for live agent→developer UI review, and the `pull` / `read` / `trace` readers — [README](apps/ask/README.md). |
 
 ## Quick start
 
