@@ -108,13 +108,20 @@ picker, and nothing after they press Stop. A trace covers only the one tab it wa
 https://github.com/DenDiem/caliper/blob/main/PRIVACY.md
 ```
 
-## Screenshots still needed
+## Screenshots
 
-At least one, 1280×800 or 640×400. Worth capturing:
+Four, all exactly 1280×800, in `docs/media/store/` — regenerate with
+`node scripts/record-store-shots.mjs` (needs the demo server and a built extension) rather than
+re-shooting by hand:
 
-1. The picker armed over a real page, highlight and badge visible.
-2. The popover open on an element, with the screenshot thumbnail inside.
-3. The side panel mid-recording — the red strip with its timer and live error counts.
-4. A finished trace card, its summary chips and video visible.
+| File | Shows |
+| --- | --- |
+| `store-1-picker-armed.png` | The picker armed over a real page, highlight following the cursor |
+| `store-2-popover.png` | The popover open on an element, selector and token match visible |
+| `store-3-recording.png` | Mid-recording — the red strip with its timer and live error/request counts |
+| `store-4-trace-card.png` | A finished trace: video, label, and the summary chips |
+
+The side panel is browser chrome and cannot be captured with the page, so 3 and 4 are composed — app
+on the left, the real `sidepanel.html` on the right, which is how it looks docked.
 3. The side panel with a few defects recorded.
 4. The TOON export pasted into an agent.

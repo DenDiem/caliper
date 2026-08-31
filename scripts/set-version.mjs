@@ -12,6 +12,7 @@ const files = [
   'apps/ask/package.json',
   'packages/core/package.json',
   'packages/overlay/package.json',
+  'packages/recorder/package.json',
 ];
 
 for (const file of files) {
