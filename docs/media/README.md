@@ -4,8 +4,41 @@
 after changing the shape or the palette. It writes 16/32/48/128 into the extension's `public/icon`
 and a 512 version here for the README and the store listing.
 
-How the GIF in the root README and the store screenshots are produced. `ffmpeg` does the work; the
-recording itself can come from anything that writes an mp4.
+## The two README GIFs are scripted — re-run them, do not re-shoot them
+
+`qa-extension/mark-defect.gif` and `qa-extension/trace-flow.gif` are produced by scripts, so they can
+be regenerated whenever the UI moves instead of drifting years out of date (which is exactly what
+happened to the hand-shot version of `mark-defect.gif`).
+
+```bash
+pnpm --filter @dendiem/caliper demo          # the pages both demos drive, on :5599
+pnpm --filter @caliper/qa-extension build
+pnpm --filter @dendiem/caliper build         # trace-flow only: it runs the real CLI
+
+node scripts/record-mark-demo.mjs            # marking an element -> the side panel
+node scripts/record-trace-demo.mjs           # reproducing a bug -> the trace an agent reads
+```
+
+Both drive the real built extension in Chromium and both end in the same two-pass ffmpeg palette step
+described below. Nothing in either is staged: the trace demo's terminal shows the actual stdout of
+`caliper read` and `caliper trace --around` over the session the first half just recorded.
+
+Two things that will waste an hour if you rediscover them:
+
+- Playwright puts `--disable-extensions` in its default args, and leaving it there alongside
+  `--load-extension` hangs the browser at startup with no error. Both scripts pass
+  `ignoreDefaultArgs: ['--disable-extensions']`.
+- Every page in a persistent context records its own file, including the initial `about:blank`. Take
+  the clip from `page.video()`, never by scanning the output directory.
+
+Chrome's side panel is browser chrome and page video cannot see it, so the panel is recorded from
+`sidepanel.html` — the same component the docked panel renders — and framed on its own.
+
+---
+
+The rest of this page covers hand-recording, still the way to capture anything the scripts do not:
+store screenshots, or a flow that needs a human hand. `ffmpeg` does the work; the recording itself can
+come from anything that writes an mp4.
 
 ## 1. Record
 
