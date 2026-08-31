@@ -1,5 +1,6 @@
 import type {CaliperAnnotation, CaliperSession, Box, StyleValue} from '../schema/annotation.schema';
 import {combineComponents} from '../tokens/match-token';
+import {traceBlock, traceHelpLines} from './trace-toon';
 
 const ID_LENGTH = 8;
 const TEXT_LIMIT = 80;
@@ -315,7 +316,7 @@ const styleEntries = (annotations: readonly CaliperAnnotation[]): StyleEntry[] =
 };
 
 const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] => {
-  if (session.annotations.length === 0) {
+  if (session.annotations.length === 0 && session.traces.length === 0) {
     return ['Arm the picker with Alt+Shift+C, then click an element to record a defect'];
   }
 
@@ -335,6 +336,10 @@ const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] =
     );
   }
 
+  if (session.traces.length > 0) {
+    lines.push(...traceHelpLines());
+  }
+
   return lines;
 };
 
@@ -349,6 +354,10 @@ export const toToon = (session: CaliperSession): string => {
     ['caliperVersion', cell(session.caliperVersion)],
     ['count', String(session.annotations.length)],
   ];
+
+  if (session.traces.length > 0) {
+    sessionEntries.push(['traces', String(session.traces.length)]);
+  }
 
   if (session.annotations.length > 0) {
     sessionEntries.push(['severity', severityBreakdown(session.annotations)]);
@@ -378,6 +387,12 @@ export const toToon = (session: CaliperSession): string => {
   // single-element case stays as narrow as before.
   const scoped = entries.some((entry) => entry.scope === 'host');
   const sections = [block('session', sessionEntries), annotations];
+
+  if (session.traces.length > 0) {
+    sections.push(
+      [`traces[${session.traces.length}]:`, ...session.traces.map(traceBlock)].join('\n'),
+    );
+  }
 
   if (entries.length > 0) {
     const columns = scoped
