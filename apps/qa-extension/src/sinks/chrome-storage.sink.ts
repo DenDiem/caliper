@@ -1,4 +1,4 @@
-import type {AnnotationSink, CaliperAnnotation} from '@caliper/core';
+import type {AnnotationSink, CaliperAnnotation, CaliperTrace} from '@caliper/core';
 import type {StoreOp} from '../messaging/messages';
 import {activeSession, readStore, type CaliperStore} from './store';
 
@@ -13,6 +13,8 @@ interface MultiSessionSink extends AnnotationSink {
   createSession: () => Promise<void>;
   activateSession: (id: string) => Promise<void>;
   removeSession: (id: string) => Promise<void>;
+  pushTrace: (trace: CaliperTrace) => Promise<void>;
+  removeTrace: (id: string) => Promise<void>;
 }
 
 export const chromeStorageSink: MultiSessionSink = {
@@ -33,4 +35,8 @@ export const chromeStorageSink: MultiSessionSink = {
   activateSession: (id: string) => dispatch({kind: 'activateSession', id}),
 
   removeSession: (id: string) => dispatch({kind: 'removeSession', id}),
+
+  pushTrace: (trace: CaliperTrace) => dispatch({kind: 'pushTrace', trace}),
+
+  removeTrace: (id: string) => dispatch({kind: 'removeTrace', id}),
 };

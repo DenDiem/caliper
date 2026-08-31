@@ -8,6 +8,19 @@ import {
   patchConsole,
   patchFetch,
 } from '@caliper/recorder';
+import type {DevtoolsExtension} from '@caliper/recorder';
+
+// The hook the state bridge installs is a real property of the page's window; declaring it keeps the
+// bridge's host parameter structurally satisfied without a cast.
+declare global {
+  interface Window {
+    __REDUX_DEVTOOLS_EXTENSION__?: DevtoolsExtension;
+  }
+}
+
+// A trace step wants an anchor, not the picker's full verdict — the strategy and confidence a mark
+// carries are meaningless for "the tester clicked here".
+const selectorOf = (element: Element): string => buildSelector(element).selector;
 
 const HOST_SOURCE = 'caliper-host';
 const COLLECTOR_SOURCE = 'caliper-collector';
@@ -40,7 +53,7 @@ export default defineContentScript({
     patchFetch(window, (entry) => network.push(entry), now);
 
     const onEvent = (event: Event): void => {
-      const step = describeStep(event, now(), buildSelector);
+      const step = describeStep(event, now(), selectorOf);
       if (step) steps.push(step);
     };
 

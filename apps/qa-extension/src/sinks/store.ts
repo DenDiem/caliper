@@ -17,6 +17,7 @@ const emptySession = (): CaliperSession => ({
   createdAt: new Date().toISOString(),
   caliperVersion: CALIPER_VERSION,
   annotations: [],
+  traces: [],
   assets: {},
 });
 
@@ -74,7 +75,13 @@ const mutateSession = (session: CaliperSession, op: StoreOp): CaliperSession => 
       return {...session, annotations: session.annotations.filter((item) => item.id !== op.id), assets};
     }
     case 'clear':
-      return {...session, annotations: [], assets: {}};
+      return {...session, annotations: [], traces: [], assets: {}};
+    // A session that carries a trace is v2 by definition; the bump happens here rather than at creation
+    // so a mark-only session keeps declaring v1 and stays readable by an older caliper pull.
+    case 'pushTrace':
+      return {...session, schemaVersion: 2, traces: [...session.traces, op.trace]};
+    case 'removeTrace':
+      return {...session, traces: session.traces.filter((item) => item.id !== op.id)};
     default:
       return session;
   }

@@ -45,8 +45,7 @@ const sizeOf = (value: unknown): number => {
 const capDiff = (entry: TraceStateEntry, maxBytes: number): TraceStateEntry => {
   if (entry.diff === undefined || entry.diff === null) return entry;
   if (sizeOf(entry.diff) <= maxBytes) return entry;
-  const {diff: _dropped, ...rest} = entry;
-  return rest;
+  return {t: entry.t, action: entry.action};
 };
 
 export const assembleTrace = (input: AssembleInput): {trace: CaliperTrace; detail: TraceDetail} => {
