@@ -1,4 +1,6 @@
+export * from './schema/page.schema';
 export * from './schema/annotation.schema';
+export * from './schema/trace.schema';
 export * from './schema/review.schema';
 export * from './review/session';
 export * from './review/content';
