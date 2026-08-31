@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** 27 July 2026
+**Last updated:** 31 August 2026
 
 Caliper is a QA tool that turns a clicked page element into a structured defect annotation. This
 policy describes exactly what it stores and where.
@@ -19,6 +19,33 @@ Only what you explicitly record. Clicking an element while the picker is armed c
 
 Caliper does not run until you arm the picker, and it records nothing while idle.
 
+## Bug traces
+
+Pressing **Start trace** begins a recording that stops when you press **Stop**. While it runs, Caliper
+captures, for that one tab:
+
+- the steps you take — clicks, navigations, and which fields changed (their **length**, never their
+  contents);
+- a DOM replay of the page over time;
+- console output, including errors and stack traces;
+- network requests: method, URL, status, timing, **headers, and request/response bodies**;
+- the names of the state-management actions your app dispatches, plus a snapshot of its store at the
+  start and end of the recording;
+- a low-bitrate video of the tab.
+
+**By default nothing in a trace is masked.** That means a trace can contain live bearer tokens and
+session cookies belonging to the environment you were testing. This is deliberate — a redacted trace
+is often useless for debugging — but it makes a trace as sensitive as the session it was recorded
+from. Before attaching one to a ticket other people can read, either turn on **Mask credentials in
+recorded network traffic** in the extension's options, or check what the trace contains.
+
+Recording never starts on its own. Nothing is recorded before you press Start or after you press Stop,
+and a trace covers only the tab you started it on.
+
+Traces are stored on your machine (IndexedDB for the video and replay, `chrome.storage.local` for the
+summary) and leave it only through the same explicit actions as everything else: a zip you download,
+or Send to Jira.
+
 ## Where the data goes
 
 **By default, nowhere.** Everything is written to `chrome.storage.local` on your own machine.
@@ -29,7 +56,7 @@ code. Nothing is transmitted to the author.
 Data leaves your machine only when you choose to send it:
 
 - **Copy TOON**, **Copy JSON** or **zip** — to the destination you pick yourself (your clipboard,
-  your Downloads folder).
+  your Downloads folder). A zip carries any recorded traces, video included.
 - **Send to Jira** (optional, off until you connect it) — directly to your own Jira site, described
   below.
 

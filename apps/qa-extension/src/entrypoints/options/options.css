@@ -241,3 +241,20 @@ body {
   width: auto;
   padding: 9px 20px;
 }
+
+.opt__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--cal-text-body);
+  font: 400 13px/1.4 var(--cal-font-sans);
+  cursor: pointer;
+}
+
+.opt__check input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--cal-teal);
+  cursor: pointer;
+}
