@@ -36,14 +36,13 @@ jobs:
 
           echo "item id: ${CHROME_EXTENSION_ID}"
 
-          for projection in DRAFT PUBLISHED; do
-            echo "--- ${projection} ---"
-            curl -sS \
-              -H "Authorization: Bearer ${token}" \
-              -H "x-goog-api-version: 2" \
-              "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=${projection}"
-            echo
-          done
+          # DRAFT is the only projection this endpoint accepts; PUBLISHED returns 400.
+          echo "--- raw ---"
+          curl -sS \
+            -H "Authorization: Bearer ${token}" \
+            -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=DRAFT"
+          echo
 
           item=$(curl -sS \
             -H "Authorization: Bearer ${token}" \
@@ -57,10 +56,16 @@ jobs:
             echo ""
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| version held | \`$(echo "$item" | jq -r '.crxVersion // "unknown"')\` |"
-            echo "| upload state | \`$(echo "$item" | jq -r '.uploadState // "unknown"')\` |"
+            echo "| live version | \`$(echo "$item" | jq -r '.crxVersion // "unknown"')\` |"
+            echo "| last upload | \`$(echo "$item" | jq -r '.uploadState // "unknown"')\` |"
             echo "| errors | \`$(echo "$item" | jq -r 'if (.itemError // []) | length == 0 then "none" else (.itemError | map(.error_detail) | join("; ")) end')\` |"
             echo ""
-            echo "\`uploadState: SUCCESS\` means the upload was accepted. Whether it is **published** is a"
-            echo "separate human review, which this API does not report."
+            echo "**What these mean.** \`crxVersion\` is the version the store is currently serving, not"
+            echo "one that is waiting in review — a submitted version does not appear here until it is"
+            echo "approved. \`uploadState: NOT_FOUND\` means no upload operation is in progress, which is the"
+            echo "normal resting state between a submission and its verdict."
+            echo ""
+            echo "So this answers *what is live* and *did an upload error*. It cannot answer *is my"
+            echo "submission approved* — the API does not expose review state, and only the Developer"
+            echo "Dashboard does."
           } >> "$GITHUB_STEP_SUMMARY"
