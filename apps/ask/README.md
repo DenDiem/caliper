@@ -154,8 +154,9 @@ npx @dendiem/caliper trace .caliper/<id>/caliper-<id>.trace.json --around 12.4s
 ```
 
 `trace` prints one recording, or a slice of it — `--steps` / `--console` / `--network` / `--state` to
-pick channels, `--around <t>` to keep two seconds either side of a moment. The `.webm` beside it is
-for humans; it carries nothing `trace` does not.
+pick channels, `--around <t>` to keep two seconds either side of a moment, and `--full` to add what the
+summary lines leave out: request headers and bodies, console stack traces, state diffs and the store
+snapshots. The `.webm` beside it is for humans; it carries nothing `trace` does not.
 
 The `caliper-fix` skill, installed by `init`, tells the agent to do all of this when handed a ticket
 or an archive.

@@ -43,10 +43,16 @@ there — the summary usually tells you whether the trace explains the bug.
 When you need detail, slice it; do not read the file whole:
 
 ```
-caliper trace .caliper/<id>/caliper-<id>.trace.json          # every channel
+caliper trace .caliper/<id>/caliper-<id>.trace.json          # every channel, summarised
 caliper trace <file> --network --console                      # two channels
 caliper trace <file> --around 12.4s                           # 2s either side of that moment
+caliper trace <file> --around 12.4s --full                    # + headers, bodies, stacks, state diffs
 ```
+
+Summary lines leave out request headers and bodies, console stack traces, state diffs and the store
+snapshots. `--full` adds them — pair it with `--around` or a single channel, because on its own it can
+be large. A response body shown without `--full` says `[truncated, --full for all of it]` where it was
+cut, so a clipped body is never mistaken for malformed data from the server.
 
 Every `t` is milliseconds from the trace's start, so a step, a console error and a failed request that
 share a timestamp are the same instant. The usual path: read the steps, find the one where the defect
@@ -55,8 +61,11 @@ appears, then `--around` that timestamp to see what the app did underneath.
 Two notes a summary may carry:
 
 - `network captured in fallback mode` — `chrome.debugger` could not attach while recording (DevTools
-  was open on the tab), so request and response **bodies may be missing**. Statuses and timings are
-  still accurate.
+  was open on the tab). Response **bodies are absent**, and so is anything the app sent through
+  `XMLHttpRequest`: the fallback collector patches `fetch` and `sendBeacon` only. An app built on axios
+  or another XHR client can therefore show an **empty** network channel in this mode — read that as
+  "not captured", never as "the app made no requests". `fetch` traffic, statuses and timings are
+  accurate.
 - `truncated: …` — part of the recording is missing, and the note says **which end**. `length-limit`
   means the recording was stopped and the **end** of the reproduction is absent (the start is intact);
   `buffer-overflow` means the **earliest** events were dropped; `video-window` costs only the video.

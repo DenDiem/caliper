@@ -76,10 +76,15 @@ A finished trace holds four things:
 A trace belongs to the tab, not the page: navigating mid-recording appends a `navigation` step and
 keeps going.
 
-Two collectors run. `chrome.debugger` is preferred — it sees response bodies and uncaught-exception
-stack traces — but it cannot attach while DevTools is open on the tab, which is common during QA. When
-it cannot, the in-page `fetch`/`console` patches take over and the trace records
-`network: fallback` so the agent knows bodies may be missing. Recording is never blocked by this.
+Two collectors run. `chrome.debugger` is preferred — it sees response bodies and full request headers
+— but it cannot attach while DevTools is open on the tab, which is common during QA. When it cannot,
+the in-page patches take over and the trace records `network: fallback` so the reader knows what it is
+looking at. Recording is never blocked by this.
+
+**Known gap in fallback mode:** the in-page collector patches `fetch` and `sendBeacon`, not
+`XMLHttpRequest`. An app built on axios or another XHR client records an empty network channel when the
+debugger is unavailable. Console is unaffected — uncaught errors and unhandled rejections are captured
+in both modes.
 
 Video has the same shape. `chrome.tabCapture` gives the better picture but needs the extension to have
 been invoked on the tab from the toolbar, and Chrome revokes that grant on navigation — so when it is

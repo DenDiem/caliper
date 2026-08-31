@@ -24,11 +24,12 @@ Caliper does not run until you arm the picker, and it records nothing while idle
 Pressing **Start trace** begins a recording that stops when you press **Stop**. While it runs, Caliper
 captures, for that one tab:
 
-- the steps you take — clicks, navigations, and which fields changed (their **length**, never their
-  contents);
+- the steps you take — clicks, scroll positions, in-app route changes, navigations, and which fields
+  changed (their **length**, never their contents);
 - a DOM replay of the page over time;
-- console output, including errors and stack traces;
-- network requests: method, URL, status, timing, **headers, and request/response bodies**;
+- console output, including uncaught errors and unhandled promise rejections, with their stack traces;
+- network requests: method, URL, status, timing, **headers, and request/response bodies** — sent via
+  `fetch` or `sendBeacon`;
 - the names of the state-management actions your app dispatches, plus a snapshot of its store at the
   start and end of the recording;
 - a low-bitrate video of the tab.
@@ -38,6 +39,12 @@ session cookies belonging to the environment you were testing. This is deliberat
 is often useless for debugging — but it makes a trace as sensitive as the session it was recorded
 from. Before attaching one to a ticket other people can read, either turn on **Mask credentials in
 recorded network traffic** in the extension's options, or check what the trace contains.
+
+With that option on, Caliper masks credential-looking values in request and response headers, in JSON
+request and response bodies, in URL query strings, in your application's store snapshot and per-action
+diffs, and in console text. Masking is pattern-based, not a guarantee: a secret that does not look like
+one — an opaque value under an unremarkable field name — will not be recognised. Treat the option as
+a reduction in exposure, not as sanitisation.
 
 Recording never starts on its own. Nothing is recorded before you press Start or after you press Stop,
 and a trace covers only the tab you started it on.
