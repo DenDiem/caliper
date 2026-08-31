@@ -90,6 +90,9 @@ importers:
       '@caliper/overlay':
         specifier: workspace:*
         version: link:../../packages/overlay
+      '@caliper/recorder':
+        specifier: workspace:*
+        version: link:../../packages/recorder
       '@fontsource/ibm-plex-mono':
         specifier: ^5.3.0
         version: 5.3.0
@@ -105,6 +108,9 @@ importers:
       preact:
         specifier: ^10.24.0
         version: 10.29.7
+      rrweb:
+        specifier: ^2.0.0-alpha.4
+        version: 2.1.1
     devDependencies:
       '@types/chrome':
         specifier: ^0.2.2
@@ -1198,11 +1204,20 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@rrweb/types@2.1.1':
+    resolution: {integrity: sha512-g0I3nCNL1S7slDXwhunxOuOoswkY8WVZJQrPFiwixOc6xoD514d1JLTuyAzCKIox8g/PaLKtV5g31Uk42inQSQ==}
+
+  '@rrweb/utils@2.1.1':
+    resolution: {integrity: sha512-x2SgJAD3YJ9eVcLZ5l6OqWMtczdA3VfS5XqPeqpZdQgV9oh6Id5GK2cDN4bimnkqryOcIJdz8cTvV0yNvqQ+nA==}
+
   '@types/chrome@0.0.280':
     resolution: {integrity: sha512-AotSmZrL9bcZDDmSI1D9dE7PGbhOur5L0cKxXd7IqbVizQWCY4gcvupPUVsQ4FfDj3V2tt/iOpomT9EY0s+w1g==}
 
   '@types/chrome@0.2.2':
     resolution: {integrity: sha512-8rSMZ4cvo2xmaSyQg0sN5yRL7oiDkntLoiHxUhfwQnv1mvnkrdoZ25SlNrKWmYKaeP50WvrfWj1pmc02+U9KKw==}
+
+  '@types/css-font-loading-module@0.0.7':
+    resolution: {integrity: sha512-nl09VhutdjINdWyXxHWN/w9zlNCfr60JUqJbd24YXUuCwgeL0TpFSdElCwb6cxfB6ybE19Gjj4g0jsgkXxKv1Q==}
 
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
@@ -1334,6 +1349,9 @@ packages:
   '@wxt-dev/storage@1.2.8':
     resolution: {integrity: sha512-GWCFKgF5+d7eslOxUDFC70ypA9njupmJb1nQM8uZoX0J3sWT2BO5xJLzb1sYahWAfID9p2BMtnUBN1lkWxPsbQ==}
 
+  '@xstate/fsm@1.6.5':
+    resolution: {integrity: sha512-b5o1I6aLNeYlU/3CPlj/Z91ybk1gUsKT+5NAJI+2W4UjvS5KLG28K9v5UvNoFVjHV8PajVZ00RH3vnjyQO7ZAw==}
+
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
@@ -1438,6 +1456,10 @@ packages:
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
+
+  base64-arraybuffer@1.0.2:
+    resolution: {integrity: sha512-I3yl4r9QB5ZRY3XuJVEPfc2XhZO6YweFPI+UovAzn+8/hb3oJ6lnysaFcjVpkCPfVWFUDvoZ8kmVDP7WyRtYtQ==}
+    engines: {node: '>= 0.6.0'}
 
   baseline-browser-mapping@2.11.1:
     resolution: {integrity: sha512-HYXq73DDpCtNzOmrFsm9eSwCvWCql0RzqjpDzXN9EadiLJ4DNat0nsZ/Bzmy+Ud12mb4/zKDY0cQ805ZzN+i0A==}
@@ -2664,6 +2686,9 @@ packages:
     resolution: {integrity: sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg==}
     engines: {node: '>= 8'}
 
+  mitt@3.0.1:
+    resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
+
   mkdirp@1.0.4:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
     engines: {node: '>=10'}
@@ -3057,11 +3082,20 @@ packages:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
     engines: {node: '>= 18'}
 
+  rrdom@2.1.1:
+    resolution: {integrity: sha512-VBkTF3bGNqcZjqnbo/gKi9GVQPIxiG0dofw7CQdAZQFQ2juJdt2YKIf3oS9QudL8HTpGh9bz5TUN+3amBn1Geg==}
+
   rrweb-cssom@0.7.1:
     resolution: {integrity: sha512-TrEMa7JGdVm0UThDJSx7ddw5nVm3UJS9o9CCIZ72B1vSyEZoziDqBYP3XIoi/12lKrJR8rE3jeFHMok2F/Mnsg==}
 
   rrweb-cssom@0.8.0:
     resolution: {integrity: sha512-guoltQEx+9aMf2gDZ0s62EcV8lsXR+0w8915TC3ITdn2YueuNjdAYh/levpU9nFaoChh9RUS5ZdQMrKfVEN9tw==}
+
+  rrweb-snapshot@2.1.1:
+    resolution: {integrity: sha512-al4Kx7Am7YlIn/5Yb2EMr7cdmjGiK+cLhdilJEXqkFXgpnys8t/yMJumXy2Ormgirpg3MBnFha0GTgny+iIL2w==}
+
+  rrweb@2.1.1:
+    resolution: {integrity: sha512-ToxhJg3SsrAhw+/DPhI/2iiwZQIrGK5BGkZ0kHn4qUExcvQYRaolkciD1FWX2+r6vf1IxFyhsoRY18h3D+XoCg==}
 
   run-applescript@7.1.0:
     resolution: {integrity: sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==}
@@ -4455,6 +4489,10 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
 
+  '@rrweb/types@2.1.1': {}
+
+  '@rrweb/utils@2.1.1': {}
+
   '@types/chrome@0.0.280':
     dependencies:
       '@types/filesystem': 0.0.36
@@ -4464,6 +4502,8 @@ snapshots:
     dependencies:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16
+
+  '@types/css-font-loading-module@0.0.7': {}
 
   '@types/estree@1.0.9': {}
 
@@ -4642,6 +4682,8 @@ snapshots:
       async-mutex: 0.5.0
       dequal: 2.0.3
 
+  '@xstate/fsm@1.6.5': {}
+
   accepts@2.0.0:
     dependencies:
       mime-types: 3.0.2
@@ -4725,6 +4767,8 @@ snapshots:
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
+
+  base64-arraybuffer@1.0.2: {}
 
   baseline-browser-mapping@2.11.1: {}
 
@@ -5992,6 +6036,8 @@ snapshots:
       minipass: 3.3.6
       yallist: 4.0.0
 
+  mitt@3.0.1: {}
+
   mkdirp@1.0.4: {}
 
   mlly@1.8.2:
@@ -6414,9 +6460,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  rrdom@2.1.1:
+    dependencies:
+      rrweb-snapshot: 2.1.1
+
   rrweb-cssom@0.7.1: {}
 
   rrweb-cssom@0.8.0: {}
+
+  rrweb-snapshot@2.1.1:
+    dependencies:
+      postcss: 8.5.22
+
+  rrweb@2.1.1:
+    dependencies:
+      '@rrweb/types': 2.1.1
+      '@rrweb/utils': 2.1.1
+      '@types/css-font-loading-module': 0.0.7
+      '@xstate/fsm': 1.6.5
+      base64-arraybuffer: 1.0.2
+      mitt: 3.0.1
+      rrdom: 2.1.1
+      rrweb-snapshot: 2.1.1
 
   run-applescript@7.1.0: {}
 

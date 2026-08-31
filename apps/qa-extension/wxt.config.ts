@@ -14,6 +14,10 @@ export default defineConfig({
       'sidePanel',
       'scripting',
       'downloads',
+      'offscreen',
+      'tabCapture',
+      'debugger',
+      'webNavigation',
     ],
     host_permissions: ['<all_urls>'],
     icons: {

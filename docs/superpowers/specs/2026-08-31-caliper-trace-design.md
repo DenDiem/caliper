@@ -287,6 +287,7 @@ does not, in a form the agent cannot read cheaply.
 | --- | --- |
 | `debugger` permission slows Chrome Web Store review | Attach only during an explicit user-started trace, detach at Stop; justify in the listing |
 | A `document_start` main-world script on `<all_urls>` is a broad surface | Zero-capacity buffers until Start; no network egress from the collector |
+| The collector bundle is ~245 kB on every page — Vite does not code-split content scripts, so the dynamic `import('rrweb')` is inlined | Accepted. Execution stays lazy (rrweb runs only from Start) and V8 compiles function bodies lazily, so the cost is parse-time only. Serving rrweb from `web_accessible_resources` instead would reintroduce the page-CSP failure class `http/csp-risk.ts` already documents |
 | Traces carry live credentials (D8) | UI warning + `PRIVACY.md` + `redactSecrets` toggle |
 | rrweb misses canvas / cross-origin iframes | The `.webm` covers what the replay cannot |
 | Jira's ~10 MB per-attachment limit | D6 budget plus `maxDurationMs`; oversize is reported before send, not after |
