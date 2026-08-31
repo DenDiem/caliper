@@ -18,21 +18,28 @@ can be up to 75 chars. Use that budget for keywords.
 
 **Name** (≤75)
 ```
-Caliper — Design Mode & UI Annotation for AI Coding Agents
+Caliper QA — UI Marks & Bug Traces for AI Coding Agents
 ```
 
 **Summary** (≤132)
 ```
-Mark up any web UI — click, strike, or lasso an element — and hand a precise, element-pinned defect to Claude Code, Cursor or any AI agent.
+Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
 ```
 
 **Keywords to weave into the description** (the store has no separate tags field — the description
 body is what gets indexed):
 > design mode, UI annotation, visual feedback, AI coding agent, Claude Code, Cursor, MCP,
-> Model Context Protocol, QA, bug report, design review, human-in-the-loop, front-end, devtools
+> Model Context Protocol, QA, bug report, bug trace, session replay, repro, design review,
+> human-in-the-loop, front-end, devtools
 
-Lead the first two sentences of the description with the highest-value phrases ("Design Mode",
-"UI annotation for AI coding agents", "Claude Code / Cursor") — the store weights the opening.
+Lead the first two sentences of the description with the highest-value phrases ("UI annotation for
+AI coding agents", "bug trace", "Claude Code / Cursor") — the store weights the opening.
+
+> `session replay` and `bug reporting` are crowded SERPs owned by FullStory, LogRocket and Sentry, and
+> `caliper` alone collides with Hyperledger Caliper and brake calipers. Neither is worth chasing on its
+> own. They earn their place only in the qualified combos this project can actually own —
+> `caliper bug trace`, `session replay for ai agents`, `bug trace mcp` — which is why they sit in the
+> description and topics rather than in the name.
 
 ---
 
@@ -40,24 +47,24 @@ Lead the first two sentences of the description with the highest-value phrases (
 
 **About / description** (Settings → the ⚙ next to *About*; ≤350 chars, indexed by Google)
 ```
-Design Mode & UI annotation for AI coding agents. Mark up any web page — click, strike, or lasso an element — and hand Claude Code or Cursor a precise, element-pinned change list. Chrome extension + MCP server, both directions.
+UI annotation and bug traces for AI coding agents. Mark an element — or record the whole reproduction with DOM, console, network and store — and hand Claude Code or Cursor something precise to fix. Chrome extension + MCP server, both directions.
 ```
 
 **Topics** (Settings → Topics, up to 20 — GitHub's topic pages are indexed and searchable)
 ```
 design-mode  ai-agents  coding-agent  claude-code  cursor  mcp  model-context-protocol
-chrome-extension  ui-annotation  visual-feedback  human-in-the-loop  qa  design-review
-devtools  frontend  preact  wxt  developer-tools
+chrome-extension  ui-annotation  bug-reporting  session-replay  qa  visual-feedback
+human-in-the-loop  design-review  devtools  frontend  wxt  developer-tools
 ```
 Apply both in one command:
 ```bash
 gh repo edit DenDiem/caliper \
-  --description "Design Mode & UI annotation for AI coding agents. Mark up any web page — click, strike, or lasso an element — and hand Claude Code or Cursor a precise, element-pinned change list. Chrome extension + MCP server, both directions." \
+  --description "UI annotation and bug traces for AI coding agents. Mark an element — or record the whole reproduction with DOM, console, network and store — and hand Claude Code or Cursor something precise to fix. Chrome extension + MCP server, both directions." \
   --add-topic design-mode --add-topic ai-agents --add-topic coding-agent --add-topic claude-code \
   --add-topic cursor --add-topic mcp --add-topic model-context-protocol --add-topic chrome-extension \
-  --add-topic ui-annotation --add-topic visual-feedback --add-topic human-in-the-loop --add-topic qa \
-  --add-topic design-review --add-topic devtools --add-topic frontend --add-topic preact --add-topic wxt \
-  --add-topic developer-tools
+  --add-topic ui-annotation --add-topic bug-reporting --add-topic session-replay --add-topic qa \
+  --add-topic visual-feedback --add-topic human-in-the-loop --add-topic design-review \
+  --add-topic devtools --add-topic frontend --add-topic wxt --add-topic developer-tools
 ```
 
 **README H1 subtitle** — the first line under the title is what Google shows as the snippet. Keep

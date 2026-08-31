@@ -30,6 +30,9 @@ jobs:
       - name: Type-check core
         run: pnpm exec tsc --noEmit -p packages/core/tsconfig.json
 
+      - name: Type-check recorder
+        run: pnpm exec tsc --noEmit -p packages/recorder/tsconfig.json
+
       - name: Type-check overlay
         run: pnpm exec tsc --noEmit -p packages/overlay/tsconfig.json
 

@@ -46,6 +46,7 @@ const session = (annotations: CaliperAnnotation[]): CaliperSession => ({
   createdAt: '2026-07-22T10:00:00.000Z',
   caliperVersion: '0.1.0',
   annotations,
+  traces: [],
   assets: {},
 });
 
@@ -439,5 +440,40 @@ describe('toToon', () => {
   it('is markedly smaller than the equivalent json', () => {
     const full = session([annotation(), annotation({id: 'b'.repeat(36)})]);
     expect(toToon(full).length).toBeLessThan(JSON.stringify(full, null, 2).length / 2);
+  });
+});
+
+describe('toToon with traces', () => {
+  it('lists traces and appends the trace help', () => {
+    const output = toToon({
+      schemaVersion: 2,
+      id: 'a3f0c1d2-0000-4000-8000-000000000001',
+      createdAt: '2026-08-31T10:00:00.000Z',
+      caliperVersion: '0.1.0',
+      annotations: [],
+      assets: {},
+      traces: [
+        {
+          id: 'a3f0c1d2-0000-4000-8000-000000000001',
+          label: 'Save fails on second submit',
+          startedAt: '2026-08-31T10:00:00.000Z',
+          durationMs: 24_400,
+          truncated: false,
+          page: {
+            url: 'https://app.test/orders',
+            title: 'Orders',
+            viewport: {width: 1440, height: 900, dpr: 2},
+          },
+          sources: {network: 'cdp', console: 'cdp', state: 'devtools-bridge'},
+          summary: {steps: 7, consoleErrors: 2, failedRequests: 1, stateActions: 12},
+          files: {trace: 'caliper-a3f0c1d2.trace.json'},
+        },
+      ],
+    });
+
+    expect(output).toContain('traces: 1');
+    expect(output).toContain('traces[1]:');
+    expect(output).toContain('caliper trace <file>');
+    expect(output).not.toContain('Arm the picker');
   });
 });

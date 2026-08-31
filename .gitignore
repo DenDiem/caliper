@@ -9,5 +9,8 @@ dist/
 .DS_Store
 .claude-ctx/
 
+# materialised by `caliper pull` / `caliper read` — screenshots and trace artifacts
+.caliper/
+
 # wxt submit credentials — never commit
 .env.submit

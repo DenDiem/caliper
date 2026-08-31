@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ADAPTERS, buildServerLaunch} from './adapters/index';
@@ -6,7 +7,10 @@ import type {AgentAdapter, InstallConfig} from './adapters/index';
 import {isLoopbackTarget} from './review-runner';
 import {buildSnippetTag, parsePort, SNIPPET_PORT_DEFAULT} from './config';
 import type {CaliperMode} from './config';
+import {traceDetailSchema} from '@caliper/core';
 import {pullSession} from './jira/pull';
+import {readArchive} from './trace/read-archive';
+import {ALL_CHANNELS, sliceTrace, type TraceChannel} from './trace/slice';
 import {cancel, intro, isCancel, multiselect, outro, select, text} from '@clack/prompts';
 
 const DEFAULT_TARGET = 'http://localhost:3000';
@@ -14,7 +18,7 @@ const KNOWN_AGENT_IDS = ADAPTERS.map((adapter) => adapter.id).join(', ');
 
 class UsageError extends Error {}
 
-type Command = 'init' | 'uninstall' | 'snippet' | 'serve' | 'pull';
+type Command = 'init' | 'uninstall' | 'snippet' | 'serve' | 'pull' | 'read' | 'trace';
 
 interface ParsedArgs {
   command: Command;
@@ -26,6 +30,8 @@ interface ParsedArgs {
   pinned: boolean;
   help: boolean;
   positional: string | null;
+  channels: TraceChannel[];
+  around: string | null;
 }
 
 const INIT_FLAGS = ['--global', '--agent', '--target', '--mode', '--port', '--pinned', '--help', '-h'];
@@ -33,15 +39,28 @@ const UNINSTALL_FLAGS = ['--global', '--agent', '--help', '-h'];
 const SNIPPET_FLAGS = ['--port', '--help', '-h'];
 const SERVE_FLAGS = ['--help', '-h'];
 const PULL_FLAGS = ['--help', '-h'];
+const READ_FLAGS = ['--help', '-h'];
+const TRACE_FLAGS = ['--steps', '--console', '--network', '--state', '--around', '--help', '-h'];
+const POSITIONAL_COMMANDS: readonly Command[] = ['pull', 'read', 'trace'];
+const AROUND_WINDOW_MS = 2000;
+const MS_PER_SECOND = 1000;
 
 const isKnownCommand = (value: string): value is Command =>
-  value === 'init' || value === 'uninstall' || value === 'snippet' || value === 'serve' || value === 'pull';
+  value === 'init' ||
+  value === 'uninstall' ||
+  value === 'snippet' ||
+  value === 'serve' ||
+  value === 'pull' ||
+  value === 'read' ||
+  value === 'trace';
 
 const flagsForCommand = (command: Command): readonly string[] => {
   if (command === 'init') return INIT_FLAGS;
   if (command === 'uninstall') return UNINSTALL_FLAGS;
   if (command === 'snippet') return SNIPPET_FLAGS;
   if (command === 'pull') return PULL_FLAGS;
+  if (command === 'read') return READ_FLAGS;
+  if (command === 'trace') return TRACE_FLAGS;
   return SERVE_FLAGS;
 };
 
@@ -54,12 +73,16 @@ const topLevelHelp = (): string =>
     '  caliper uninstall [--global] [--agent <id>]',
     '  caliper snippet [--port <n>]',
     '  caliper pull <jira-issue-url|key>',
+    '  caliper read <path-to-zip|folder>',
+    '  caliper trace <path-to-trace.json> [--steps] [--console] [--network] [--state] [--around <t>]',
     '  caliper --help',
     '',
     `Known agents: ${KNOWN_AGENT_IDS}`,
     '',
     'caliper serve runs the MCP server over stdio; your coding agent launches it for you.',
     'caliper pull fetches a Caliper QA session attached to a Jira issue and prints it as a TOON work list.',
+    'caliper read does the same for an export handed to you directly, with no Jira credentials.',
+    'caliper trace opens one recorded bug trace, or a slice of it.',
   ].join('\n');
 
 const initHelp = (): string =>
@@ -146,12 +169,57 @@ const pullHelp = (): string =>
     '  CALIPER_JIRA_TOKEN  an API token from https://id.atlassian.com/manage-profile/security/api-tokens',
   ].join('\n');
 
+const readHelp = (): string =>
+  [
+    'caliper read - read a Caliper QA export handed to you directly (zip or unpacked folder)',
+    '',
+    'Usage:',
+    '  caliper read <path-to-zip|folder>',
+    '',
+    'Prints the same TOON work list as caliper pull, and materialises any trace files under',
+    '.caliper/<id>/ so caliper trace can open them. Use this when QA sent you the archive instead of',
+    'filing it to a ticket. No Jira credentials are needed.',
+  ].join('\n');
+
+const traceHelp = (): string =>
+  [
+    'caliper trace - print one bug trace, or a slice of it',
+    '',
+    'Usage:',
+    '  caliper trace <path-to-trace.json> [--steps] [--console] [--network] [--state] [--around <t>]',
+    '',
+    'With no channel flags every channel is printed. Combine flags to narrow it. --around takes a',
+    'timestamp from the trace (12400, or 12.4s) and keeps 2s either side of it across every channel -',
+    'use it to read the moment a step, error or failed request points at, not the whole recording.',
+    '',
+    'The .webm beside a trace is for humans; it carries nothing this command does not.',
+  ].join('\n');
+
 const helpForCommand = (command: Command): string => {
   if (command === 'init') return initHelp();
   if (command === 'uninstall') return uninstallHelp();
   if (command === 'snippet') return snippetHelp();
   if (command === 'pull') return pullHelp();
+  if (command === 'read') return readHelp();
+  if (command === 'trace') return traceHelp();
   return serveHelp();
+};
+
+const channelOf = (flag: '--steps' | '--console' | '--network' | '--state'): TraceChannel => {
+  if (flag === '--steps') return 'steps';
+  if (flag === '--console') return 'console';
+  if (flag === '--network') return 'network';
+  return 'state';
+};
+
+// A trace's own timestamps are milliseconds, but its summary and steps read in seconds. Both
+// spellings resolve to the same instant, so the flag matches whatever the agent just read.
+const parseTimestamp = (raw: string): number => {
+  const seconds = raw.match(/^(\d+(?:\.\d+)?)s$/);
+  if (seconds) return Math.round(Number(seconds[1]) * MS_PER_SECOND);
+  const value = Number(raw);
+  if (Number.isFinite(value)) return value;
+  throw new UsageError(`Invalid --around "${raw}": expected milliseconds (12400) or seconds (12.4s).`);
 };
 
 const parseArgs = (argv: readonly string[]): ParsedArgs => {
@@ -175,12 +243,18 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     pinned: false,
     help: false,
     positional: null,
+    channels: [],
+    around: null,
   };
 
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === undefined) continue;
-    if (parsed.command === 'pull' && parsed.positional === null && !flag.startsWith('-')) {
+    if (
+      POSITIONAL_COMMANDS.includes(parsed.command) &&
+      parsed.positional === null &&
+      !flag.startsWith('-')
+    ) {
       parsed.positional = flag;
       continue;
     }
@@ -191,6 +265,17 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     }
     if (flag === '--help' || flag === '-h') {
       parsed.help = true;
+      continue;
+    }
+    if (flag === '--steps' || flag === '--console' || flag === '--network' || flag === '--state') {
+      parsed.channels.push(channelOf(flag));
+      continue;
+    }
+    if (flag === '--around') {
+      const value = rest[index + 1];
+      if (value === undefined) throw new UsageError('--around requires a value, e.g. --around 12.4s');
+      parsed.around = value;
+      index += 1;
       continue;
     }
     if (flag === '--global') {
@@ -488,6 +573,33 @@ const runPull = async (args: ParsedArgs): Promise<void> => {
   console.log(await pullSession(args.positional));
 };
 
+const runRead = async (args: ParsedArgs): Promise<void> => {
+  if (args.positional === null) {
+    throw new UsageError('caliper read requires a path, e.g. caliper read ./caliper-a3f0c1d2.zip');
+  }
+  console.log(await readArchive(args.positional));
+};
+
+const runTrace = (args: ParsedArgs): void => {
+  if (args.positional === null) {
+    throw new UsageError(
+      'caliper trace requires a trace file, e.g. ' +
+        'caliper trace .caliper/a3f0c1d2/caliper-a3f0c1d2.trace.json',
+    );
+  }
+  const raw: unknown = JSON.parse(readFileSync(args.positional, 'utf8'));
+  const detail = traceDetailSchema.parse(raw);
+  const channels = args.channels.length > 0 ? args.channels : ALL_CHANNELS;
+
+  console.log(
+    sliceTrace(detail, {
+      channels: new Set<TraceChannel>(channels),
+      aroundMs: args.around === null ? null : parseTimestamp(args.around),
+      windowMs: AROUND_WINDOW_MS,
+    }),
+  );
+};
+
 // Machine entrypoint: importing the server module boots it (it connects a stdio transport at the
 // top level), which both starts serving and keeps the process alive. Nothing may print to stdout
 // here — stdout is the MCP stdio channel.
@@ -509,6 +621,10 @@ const main = async (): Promise<void> => {
     runSnippet(args);
   } else if (args.command === 'pull') {
     await runPull(args);
+  } else if (args.command === 'read') {
+    await runRead(args);
+  } else if (args.command === 'trace') {
+    runTrace(args);
   } else {
     await runServe();
   }

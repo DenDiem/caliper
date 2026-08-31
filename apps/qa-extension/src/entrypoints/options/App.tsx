@@ -1,6 +1,24 @@
 import {useEffect, useState} from 'preact/hooks';
 import {clearCredentials, getConnection, saveCredentials, type JiraConnection} from '../../jira/jira-auth';
 import {TOKEN_HELP_URL} from '../../jira/jira-config';
+import {
+  DEFAULT_TRACE_OPTIONS,
+  readTraceOptions,
+  writeTraceOptions,
+  type TraceOptions,
+} from '../../trace/options';
+
+const MS_PER_SECOND = 1000;
+const BITS_PER_KBIT = 1000;
+const MIN_TRACE_SECONDS = 10;
+const MIN_BITRATE_KBPS = 50;
+
+// An emptied number input reads as '' and Number('') is 0, which would persist a zero-length trace and a
+// zero-bitrate encoder. `min` on the element does not constrain what the change handler receives.
+const clamp = (raw: string, minimum: number, fallback: number): number => {
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= minimum ? value : fallback;
+};
 
 const ATTACH_KEY = 'caliper.jira.attachAs';
 
@@ -17,9 +35,11 @@ export const App = () => {
   const [error, setError] = useState<string | null>(null);
   const [attachAs, setAttachAs] = useState<'comment' | 'description'>('comment');
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
+  const [trace, setTrace] = useState<TraceOptions>(DEFAULT_TRACE_OPTIONS);
 
   useEffect(() => {
     void getConnection().then(setConnection);
+    void readTraceOptions().then(setTrace);
     void chrome.storage.local.get(ATTACH_KEY).then((store) => {
       if (store[ATTACH_KEY] === 'description') setAttachAs('description');
     });
@@ -35,6 +55,12 @@ export const App = () => {
       ),
     );
   }, []);
+
+  const saveTrace = (patch: Partial<TraceOptions>): void => {
+    const next = {...trace, ...patch};
+    setTrace(next);
+    void writeTraceOptions(next);
+  };
 
   const connect = () => {
     setBusy(true);
@@ -116,6 +142,77 @@ export const App = () => {
             Description
           </button>
         </div>
+
+        <span class="opt__label">Bug traces</span>
+
+        <label class="opt__check">
+          <input
+            type="checkbox"
+            checked={trace.redactSecrets}
+            onChange={(event) => saveTrace({redactSecrets: event.currentTarget.checked})}
+          />
+          <span>Mask credentials in recorded network traffic</span>
+        </label>
+        <p class="opt__hint">
+          Off by default: a trace is recorded complete, headers and bodies included. Turn this on when
+          traces go to a tracker other people can read — it masks Authorization and Cookie headers and
+          any password, token or secret field.
+        </p>
+
+        <label class="opt__check">
+          <input
+            type="checkbox"
+            checked={trace.enableCdp}
+            onChange={(event) => saveTrace({enableCdp: event.currentTarget.checked})}
+          />
+          <span>Use the debugger API for richer network capture</span>
+        </label>
+        <p class="opt__hint">
+          Adds response bodies and stack traces. Chrome shows a debugging banner while recording, and it
+          cannot attach while DevTools is open on the tab — Caliper falls back automatically and says so
+          in the trace.
+        </p>
+
+        <label class="opt__field">
+          <span>Maximum trace length (seconds)</span>
+          <input
+            type="number"
+            min="10"
+            value={Math.round(trace.maxDurationMs / MS_PER_SECOND)}
+            onChange={(event) =>
+              saveTrace({
+                maxDurationMs:
+                  clamp(
+                    event.currentTarget.value,
+                    MIN_TRACE_SECONDS,
+                    DEFAULT_TRACE_OPTIONS.maxDurationMs / MS_PER_SECOND,
+                  ) * MS_PER_SECOND,
+              })
+            }
+          />
+        </label>
+
+        <label class="opt__field">
+          <span>Video bitrate (kbps)</span>
+          <input
+            type="number"
+            min="50"
+            value={Math.round(trace.videoBitrate / BITS_PER_KBIT)}
+            onChange={(event) =>
+              saveTrace({
+                videoBitrate:
+                  clamp(
+                    event.currentTarget.value,
+                    MIN_BITRATE_KBPS,
+                    DEFAULT_TRACE_OPTIONS.videoBitrate / BITS_PER_KBIT,
+                  ) * BITS_PER_KBIT,
+              })
+            }
+          />
+        </label>
+        <p class="opt__hint">
+          250 kbps keeps a 30-second trace near 1 MB, which fits a Jira attachment comfortably.
+        </p>
 
         <span class="opt__label">Shortcuts</span>
         <dl class="opt__keys">

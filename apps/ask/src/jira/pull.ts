@@ -1,5 +1,5 @@
 import {mkdirSync, writeFileSync} from 'node:fs';
-import {join} from 'node:path';
+import {basename, join} from 'node:path';
 import {caliperSessionSchema, toToon} from '@caliper/core';
 import type {CaliperSession} from '@caliper/core';
 
@@ -122,14 +122,60 @@ const materializeScreenshots = async (
       continue;
     }
 
+    const safe = basename(filename);
     const response = await fetchContent(creds, match.content);
     if (!created) {
       mkdirSync(dir, {recursive: true});
       created = true;
     }
-    writeFileSync(join(dir, filename), Buffer.from(await response.arrayBuffer()));
-    annotation.screenshot = `.caliper/${short}/${filename}`;
+    writeFileSync(join(dir, safe), Buffer.from(await response.arrayBuffer()));
+    annotation.screenshot = `.caliper/${short}/${safe}`;
   }
+};
+
+// Every trace artifact the manifest names is fetched into .caliper/<id8>/ and the manifest rewritten to
+// those local paths, so `caliper trace <path>` works straight from the summary the agent just read.
+const materializeTraces = async (
+  session: CaliperSession,
+  attachments: readonly Attachment[],
+  creds: JiraCreds,
+): Promise<void> => {
+  if (session.traces.length === 0) return;
+
+  const short = session.id.slice(0, ID_SHORT);
+  const dir = join(process.cwd(), '.caliper', short);
+  mkdirSync(dir, {recursive: true});
+
+  for (const trace of session.traces) {
+    for (const key of ['trace', 'replay', 'video'] as const) {
+      const filename = trace.files[key];
+      if (!filename) continue;
+
+      const match = newest(attachments.filter((item) => item.filename === filename));
+      if (!match) {
+        // The detail file is the trace; without it the entry still reports its summary, and dropping the
+        // name would leave the agent no way to say what is missing.
+        if (key !== 'trace') delete trace.files[key];
+        continue;
+      }
+
+      // The name comes from a manifest on the ticket, so it is untrusted: without this a crafted
+      // `../../` filename would be written anywhere under the working directory.
+      const safe = basename(filename);
+      const response = await fetchContent(creds, match.content);
+      writeFileSync(join(dir, safe), Buffer.from(await response.arrayBuffer()));
+      trace.files[key] = `.caliper/${short}/${safe}`;
+    }
+  }
+};
+
+const composition = (session: CaliperSession): string => {
+  const marks = session.annotations.length;
+  const traces = session.traces.length;
+  return [
+    `${marks} mark${marks === 1 ? '' : 's'}`,
+    `${traces} trace${traces === 1 ? '' : 's'}`,
+  ].join(', ');
 };
 
 export const pullSession = async (input: string): Promise<string> => {
@@ -141,13 +187,15 @@ export const pullSession = async (input: string): Promise<string> => {
   if (!manifest) {
     throw new Error(
       `No Caliper session found on ${key}: expected a caliper-*.session.json attachment ` +
-        '(added when QA uses "Send to Jira" from the Caliper extension). This ticket has none.',
+        '(added when QA uses "Send to Jira" from the Caliper QA extension, for marks or bug traces). ' +
+        'This ticket has none.',
     );
   }
 
   const raw = await (await fetchContent(creds, manifest.content)).text();
   const session = caliperSessionSchema.parse(JSON.parse(raw));
   await materializeScreenshots(session, attachments, creds);
+  await materializeTraces(session, attachments, creds);
 
-  return toToon(session);
+  return [`${key}: ${composition(session)}`, '', toToon(session)].join('\n');
 };

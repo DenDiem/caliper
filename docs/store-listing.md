@@ -8,13 +8,13 @@ design (it appears in the store URL). This is the value the `CHROME_EXTENSION_ID
 ## Name
 
 ```
-Caliper — Design Mode & UI Annotation for AI Coding Agents
+Caliper QA — UI Marks & Bug Traces for AI Coding Agents
 ```
 
 ## Summary (132 characters max)
 
 ```
-Mark up any web UI — click, strike, or lasso an element — and hand a precise, element-pinned defect to Claude Code, Cursor or any AI agent.
+Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
 ```
 
 > See `docs/seo.md` for the discoverability strategy behind this name/summary and the GitHub topics.
@@ -31,25 +31,42 @@ store crops the corners. This is a separate upload from the icons in the manifes
 ## Description
 
 ```
-Visual bug reporters give you a screenshot and a sentence. Someone then has to open devtools, find
-the element, guess which component owns it and which design token that colour came from.
+A bug report made of a screenshot and a sentence puts the work on the wrong person. Someone else
+opens devtools, hunts for the element, guesses which component owns it and where that colour came
+from — and for anything that only happens on the second try, guesses at that too.
 
-Caliper skips that step. Click an element while the picker is armed, type what is wrong, and it
-records:
+Caliper QA records what an agent actually needs, in two shapes.
+
+MARK AN ELEMENT — for a defect you can point at
+
+Click it while the picker is armed, say what is wrong, and Caliper records:
 
 • a stable CSS selector, with an honest confidence level — it tells you when the selector is
   brittle instead of pretending otherwise
 • the owning application component, looked past design-system wrappers like ion-* or mat-*
-• the computed styles that the element actually sets, matched against your design tokens, so a
-  padding of 20px is reported as --offset-20px rather than a bare number
-• a screenshot cropped to the element, captured at the moment you clicked it
+• the computed styles the element actually sets, matched against your design tokens, so a padding
+  of 20px is reported as --offset-20px rather than a bare number
+• a screenshot cropped to the element, captured the moment you clicked
 
-Three ways to mark what you mean: click an element to annotate it, strike one through to flag it
-for removal, or lasso an area when no single element is the right target.
+Three ways to say what you mean: click an element to annotate it, strike one through to flag it for
+removal, or lasso an area when no single element is the right target.
 
-Export the session as TOON (a compact, token-efficient format built for AI agents), as JSON, or as
-a zip holding both plus the screenshots. Paste it into Claude Code, Cursor or any coding agent and
-it can go straight to the file and the variable.
+RECORD A TRACE — for a defect that is a sequence
+
+"Save works, but only the second time" is not a moment, and no screenshot will ever explain it.
+Press Start trace, reproduce the bug, press Stop. Caliper records the steps you took, the DOM as it
+changed, the console including stack traces, every network request with its status and body, and
+the actions your store dispatched — plus a small video for whoever reads the ticket.
+
+The split is deliberate: the trace is what the coding agent reads, the video is for the human. An
+agent handed the trace can see that the second save came back 409, that the app dispatched
+"Save Succeeded" anyway, and which line threw two milliseconds later.
+
+HAND IT OVER
+
+Export as TOON (a compact, token-efficient format built for AI agents), as JSON, or as a zip. Or
+send it straight to a Jira issue. A developer then runs one command — caliper pull for a ticket,
+caliper read for a zip — and their agent has the whole session offline, with no running app.
 
 Everything stays on your machine. No account, no backend, no telemetry.
 
@@ -60,10 +77,15 @@ Open source, MIT: https://github.com/DenDiem/caliper
 
 ## Privacy practices
 
-**Single purpose:** record UI defects on a page as structured annotations for developers.
+**Single purpose:** record UI defects on a page — as element annotations or as a recorded
+reproduction — in a structured form a developer or their coding agent can act on.
 
-**Data usage:** Caliper does not collect or transmit user data. Annotations live in
-`chrome.storage.local` and leave the machine only through an explicit export the user triggers.
+**Data usage:** Caliper does not collect or transmit user data, and has no backend of its own.
+Annotations and traces are stored locally (`chrome.storage.local` and IndexedDB) and leave the
+machine only through an export the user explicitly triggers, to a destination the user chooses.
+
+**Recording is never passive.** Nothing is captured before the user presses Start trace or arms the
+picker, and nothing after they press Stop. A trace covers only the one tab it was started on.
 
 **Justification per permission** — the store asks for each one:
 
@@ -75,6 +97,10 @@ Open source, MIT: https://github.com/DenDiem/caliper
 | `sidePanel` | Display the list of recorded defects and the export controls. |
 | `downloads` | Write the exported zip archive to the user's Downloads folder. |
 | `host_permissions: <all_urls>` | QA is performed on arbitrary staging and production hosts that cannot be enumerated ahead of time. The picker only reads a page after the user explicitly arms it on that tab. |
+| `tabCapture` | Record the video of a bug reproduction, for the duration between the user pressing Start trace and Stop. Only the tab the recording was started on is captured, and only while a recording the user started is running. |
+| `offscreen` | A service worker cannot run MediaRecorder. The offscreen document exists solely to encode that tab capture, and is created when a recording starts and closed when it ends. |
+| `debugger` | While a trace is recording, attach to that one tab to collect network requests (with status, timing and response bodies) and uncaught-exception stack traces, which a page-level script cannot see, and — when tab capture is unavailable — to screencast that tab so the recording still has a video. Attached only for the duration of a user-started recording and detached at Stop; if it cannot attach, recording continues with a reduced page-level collector. |
+| `webNavigation` | A reproduction often crosses a page load. This is used only to notice that the tab the user is recording has navigated, so the recording continues into the new page instead of stopping silently. |
 
 **Privacy policy URL:**
 
@@ -88,5 +114,7 @@ At least one, 1280×800 or 640×400. Worth capturing:
 
 1. The picker armed over a real page, highlight and badge visible.
 2. The popover open on an element, with the screenshot thumbnail inside.
+3. The side panel mid-recording — the red strip with its timer and live error counts.
+4. A finished trace card, its summary chips and video visible.
 3. The side panel with a few defects recorded.
 4. The TOON export pasted into an agent.

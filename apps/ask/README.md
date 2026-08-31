@@ -127,21 +127,38 @@ It is the design-review loop Cursor's Design Mode popularised, but native to Cla
 any MCP client — precise, element-pinned and text-first, so the agent fixes from the file rather than
 a screenshot.
 
-## Fix from a Jira ticket
+## Fix from a QA session
 
-Caliper's [QA extension](../qa-extension/README.md) files marked-up defects to a Jira issue, attaching
-the session as `caliper-<id>.session.json`. Point the agent at that ticket and it fixes offline — no
-running app:
+Caliper's [QA extension](../qa-extension/README.md) records defects as **marks** (an element and what
+is wrong with it) or as a **bug trace** (a recording of the reproduction), and hands them over one of
+two ways. Both reach the agent offline, with no running app:
 
 ```bash
-npx @dendiem/caliper pull <jira-url|key>
+npx @dendiem/caliper pull <jira-url|key>       # QA filed it to a ticket
+npx @dendiem/caliper read <path-to-zip|folder> # QA sent you the archive directly
 ```
 
-`pull` reads the newest such attachment, writes its screenshots to `.caliper/<id>/`, and prints the
-same TOON work list `caliper_design` returns. It reaches Jira directly with a read-scoped API token,
-set once in the environment: `CALIPER_JIRA_SITE`, `CALIPER_JIRA_EMAIL`, `CALIPER_JIRA_TOKEN`. It only
-reads — moving the ticket's status stays yours. The `caliper-fix` skill, installed by `init`, tells
-the agent to do this when handed a ticket.
+Each writes screenshots and trace files to `.caliper/<id>/` and prints the same TOON work list
+`caliper_design` returns, opening with a line that names what the export contains
+(`ABC-123: 3 marks, 1 trace`).
+
+`pull` reaches Jira directly with a read-scoped API token, set once in the environment:
+`CALIPER_JIRA_SITE`, `CALIPER_JIRA_EMAIL`, `CALIPER_JIRA_TOKEN`. It only reads — moving the ticket's
+status stays yours. `read` needs no credentials at all.
+
+A trace's channels stay on disk rather than in the agent's context; the work list carries its summary
+and the path to open:
+
+```bash
+npx @dendiem/caliper trace .caliper/<id>/caliper-<id>.trace.json --around 12.4s
+```
+
+`trace` prints one recording, or a slice of it — `--steps` / `--console` / `--network` / `--state` to
+pick channels, `--around <t>` to keep two seconds either side of a moment. The `.webm` beside it is
+for humans; it carries nothing `trace` does not.
+
+The `caliper-fix` skill, installed by `init`, tells the agent to do all of this when handed a ticket
+or an archive.
 
 ## Remote / containers
 

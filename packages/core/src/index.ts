@@ -1,4 +1,6 @@
+export * from './schema/page.schema';
 export * from './schema/annotation.schema';
+export * from './schema/trace.schema';
 export * from './schema/review.schema';
 export * from './review/session';
 export * from './review/content';
@@ -16,6 +18,7 @@ export * from './tokens/color';
 export * from './tokens/match-token';
 export * from './context/extract-context';
 export * from './export/to-toon';
+export * from './export/trace-toon';
 export * from './export/to-jira-adf';
 export * from './picker/pick-target';
 export * from './region/path-bounds';

@@ -1,4 +1,6 @@
 import {z} from 'zod';
+import {pageSchema} from './page.schema';
+import {caliperTraceSchema} from './trace.schema';
 
 export const severitySchema = z.enum(['blocker', 'major', 'minor', 'nitpick']);
 export const authorSchema = z.enum(['human', 'agent']);
@@ -79,11 +81,7 @@ export const caliperAnnotationSchema = z.object({
   dismissReason: z.string().nullish(),
   answer: z.string().nullish(),
   figmaUrl: z.string().url().optional(),
-  page: z.object({
-    url: z.string(),
-    title: z.string(),
-    viewport: z.object({width: z.number(), height: z.number(), dpr: z.number()}),
-  }),
+  page: pageSchema,
   target: elementContextSchema,
   region: regionSchema.optional(),
   screenshotId: z.string().optional(),
@@ -91,12 +89,15 @@ export const caliperAnnotationSchema = z.object({
 });
 
 export const caliperSessionSchema = z.object({
-  schemaVersion: z.literal(1).default(1),
+  // v1 predates traces. It still parses — a ticket filed before this release must keep working — and
+  // reads back with an empty `traces` list.
+  schemaVersion: z.union([z.literal(1), z.literal(2)]).default(1),
   id: z.string(),
   createdAt: z.string().datetime(),
   label: z.string().optional(),
   caliperVersion: z.string(),
   annotations: z.array(caliperAnnotationSchema),
+  traces: z.array(caliperTraceSchema).default([]),
   assets: z.record(z.string()),
 });
 

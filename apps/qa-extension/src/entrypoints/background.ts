@@ -1,6 +1,15 @@
 import {isCaliperMessage} from '../messaging/messages';
 import {captureElement} from '../screenshot/capture';
 import {runOp} from '../sinks/store';
+import {dropTraceBlobs} from '../trace/blob-store';
+import {
+  activeTraceElapsed,
+  activeTraceTabId,
+  ingestBatch,
+  startTrace,
+  stopTrace,
+  traceStatus,
+} from '../trace/lifecycle';
 
 const CONTENT_SCRIPT = 'content-scripts/content.js';
 const PANEL = 'sidepanel.html';
@@ -96,6 +105,17 @@ export default defineBackground(() => {
     });
   });
 
+  // A trace belongs to the tab, not the page. The bridge re-injects at document_start on the new
+  // document and asks whether recording is still on, but a commit that races that question is covered
+  // by telling the tab again here.
+  chrome.webNavigation.onCommitted.addListener(({tabId, frameId}) => {
+    if (frameId !== 0 || activeTraceTabId() !== tabId) return;
+    const elapsedMs = activeTraceElapsed(tabId) ?? 0;
+    void chrome.tabs
+      .sendMessage(tabId, {type: 'caliper/collector-start', elapsedMs})
+      .catch(() => undefined);
+  });
+
   chrome.commands.onCommand.addListener((command, tab) => {
     if (typeof tab?.id !== 'number') return;
     const tabId = tab.id;
@@ -134,6 +154,44 @@ export default defineBackground(() => {
 
     if (message.type === 'caliper/set-mode-tab') {
       void setModeTab(message.tabId, message.armed).then(() => sendResponse(true));
+      return true;
+    }
+
+    // Both always answer. A rejection that never reached the panel used to leave its button disabled
+    // for good, with the trace half-started behind it.
+    if (message.type === 'caliper/trace-start') {
+      void startTrace(message.tabId, message.label)
+        .then((started) => sendResponse(started))
+        .catch(() => sendResponse(false));
+      return true;
+    }
+
+    if (message.type === 'caliper/trace-stop') {
+      void stopTrace()
+        .then((stopped) => sendResponse(stopped))
+        .catch(() => sendResponse(false));
+      return true;
+    }
+
+    if (message.type === 'caliper/trace-batch') {
+      ingestBatch(message.batch);
+      sendResponse(true);
+      return true;
+    }
+
+    if (message.type === 'caliper/trace-status') {
+      sendResponse(traceStatus());
+      return true;
+    }
+
+    if (message.type === 'caliper/trace-blobs-drop') {
+      void dropTraceBlobs(message.traceIds).then(() => sendResponse(true));
+      return true;
+    }
+
+    if (message.type === 'caliper/trace-active') {
+      const tabId = _sender.tab?.id;
+      sendResponse(typeof tabId === 'number' ? activeTraceElapsed(tabId) : null);
       return true;
     }
 

@@ -4,7 +4,7 @@ import {devSend} from './jira-dev';
 import {postComment, resolveMediaId, setDescription, updateComment, uploadAttachment} from './jira-client';
 import {STORAGE} from './jira-config';
 import {addSend, type SendRecord} from './jira-history';
-import {buildJiraManifest} from '../export/export-session';
+import {buildJiraManifest, traceFileEntries} from '../export/export-session';
 
 export type JiraTarget = 'comment' | 'description';
 
@@ -56,6 +56,16 @@ const uploadScreenshots = async (
   return media;
 };
 
+// Trace files ride alongside the manifest as ordinary attachments; the manifest names them, so
+// `caliper pull` resolves each one back by filename the same way it already does for screenshots.
+const uploadTraceFiles = async (session: CaliperSession, issueKey: string): Promise<void> => {
+  for (const entry of await traceFileEntries(session)) {
+    // Copied into a fresh view so its buffer is a plain ArrayBuffer — a Uint8Array over the generic
+    // ArrayBufferLike (which fflate returns) is not a BlobPart.
+    await uploadAttachment(issueKey, entry.filename, new Blob([new Uint8Array(entry.bytes)]));
+  }
+};
+
 export const sendSessionToJira = async (
   session: CaliperSession,
   options: SendOptions,
@@ -64,6 +74,7 @@ export const sendSessionToJira = async (
   const {issueKey, target, attachScreenshots, updateCommentId, onProgress} = options;
 
   const media = attachScreenshots ? await uploadScreenshots(session, issueKey, onProgress) : {};
+  await uploadTraceFiles(session, issueKey);
   await uploadManifest(session, issueKey);
   const body = sessionToJiraComment(session, media);
 

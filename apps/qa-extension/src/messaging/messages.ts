@@ -1,4 +1,12 @@
-import type {Box, CaliperAnnotation} from '@caliper/core';
+import type {
+  Box,
+  CaliperAnnotation,
+  CaliperTrace,
+  TraceConsoleEntry,
+  TraceNetworkEntry,
+  TraceStateEntry,
+  TraceStep,
+} from '@caliper/core';
 
 // Mount the overlay in its persisted mode (Browse by default). Sent when the panel (re)opens.
 export interface EngageMessage {
@@ -44,6 +52,64 @@ export interface SetModeTabMessage {
   armed: boolean;
 }
 
+export interface TraceBatch {
+  // Set once any of the collector's ring buffers has discarded an event.
+  dropped?: boolean;
+  steps: TraceStep[];
+  console: TraceConsoleEntry[];
+  network: TraceNetworkEntry[];
+  state: TraceStateEntry[];
+  replay: string[];
+  stateSnapshot?: unknown;
+}
+
+// The collector ships accumulated events on an interval rather than per event: a chatty page would
+// otherwise cross the page-to-extension boundary thousands of times in a single trace.
+export interface TraceBatchMessage {
+  type: 'caliper/trace-batch';
+  batch: TraceBatch;
+}
+
+export interface TraceStartMessage {
+  type: 'caliper/trace-start';
+  tabId: number;
+  label: string;
+}
+
+export interface TraceStopMessage {
+  type: 'caliper/trace-stop';
+}
+
+export interface TraceStatusMessage {
+  type: 'caliper/trace-status';
+  recording: boolean;
+  startedAt: string | null;
+  consoleErrors: number;
+  failedRequests: number;
+}
+
+// Asked by the page bridge as soon as it loads. A navigation replaces the document mid-trace, so the
+// fresh bridge has to learn that recording is still in progress instead of waiting for a Start it
+// already missed.
+export interface TraceActiveQueryMessage {
+  type: 'caliper/trace-active';
+}
+
+// Blob cleanup runs in the background because IndexedDB here belongs to the extension origin and the
+// store op alone only drops the manifest entry — the megabytes would otherwise stay forever.
+export interface TraceBlobsDropMessage {
+  type: 'caliper/trace-blobs-drop';
+  traceIds: string[];
+}
+
+export interface CollectorControlMessage {
+  type: 'caliper/collector-start' | 'caliper/collector-stop';
+  // Milliseconds already elapsed in the trace when this document started collecting. A navigation
+  // replaces the collector mid-trace, and without this its clock would restart at zero while the CDP
+  // channels keep counting — interleaving a late click in front of the events that caused it.
+  elapsedMs?: number;
+}
+
 export type StoreOp =
   | {kind: 'push'; annotation: CaliperAnnotation; screenshot?: string}
   | {kind: 'update'; id: string; patch: Partial<CaliperAnnotation>}
@@ -51,7 +117,10 @@ export type StoreOp =
   | {kind: 'clear'}
   | {kind: 'createSession'}
   | {kind: 'activateSession'; id: string}
-  | {kind: 'removeSession'; id: string};
+  | {kind: 'removeSession'; id: string}
+  | {kind: 'pushTrace'; trace: CaliperTrace}
+  | {kind: 'renameTrace'; id: string; label: string}
+  | {kind: 'removeTrace'; id: string};
 
 export interface StoreOpMessage {
   type: 'caliper/store-op';
@@ -67,7 +136,14 @@ export type CaliperMessage =
   | DisarmTabMessage
   | SetModeMessage
   | SetModeTabMessage
-  | StoreOpMessage;
+  | StoreOpMessage
+  | TraceBatchMessage
+  | TraceStartMessage
+  | TraceStopMessage
+  | TraceStatusMessage
+  | TraceActiveQueryMessage
+  | TraceBlobsDropMessage
+  | CollectorControlMessage;
 
 export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
   if (typeof value !== 'object' || value === null) return false;
@@ -81,6 +157,14 @@ export const isCaliperMessage = (value: unknown): value is CaliperMessage => {
     type === 'caliper/disarm-tab' ||
     type === 'caliper/set-mode' ||
     type === 'caliper/set-mode-tab' ||
-    type === 'caliper/store-op'
+    type === 'caliper/store-op' ||
+    type === 'caliper/trace-batch' ||
+    type === 'caliper/trace-start' ||
+    type === 'caliper/trace-stop' ||
+    type === 'caliper/trace-status' ||
+    type === 'caliper/trace-active' ||
+    type === 'caliper/trace-blobs-drop' ||
+    type === 'caliper/collector-start' ||
+    type === 'caliper/collector-stop'
   );
 };
