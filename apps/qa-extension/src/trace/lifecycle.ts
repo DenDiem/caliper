@@ -5,7 +5,7 @@ import {runOp} from '../sinks/store';
 import {attachCdp, type CdpCollector} from './cdp';
 import {putBlob} from './blob-store';
 import {readTraceOptions} from './options';
-import {startVideo, stopVideo} from './video';
+import {pushVideoFrame, startFrameVideo, startVideo, stopVideo} from './video';
 
 const ID_LENGTH = 8;
 const MAX_STATE_DIFF_BYTES = 2048;
@@ -101,10 +101,20 @@ export const startTrace = async (tabId: number, label: string): Promise<void> =>
     stopping: false,
   };
 
-  await startVideo(tabId, {
+  const videoOptions = {
     maxDurationMs: options.maxDurationMs,
     videoBitrate: options.videoBitrate,
-  });
+  };
+
+  // tabCapture is the better picture, but it needs the extension to have been invoked on this tab from
+  // the toolbar and Chrome revokes that on navigation. When it is not available the already-attached
+  // debugger session can screencast instead, so a trace only loses its video when neither is possible.
+  const captured = await startVideo(tabId, videoOptions);
+  if (!captured && active.cdp) {
+    const encoding = await startFrameVideo(videoOptions);
+    if (encoding) await active.cdp.startScreencast(pushVideoFrame);
+  }
+
   await chrome.tabs.sendMessage(tabId, {type: 'caliper/collector-start'}).catch(() => undefined);
 };
 

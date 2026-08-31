@@ -13,6 +13,7 @@ import {TOKEN_HELP_URL} from '../../jira/jira-config';
 import {resolveIssueKey, searchIssues, type IssueHit} from '../../jira/jira-client';
 import {findCommentSend, getSends} from '../../jira/jira-history';
 import {sendSessionToJira, type JiraTarget} from '../../jira/send-to-jira';
+import {readTraceOptions} from '../../trace/options';
 import {chromeStorageSink} from '../../sinks/chrome-storage.sink';
 
 interface Props {
@@ -115,6 +116,14 @@ export const JiraSheet = ({session, onClose}: Props) => {
   const copyToonAndClose = () => void copyToClipboard(toToon(session)).then(onClose);
 
   const newTask = () => void chromeStorageSink.createSession().then(onClose);
+
+  // Surfaced at the point the risk is taken, not only in the options: redaction is off by default, so
+  // this is the moment a staging session's live tokens would become readable by everyone on the issue.
+  const [redacting, setRedacting] = useState(true);
+  useEffect(() => {
+    void readTraceOptions().then((options) => setRedacting(options.redactSecrets));
+  }, []);
+  const unmaskedTraces = redacting ? 0 : session.traces.length;
 
   const send = () => {
     setPhase('sending');
@@ -311,6 +320,15 @@ export const JiraSheet = ({session, onClose}: Props) => {
 
         {target === 'comment' && existingCommentId ? (
           <p class="jira__note">A comment was already sent to {issueKey} — it will be updated.</p>
+        ) : null}
+
+        {unmaskedTraces > 0 ? (
+          <p class="jira__warn">
+            {unmaskedTraces === 1 ? 'This trace carries' : `These ${unmaskedTraces} traces carry`} the
+            request headers and bodies exactly as recorded, Authorization and Cookie included. Anyone who
+            can read {issueKey || 'this issue'} can read them. Turn on “Mask credentials” in the
+            extension's options to strip them.
+          </p>
         ) : null}
       </div>
 

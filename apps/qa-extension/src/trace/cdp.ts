@@ -5,10 +5,18 @@ const OK_FLOOR = 200;
 const OK_CEILING = 300;
 const BODY_LIMIT = 20_000;
 const MAX_BODIES = 40;
+// Half the rate and quality of the tabCapture path. This is the fallback a trace falls back *to*, and
+// its job is to let a human recognise the moment, not to be a faithful recording.
+const SCREENCAST = {format: 'jpeg', quality: 50, maxWidth: 1280, maxHeight: 800, everyNthFrame: 2};
 
 export interface CdpCollector {
   readonly console: TraceConsoleEntry[];
   readonly network: TraceNetworkEntry[];
+  // Video without activeTab. chrome.tabCapture needs the extension to have been invoked on the tab from
+  // the toolbar, and Chrome revokes that on navigation — but the debugger is already attached for the
+  // duration of the trace, and a screencast off that session needs no such grant.
+  startScreencast: (onFrame: (dataUrl: string) => void) => Promise<boolean>;
+  stopScreencast: () => Promise<void>;
   detach: () => Promise<void>;
 }
 
@@ -77,9 +85,22 @@ export const attachCdp = async (
     requestIdByEntry.push(requestId);
   };
 
+  let onScreencastFrame: ((dataUrl: string) => void) | null = null;
+
   const onEvent = (source: chrome.debugger.Debuggee, method: string, params?: object): void => {
     if (source.tabId !== tabId) return;
     const data = asRecord(params);
+
+    if (method === 'Page.screencastFrame') {
+      const sessionId = numberOf(data.sessionId);
+      // Acknowledged first and unconditionally: Chrome stops sending frames until the previous one is
+      // acked, so a throw on the consumer side would silently end the recording.
+      void chrome.debugger
+        .sendCommand(target, 'Page.screencastFrameAck', {sessionId})
+        .catch(() => undefined);
+      onScreencastFrame?.(`data:image/jpeg;base64,${text(data.data)}`);
+      return;
+    }
 
     if (method === 'Runtime.consoleAPICalled') {
       const args = Array.isArray(data.args) ? data.args : [];
@@ -156,10 +177,28 @@ export const attachCdp = async (
     }
   };
 
+  const stopScreencast = async (): Promise<void> => {
+    if (!onScreencastFrame) return;
+    onScreencastFrame = null;
+    await chrome.debugger.sendCommand(target, 'Page.stopScreencast').catch(() => undefined);
+  };
+
   return {
     console: consoleEntries,
     network,
+    startScreencast: async (onFrame) => {
+      try {
+        await chrome.debugger.sendCommand(target, 'Page.enable');
+        await chrome.debugger.sendCommand(target, 'Page.startScreencast', SCREENCAST);
+        onScreencastFrame = onFrame;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    stopScreencast,
     detach: async () => {
+      await stopScreencast();
       await collectBodies();
       chrome.debugger.onEvent.removeListener(onEvent);
       await chrome.debugger.detach(target).catch(() => undefined);

@@ -1537,3 +1537,13 @@ body {
   color: var(--cal-text-hint);
   font: 400 11px/1.45 var(--cal-font-sans);
 }
+
+.jira__warn {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border: 1px solid var(--cal-major-border);
+  border-radius: var(--cal-radius-5);
+  background: var(--cal-major-fill);
+  color: var(--cal-text-body-soft);
+  font: 400 11px/1.45 var(--cal-font-sans);
+}

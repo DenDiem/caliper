@@ -161,6 +161,7 @@ const main = async () => {
       detail: detail ? JSON.parse(detail) : null,
       replayEvents: replay ? replay.split('\n').length : 0,
       videoBytes: video ? Math.round(video.length * 0.75) : 0,
+      videoDataUrl: video ?? null,
     };
   });
 
@@ -188,6 +189,13 @@ const main = async () => {
   );
   check('DOM replay recorded', result.replayEvents > 0, `${result.replayEvents} events`);
   check('summary matches the channels', trace.summary.failedRequests === 1);
+  // tabCapture cannot be granted from automation, so this exercises the screencast fallback — the path
+  // that runs whenever the panel was not opened from the toolbar on this tab.
+  check(
+    'video encoded through the debugger screencast fallback',
+    result.videoBytes > 0 && trace.files.video !== undefined,
+    `${(result.videoBytes / 1024).toFixed(0)} KB`,
+  );
 
   console.log('\n--- trace ---');
   console.log(`label     : ${trace.label}`);
@@ -208,6 +216,14 @@ const main = async () => {
   })) {
     console.log(`\n${channel}:`);
     for (const row of rows) console.log(`  ${row}`);
+  }
+
+  if (result.videoDataUrl && process.argv.includes('--save-video')) {
+    const {writeFileSync} = await import('node:fs');
+    const path = join(tmpdir(), `caliper-smoke-${Date.now()}.webm`);
+    writeFileSync(path, Buffer.from(result.videoDataUrl.split(',')[1], 'base64'));
+    console.log(`
+video written to ${path}`);
   }
 
   await context.close();

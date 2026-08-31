@@ -41,6 +41,28 @@ export const startVideo = async (tabId: number, options: VideoOptions): Promise<
   }
 };
 
+// Used when tabCapture is unavailable: the offscreen document encodes frames pushed to it rather than
+// a live track. Same encoder, same budget, same stop path.
+export const startFrameVideo = async (options: VideoOptions): Promise<boolean> => {
+  try {
+    await ensureDocument();
+    const started: unknown = await chrome.runtime.sendMessage({
+      type: 'caliper/offscreen-start-frames',
+      payload: options,
+    });
+    return started === true;
+  } catch (error) {
+    console.warn('[caliper] frame recorder unavailable', error);
+    return false;
+  }
+};
+
+export const pushVideoFrame = (dataUrl: string): void => {
+  void chrome.runtime
+    .sendMessage({type: 'caliper/offscreen-frame', dataUrl})
+    .catch(() => undefined);
+};
+
 export const stopVideo = async (): Promise<VideoResult> => {
   try {
     if (!(await chrome.offscreen.hasDocument())) return EMPTY;

@@ -81,11 +81,16 @@ stack traces — but it cannot attach while DevTools is open on the tab, which i
 it cannot, the in-page `fetch`/`console` patches take over and the trace records
 `network: fallback` so the agent knows bodies may be missing. Recording is never blocked by this.
 
+Video has the same shape. `chrome.tabCapture` gives the better picture but needs the extension to have
+been invoked on the tab from the toolbar, and Chrome revokes that grant on navigation — so when it is
+unavailable the already-attached debugger session screencasts the tab instead, at half the rate. A
+trace loses its video only when neither is possible, and the card says so when that happens.
+
 ### Options
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| Mask credentials in recorded network traffic | **off** | Masks `Authorization`/`Cookie` headers and `password`/`token`/`secret` fields |
+| Mask credentials in recorded network traffic | **off** | Masks `Authorization`/`Cookie` headers and `password`/`token`/`secret` fields. With it off, the Send to Jira sheet warns before a trace leaves the machine |
 | Use the debugger API | on | Richer network capture; shows Chrome's debugging banner while recording |
 | Maximum trace length | 120 s | Past this the oldest seconds are dropped and the trace is flagged `truncated` |
 | Video bitrate | 250 kbps | 30 s lands near 1 MB, comfortably inside a Jira attachment |

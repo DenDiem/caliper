@@ -1,11 +1,13 @@
 const MAX_WIDTH = 1280;
 const MAX_FPS = 12;
+const FRAME_WIDTH = 1280;
+const FRAME_HEIGHT = 800;
 const CHUNK_MS = 1000;
 const PREFERRED = 'video/webm;codecs=vp9';
 const FALLBACK = 'video/webm;codecs=vp8';
 
 interface StartPayload {
-  streamId: string;
+  streamId?: string;
   maxDurationMs: number;
   videoBitrate: number;
 }
@@ -19,13 +21,17 @@ let recorder: MediaRecorder | null = null;
 let chunks: Blob[] = [];
 let maxChunks = 0;
 let truncated = false;
+let frameCanvas: HTMLCanvasElement | null = null;
+let frameTrack: CanvasCaptureMediaStreamTrack | null = null;
+
+const isCanvasTrack = (track: MediaStreamTrack): track is CanvasCaptureMediaStreamTrack =>
+  'requestFrame' in track;
 
 const mimeType = (): string => (MediaRecorder.isTypeSupported(PREFERRED) ? PREFERRED : FALLBACK);
 
 const isStartPayload = (value: unknown): value is StartPayload =>
   typeof value === 'object' &&
   value !== null &&
-  typeof Reflect.get(value, 'streamId') === 'string' &&
   typeof Reflect.get(value, 'maxDurationMs') === 'number' &&
   typeof Reflect.get(value, 'videoBitrate') === 'number';
 
@@ -43,6 +49,7 @@ const tabConstraints = (streamId: string): MediaStreamConstraints => ({
 });
 
 const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Promise<void> => {
+  if (!streamId) throw new Error('tab capture needs a stream id');
   const stream = await navigator.mediaDevices.getUserMedia(tabConstraints(streamId));
 
   // The budget is met at the encoder, not afterwards: MV3 has no cheap transcoder, so the stream is
@@ -70,6 +77,54 @@ const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Pro
   recorder.start(CHUNK_MS);
 };
 
+// The screencast path: frames arrive one at a time from the debugger session, so the canvas track is
+// created at rate 0 and each frame is pushed explicitly. That keeps the encoded timeline matched to the
+// frames that actually arrived instead of inventing a clock.
+const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): void => {
+  frameCanvas = document.createElement('canvas');
+  frameCanvas.width = FRAME_WIDTH;
+  frameCanvas.height = FRAME_HEIGHT;
+
+  const stream = frameCanvas.captureStream(0);
+  const [track] = stream.getVideoTracks();
+  frameTrack = track && isCanvasTrack(track) ? track : null;
+
+  chunks = [];
+  truncated = false;
+  maxChunks = Math.max(1, Math.ceil(maxDurationMs / CHUNK_MS));
+
+  recorder = new MediaRecorder(stream, {mimeType: mimeType(), videoBitsPerSecond: videoBitrate});
+  recorder.ondataavailable = (event: BlobEvent) => {
+    if (event.data.size === 0) return;
+    chunks.push(event.data);
+    if (chunks.length > maxChunks) {
+      chunks = chunks.slice(chunks.length - maxChunks);
+      truncated = true;
+    }
+  };
+  recorder.start(CHUNK_MS);
+};
+
+const pushFrame = async (dataUrl: string): Promise<void> => {
+  const canvas = frameCanvas;
+  const track = frameTrack;
+  if (!canvas || !track) return;
+
+  const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+  const context = canvas.getContext('2d');
+  if (!context) return;
+
+  const scale = Math.min(canvas.width / bitmap.width, canvas.height / bitmap.height);
+  const width = bitmap.width * scale;
+  const height = bitmap.height * scale;
+  context.fillStyle = '#000000';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+  bitmap.close();
+
+  track.requestFrame();
+};
+
 const stop = (): Promise<VideoResult> =>
   new Promise((resolve) => {
     const active = recorder;
@@ -79,6 +134,8 @@ const stop = (): Promise<VideoResult> =>
     }
     active.onstop = () => {
       for (const track of active.stream.getTracks()) track.stop();
+      frameCanvas = null;
+      frameTrack = null;
       const blob = new Blob(chunks, {type: mimeType()});
       recorder = null;
       chunks = [];
@@ -104,6 +161,24 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     void start(payload)
       .then(() => sendResponse(true))
       .catch(() => sendResponse(false));
+    return true;
+  }
+
+  if (type === 'caliper/offscreen-start-frames') {
+    const payload = Reflect.get(message, 'payload');
+    if (!isStartPayload(payload)) {
+      sendResponse(false);
+      return true;
+    }
+    startFrames(payload);
+    sendResponse(true);
+    return true;
+  }
+
+  if (type === 'caliper/offscreen-frame') {
+    const dataUrl = Reflect.get(message, 'dataUrl');
+    if (typeof dataUrl === 'string') void pushFrame(dataUrl);
+    sendResponse(true);
     return true;
   }
 

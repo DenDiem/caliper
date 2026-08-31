@@ -97,9 +97,9 @@ picker, and nothing after they press Stop. A trace covers only the one tab it wa
 | `sidePanel` | Display the list of recorded defects and the export controls. |
 | `downloads` | Write the exported zip archive to the user's Downloads folder. |
 | `host_permissions: <all_urls>` | QA is performed on arbitrary staging and production hosts that cannot be enumerated ahead of time. The picker only reads a page after the user explicitly arms it on that tab. |
-| `tabCapture` | Record the video of a bug reproduction, for the duration between the user pressing Start trace and Stop. Only the tab the recording was started on is captured. |
+| `tabCapture` | Record the video of a bug reproduction, for the duration between the user pressing Start trace and Stop. Only the tab the recording was started on is captured, and only while a recording the user started is running. |
 | `offscreen` | A service worker cannot run MediaRecorder. The offscreen document exists solely to encode that tab capture, and is created when a recording starts and closed when it ends. |
-| `debugger` | While a trace is recording, attach to that one tab to collect network requests (with status, timing and response bodies) and uncaught-exception stack traces, which a page-level script cannot see. Attached only for the duration of a user-started recording and detached at Stop; if it cannot attach, recording continues with a reduced page-level collector. |
+| `debugger` | While a trace is recording, attach to that one tab to collect network requests (with status, timing and response bodies) and uncaught-exception stack traces, which a page-level script cannot see, and — when tab capture is unavailable — to screencast that tab so the recording still has a video. Attached only for the duration of a user-started recording and detached at Stop; if it cannot attach, recording continues with a reduced page-level collector. |
 | `webNavigation` | A reproduction often crosses a page load. This is used only to notice that the tab the user is recording has navigated, so the recording continues into the new page instead of stopping silently. |
 
 **Privacy policy URL:**

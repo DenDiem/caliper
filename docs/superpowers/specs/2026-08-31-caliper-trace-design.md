@@ -295,13 +295,23 @@ character. Chromium validates extension scripts with `base::IsStringUTF8`, which
 `It isn't UTF-8 encoded` and named no character. `apps/qa-extension/build/utf8-safe-output.ts` now
 escapes them at build time and **fails the build** if any survive.
 
-### Video needs a toolbar invocation, and says so when it does not have one
+### Video needed a toolbar invocation — so it got a second source
 
 `chrome.tabCapture.getMediaStreamId` requires the extension to have been *invoked* on the target tab
-(`activeTab`), which a toolbar click or a keyboard command grants and a navigation revokes. The
-production flow satisfies this — the panel is opened from the icon — but a trace recorded after the
-tab has navigated gets no video. Rather than lose it silently, the trace omits `files.video` and the
-trace card explains why. The trace itself is unaffected, which is the point of D1's split.
+(`activeTab`), which a toolbar click or a keyboard command grants and a **navigation revokes**. The
+production flow satisfies it on the first Start, but a trace recorded after the tab has navigated does
+not — and that failure was silent.
+
+**This amends D2.** The design treated CDP as a source for network and console only, having rejected
+Approach B's `Page.startScreencast` as a *sole* mechanism. As a *fallback* it is exactly right: the
+debugger session is already attached for the trace's duration and needs no `activeTab`. So video now
+has the same two-source shape as the other channels — tabCapture preferred, screencast (half rate,
+JPEG quality 50, fed frame-by-frame into the same offscreen encoder) when it is not available, and
+`files.video` omitted with a note on the card only when neither works.
+
+This is also what made the video path verifiable: automation cannot click a toolbar icon, so the
+tabCapture branch had no test. The screencast branch does — `trace-smoke.mjs` asserts a decodable VP9
+file comes out of it.
 
 ### Two lifecycle bugs the design implied but did not state
 
@@ -325,7 +335,7 @@ trace card explains why. The trace itself is unaffected, which is the point of D
 | `debugger` permission slows Chrome Web Store review | Attach only during an explicit user-started trace, detach at Stop; justify in the listing |
 | A `document_start` main-world script on `<all_urls>` is a broad surface | Zero-capacity buffers until Start; no network egress from the collector |
 | The collector bundle is ~245 kB on every page — Vite does not code-split content scripts, so the dynamic `import('rrweb')` is inlined | Accepted. Execution stays lazy (rrweb runs only from Start) and V8 compiles function bodies lazily, so the cost is parse-time only. Serving rrweb from `web_accessible_resources` instead would reintroduce the page-CSP failure class `http/csp-risk.ts` already documents |
-| Traces carry live credentials (D8) | UI warning + `PRIVACY.md` + `redactSecrets` toggle |
+| Traces carry live credentials (D8) | `PRIVACY.md`, the `redactSecrets` toggle, and a warning in the Send to Jira sheet naming what is about to leave the machine — the point at which the risk is actually taken, rather than only in an options page nobody reopens |
 | rrweb misses canvas / cross-origin iframes | The `.webm` covers what the replay cannot |
 | Jira's ~10 MB per-attachment limit | D6 budget plus `maxDurationMs`; oversize is reported before send, not after |
 | A stale selector in a trace step | Same standing caveat as marks — steps are best-effort against current source |
