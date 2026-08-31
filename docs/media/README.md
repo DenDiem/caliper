@@ -17,6 +17,7 @@ pnpm --filter @dendiem/caliper build         # trace-flow only: it runs the real
 
 node scripts/record-mark-demo.mjs            # marking an element -> the side panel
 node scripts/record-trace-demo.mjs           # reproducing a bug -> the trace an agent reads
+node scripts/record-store-shots.mjs          # the four 1280x800 Chrome Web Store screenshots
 ```
 
 Both drive the real built extension in Chromium and both end in the same two-pass ffmpeg palette step

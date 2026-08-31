@@ -48,7 +48,12 @@ The `.webm` exists so a human skimming the ticket understands the bug in five se
 ### D2 — Hybrid collection: in-page instrumentation **and** CDP, with CDP optional
 
 - **In-page (`world: 'MAIN'`, `run_at: 'document_start'`)** hosts rrweb, the Redux DevTools shim, and
-  patches for `console` / `fetch` / `XHR` / `sendBeacon`.
+  patches for `console` / `fetch` / `sendBeacon`, plus `error` / `unhandledrejection`.
+
+  > **Not as built: `XMLHttpRequest` is not patched.** The design listed it and the implementation never
+  > covered it, so an app on axios records an empty network channel whenever the debugger cannot attach.
+  > Documented as a known gap in the extension README and the `caliper-fix` skill rather than left as a
+  > silent difference between this document and the code.
 - **CDP (`chrome.debugger`)** attaches *only for the duration of a trace* and is the preferred source
   for network and console: it sees response bodies, uncaught exceptions and stack traces that a
   monkey-patch cannot.
@@ -140,11 +145,17 @@ unchanged. v1 sessions remain readable (§9.1).
 ### 5.1 Files
 
 ```
-caliper-<id8>.session.json          manifest: annotations + traces[] metadata
-caliper-<id8>-t<n>.trace.json       steps, console, network, state
-caliper-<id8>-t<n>.replay.ndjson.gz rrweb events (agent, on demand)
-caliper-<id8>-t<n>.webm             video (human)
+caliper-<sessionId8>.session.json      manifest: annotations + traces[] metadata
+caliper-<traceId8>.trace.json          steps, console, network, state
+caliper-<traceId8>.replay.ndjson.gz    rrweb events (agent, on demand)
+caliper-<traceId8>.webm                video (human)
 ```
+
+> **As built.** The design first proposed `caliper-<sessionId8>-t<n>.…`, numbering traces within a
+> session. Naming each file after its own trace id is what shipped: an id cannot collide across
+> sessions, so re-sending to a ticket that already holds another session never overwrites anything, and
+> nothing has to renumber when a trace is deleted. The manifest folder is still the **session** id,
+> which is why the two ids in a path differ.
 
 In the zip these are siblings inside the existing `caliper-<id8>/` folder. On a Jira issue they are
 individual attachments; the manifest references them by filename, exactly as `buildJiraManifest`
@@ -200,7 +211,7 @@ Orchestrated by the background service worker, keyed by `tabId`.
 
 | Part | Where | Responsibility |
 | --- | --- | --- |
-| Main-world collector | new `document_start` entrypoint, `world: 'MAIN'` | rrweb, Redux shim, console/fetch/XHR patches |
+| Main-world collector | new `document_start` entrypoint, `world: 'MAIN'` | rrweb, Redux shim, console/fetch/sendBeacon patches, uncaught-error capture, SPA route steps |
 | Bridge | existing isolated content script | `window.postMessage` ↔ `chrome.runtime` |
 | Recorder host | background SW | trace lifecycle, CDP attach/detach, assembly |
 | Video | offscreen document (`reasons: ['USER_MEDIA']`) | `tabCapture` stream → constraints → `MediaRecorder` |

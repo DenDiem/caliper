@@ -95,6 +95,7 @@ picker, and nothing after they press Stop. A trace covers only the one tab it wa
 | `activeTab` | Read the element the user clicked in the tab they are currently viewing. |
 | `scripting` | Inject the picker into tabs that were open before the extension was installed or reloaded, so the user does not have to reload every tab. |
 | `sidePanel` | Display the list of recorded defects and the export controls. |
+| `alarms` | End a bug-trace recording at the length limit the user configured. A plain timer does not survive the extension's service worker being unloaded, which would leave a recording running with no way to stop itself. |
 | `downloads` | Write the exported zip archive to the user's Downloads folder. |
 | `host_permissions: <all_urls>` | QA is performed on arbitrary staging and production hosts that cannot be enumerated ahead of time. The picker only reads a page after the user explicitly arms it on that tab. |
 | `tabCapture` | Record the video of a bug reproduction, for the duration between the user pressing Start trace and Stop. Only the tab the recording was started on is captured, and only while a recording the user started is running. |
