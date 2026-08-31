@@ -1,7 +1,8 @@
 # Caliper Trace — bug-session recording, design
 
 **Date:** 2026-08-31
-**Status:** design approved in brainstorm; awaiting spec sign-off before the implementation plan.
+**Status:** implemented and verified against a real Chromium (`scripts/trace-smoke.mjs`, 12/12).
+**Amended 2026-08-31 (§12):** three constraints the design did not anticipate, found by that first real run.
 **Scope:** the QA extension gains a recorder; `@dendiem/caliper` gains the reading side; the store
 listing is renamed.
 
@@ -281,7 +282,43 @@ does not, in a form the agent cannot read cheaply.
 - **Multi-tab traces.** One trace, one tab.
 - **Recording Service Worker / Web Worker traffic.** Out of reach of both collectors as specified.
 
-## 12. Risks
+## 12. What the first real-browser run changed
+
+Everything below was invisible to the build, the type-checker and 242 unit tests. It is recorded here
+because each one is a property of the platform, not of the code that happened to trip on it.
+
+### The extension would not load at all
+
+rrweb bundles PostCSS, whose BOM check contains a literal `U+FFFE`, and esbuild emits it as a raw
+character. Chromium validates extension scripts with `base::IsStringUTF8`, which is stricter than
+"decodes as UTF-8" — it rejects Unicode non-characters — so Chrome refused the whole extension with
+`It isn't UTF-8 encoded` and named no character. `apps/qa-extension/build/utf8-safe-output.ts` now
+escapes them at build time and **fails the build** if any survive.
+
+### Video needs a toolbar invocation, and says so when it does not have one
+
+`chrome.tabCapture.getMediaStreamId` requires the extension to have been *invoked* on the target tab
+(`activeTab`), which a toolbar click or a keyboard command grants and a navigation revokes. The
+production flow satisfies this — the panel is opened from the icon — but a trace recorded after the
+tab has navigated gets no video. Rather than lose it silently, the trace omits `files.video` and the
+trace card explains why. The trace itself is unaffected, which is the point of D1's split.
+
+### Two lifecycle bugs the design implied but did not state
+
+- **The final flush was discarded.** `stopTrace` cleared the active trace before the collector's last
+  batch had crossed page → bridge → background. It now holds the trace open for a bounded grace period.
+- **A failed replay took the rest of the trace with it.** The periodic flush was armed after
+  `import('rrweb')`; if that import failed, steps, console, network and state were buffered forever and
+  never shipped. The flush is now armed first, and a missing replay costs only the replay.
+
+### Measured, not assumed
+
+| Claim | Measured |
+| --- | --- |
+| D6's ~1 MB per 30 s | **179 KB** per 30 s (VP9, 1280 px, 12 fps, 250 kbps) — `scripts/video-budget.mjs` |
+| Collector bundle at `document_start` | 245 kB, parse-time only; rrweb executes on Start |
+
+## 13. Risks
 
 | Risk | Mitigation |
 | --- | --- |
