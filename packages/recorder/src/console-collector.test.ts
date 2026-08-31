@@ -51,7 +51,7 @@ describe('patchConsole', () => {
       () => 0,
     );
     target.log('count', {n: 2});
-    expect(entries[0].text).toBe('count {"n":2}');
+    expect(entries[0]?.text).toBe('count {"n":2}');
   });
 
   it('restores the originals on uninstall', () => {

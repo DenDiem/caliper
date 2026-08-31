@@ -45,7 +45,7 @@ describe('installStateBridge', () => {
 
     host.__REDUX_DEVTOOLS_EXTENSION__!.connect().send('INCREMENT', {count: 1});
 
-    expect(entries[0].action).toBe('INCREMENT');
+    expect(entries[0]?.action).toBe('INCREMENT');
   });
 
   it('wraps an existing hook instead of replacing it', () => {
@@ -63,7 +63,7 @@ describe('installStateBridge', () => {
 
     expect(realConnect).toHaveBeenCalledWith({name: 'app'});
     expect(realConnection.send).toHaveBeenCalled();
-    expect(entries[0].action).toBe('PING');
+    expect(entries[0]?.action).toBe('PING');
   });
 
   it('restores the original hook on uninstall', () => {

@@ -57,7 +57,7 @@ describe('assembleTrace', () => {
         ],
       }),
     );
-    expect(detail.network[0].headers).toEqual({Authorization: '[redacted]'});
+    expect(detail.network[0]?.headers).toEqual({Authorization: '[redacted]'});
   });
 
   it('drops a state diff that exceeds the cap but keeps the action', () => {

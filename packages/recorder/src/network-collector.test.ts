@@ -1,12 +1,12 @@
 import {describe, expect, it} from 'vitest';
 import type {TraceNetworkEntry} from '@caliper/core';
-import {patchFetch} from './network-collector';
+import {patchFetch, type FetchHost} from './network-collector';
 
 describe('patchFetch', () => {
   it('records a successful request', async () => {
     const entries: TraceNetworkEntry[] = [];
     let clock = 0;
-    const host = {fetch: async () => new Response('{"ok":true}', {status: 200})};
+    const host: FetchHost = {fetch: async () => new Response('{"ok":true}', {status: 200})};
     patchFetch(
       host,
       (entry) => entries.push(entry),
@@ -26,7 +26,7 @@ describe('patchFetch', () => {
 
   it('flags a non-2xx response as failed', async () => {
     const entries: TraceNetworkEntry[] = [];
-    const host = {fetch: async () => new Response('nope', {status: 500})};
+    const host: FetchHost = {fetch: async () => new Response('nope', {status: 500})};
     patchFetch(
       host,
       (entry) => entries.push(entry),
@@ -35,13 +35,13 @@ describe('patchFetch', () => {
 
     await host.fetch('https://api.test/orders');
 
-    expect(entries[0].failed).toBe(true);
-    expect(entries[0].status).toBe(500);
+    expect(entries[0]?.failed).toBe(true);
+    expect(entries[0]?.status).toBe(500);
   });
 
   it('records a thrown network error as status 0 and rethrows', async () => {
     const entries: TraceNetworkEntry[] = [];
-    const host = {
+    const host: FetchHost = {
       fetch: async (): Promise<Response> => {
         throw new TypeError('Failed to fetch');
       },
@@ -58,7 +58,7 @@ describe('patchFetch', () => {
 
   it('defaults the method to GET', async () => {
     const entries: TraceNetworkEntry[] = [];
-    const host = {fetch: async () => new Response(null, {status: 204})};
+    const host: FetchHost = {fetch: async () => new Response(null, {status: 204})};
     patchFetch(
       host,
       (entry) => entries.push(entry),
@@ -67,12 +67,12 @@ describe('patchFetch', () => {
 
     await host.fetch('https://api.test/ping');
 
-    expect(entries[0].method).toBe('GET');
+    expect(entries[0]?.method).toBe('GET');
   });
 
   it('restores the original fetch on uninstall', () => {
     const original = async (): Promise<Response> => new Response('');
-    const host = {fetch: original};
+    const host: FetchHost = {fetch: original};
     patchFetch(
       host,
       () => undefined,

@@ -41,7 +41,7 @@ describe('traceDetailSchema', () => {
         {t: 1200, method: 'POST', url: 'https://api.test/orders', status: 500, durationMs: 340, failed: true},
       ],
     });
-    expect(parsed.network[0].failed).toBe(true);
+    expect(parsed.network[0]?.failed).toBe(true);
   });
 });
 
