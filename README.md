@@ -29,6 +29,11 @@ to act on without decoding a screenshot. Two products put that to work in opposi
 A Chrome extension for manual QA. A reviewer marks broken UI on the live app; the export is a compact
 payload — selector, component, token-matched styles — an agent fixes straight from the file.
 
+Some defects are not a moment but a sequence — "save works, but only the second time". For those,
+**Start trace** records the reproduction: the steps taken, the DOM over time, console, network and
+store actions, plus a ~1 MB video. The trace is what the agent reads; the video is for the human
+reading the ticket.
+
 ![Marking an element on the live app, describing the defect and exporting it to an agent](docs/media/qa-extension/mark-defect.gif)
 
 ### 💬 Agent → human — [`@dendiem/caliper`](apps/ask/README.md)
@@ -71,7 +76,11 @@ declaring it in the manifest, so the picker stops working the moment that server
 shortcut list shows `Alt+R — Reload the extension during development`, you are running the dev build.
 
 Click the toolbar icon to open the side panel, mark an element, describe the defect, and save — then
-review and export from the panel.
+review and export from the panel. **Start trace** in the same panel records a whole reproduction
+instead of a single element; press **Stop** and the trace joins the session.
+
+A developer reads either kind the same way — `caliper pull <ticket>` when QA filed it to Jira, or
+`caliper read <zip>` when QA sent the archive directly.
 
 ### 💬 The MCP server — the agent asks, you answer
 
