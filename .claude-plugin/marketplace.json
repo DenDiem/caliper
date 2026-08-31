@@ -4,14 +4,22 @@
     "name": "DenDiem",
     "url": "https://github.com/DenDiem/caliper"
   },
-  "description": "Caliper — element-pinned UI review and the offline Jira → agent fix handoff, for AI coding agents.",
+  "description": "Caliper — element-pinned UI review, recorded bug traces, and the offline Jira → agent fix handoff, for AI coding agents.",
   "plugins": [
     {
       "name": "caliper",
       "source": "./",
-      "description": "Live UI review (caliper_ask / caliper_design) plus the offline Jira fix handoff (caliper pull). Bundles the caliper-ask and caliper-fix skills and the Caliper MCP server.",
+      "description": "Live UI review (caliper_ask / caliper_design), recorded bug traces read back with caliper read / caliper trace, and the offline Jira fix handoff (caliper pull). Bundles the caliper-ask, caliper-design and caliper-fix skills and the Caliper MCP server.",
       "category": "development",
-      "keywords": ["code-review", "design", "annotation", "jira", "mcp", "ui"]
+      "keywords": [
+        "code-review",
+        "design",
+        "annotation",
+        "bug-trace",
+        "jira",
+        "mcp",
+        "ui"
+      ]
     }
   ]
 }
