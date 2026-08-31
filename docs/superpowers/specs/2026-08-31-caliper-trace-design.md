@@ -321,6 +321,20 @@ file comes out of it.
   `import('rrweb')`; if that import failed, steps, console, network and state were buffered forever and
   never shipped. The flush is now armed first, and a missing replay costs only the replay.
 
+### `debugger` cannot be an optional permission — it was tried
+
+The obvious way to reduce Chrome Web Store review risk is to move `debugger` out of `permissions` and
+into `optional_permissions`, requesting it from the Start trace click. **This does not work, and it
+fails silently in the worst way.** Chrome loads the extension without complaint, `permissions.contains`
+returns `false`, and `permissions.request` refuses with:
+
+> `Only permissions specified in the manifest may be requested.`
+
+Shipping that would have left response bodies, stack traces and the video fallback permanently
+unreachable with no way for a user to turn them on. `debugger` stays a required permission; the store
+risk is carried by the justification in `docs/store-listing.md` and by the fact that it attaches only
+for the duration of a user-started trace.
+
 ### Measured, not assumed
 
 | Claim | Measured |

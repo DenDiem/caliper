@@ -18,6 +18,10 @@ export default defineConfig({
       'downloads',
       'offscreen',
       'tabCapture',
+      // Required, not optional: Chrome silently ignores `debugger` in optional_permissions and then
+      // refuses the request ("Only permissions specified in the manifest may be requested"), which would
+      // leave response bodies, stack traces and the video fallback permanently unreachable. The
+      // justification for asking up front is in docs/store-listing.md.
       'debugger',
       'webNavigation',
     ],

@@ -7,7 +7,11 @@
  * invisible to every build and test in the repo.
  *
  * Needs the demo server running: `pnpm --filter @dendiem/caliper demo`.
- * Usage: node scripts/trace-smoke.mjs
+ * Usage: node scripts/trace-smoke.mjs [--no-cdp] [--save-video]
+ *
+ * `--no-cdp` runs the same reproduction with the debugger collector turned off in the options — the
+ * supported setting, and the same path a tab with DevTools already open falls onto. Both modes are
+ * worth running: they assert different things.
  *
  * Branded Chrome refuses --load-extension, so this points at the plain Chromium Playwright caches.
  * Playwright is not a dependency of this repo — it is resolved from a global @playwright/cli install.
@@ -51,6 +55,8 @@ const findChromium = () => {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+
+
 const checks = [];
 const check = (name, ok, detail) => {
   checks.push({name, ok});
@@ -70,6 +76,10 @@ const main = async () => {
 
   const {chromium} = loadPlaywright();
   const executablePath = findChromium();
+  // `--no-cdp` mirrors a real user setting rather than a contrived one: turning the debugger off in the
+  // options is the supported way to get the in-page collectors, and it is the same code path a tab with
+  // DevTools already open falls onto.
+  const withDebugger = !process.argv.includes('--no-cdp');
 
   const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'caliper-')), {
     headless: false,
@@ -94,7 +104,8 @@ const main = async () => {
   const worker =
     context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker', {timeout: 20_000}));
   const extensionId = new URL(worker.url()).host;
-  console.log(`extension loaded: ${extensionId}\n`);
+  console.log(`extension loaded: ${extensionId}`);
+  console.log(`mode: ${withDebugger ? 'debugger attached (default)' : 'in-page fallback (--no-cdp)'}\n`);
 
   const world = await page.evaluate(() => ({
     devtoolsHook: typeof window.__REDUX_DEVTOOLS_EXTENSION__,
@@ -114,6 +125,12 @@ const main = async () => {
   // extension page — the same message the side panel's record bar sends.
   const panel = await context.newPage();
   await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+
+  if (!withDebugger) {
+    await panel.evaluate(() =>
+      chrome.storage.local.set({'caliper.traceOptions': {enableCdp: false}}),
+    );
+  }
   await page.bringToFront();
   await wait(400);
 
@@ -173,15 +190,33 @@ const main = async () => {
   check('steps recorded', detail.steps.length >= 4, `${detail.steps.length} steps`);
   check('navigation recorded as the first step', detail.steps[0]?.kind === 'navigation');
   check('console captured', detail.console.length >= 2, `${detail.console.length} entries`);
-  check(
-    'the thrown TypeError was captured with a stack',
-    detail.console.some((entry) => entry.level === 'error' && entry.stack),
-  );
   check('network captured', detail.network.length >= 2, `${detail.network.length} requests`);
   check(
-    'the 409 is flagged failed and carries its body',
-    detail.network.some((entry) => entry.status === 409 && entry.failed && entry.responseBody),
+    'the 409 is flagged failed',
+    detail.network.some((entry) => entry.status === 409 && entry.failed),
   );
+  check(
+    `sources reflect the mode`,
+    trace.sources.network === (withDebugger ? 'cdp' : 'fallback'),
+    trace.sources.network,
+  );
+
+  if (withDebugger) {
+    check(
+      'the thrown TypeError was captured with a stack',
+      detail.console.some((entry) => entry.level === 'error' && entry.stack),
+    );
+    check(
+      'the failed response body was collected',
+      detail.network.some((entry) => entry.status === 409 && entry.responseBody),
+    );
+  } else {
+    // What the fallback is for: no debugger, and the trace is still worth reading.
+    check(
+      'the in-page collectors still record the failure',
+      detail.network.some((entry) => entry.status === 409 && entry.failed) && detail.steps.length >= 4,
+    );
+  }
   check(
     'store actions captured through the devtools bridge',
     trace.sources.state === 'devtools-bridge' && detail.state.length >= 2,
@@ -191,10 +226,14 @@ const main = async () => {
   check('summary matches the channels', trace.summary.failedRequests === 1);
   // tabCapture cannot be granted from automation, so this exercises the screencast fallback — the path
   // that runs whenever the panel was not opened from the toolbar on this tab.
+  // tabCapture needs a toolbar invocation automation cannot make, so video here comes from the
+  // debugger screencast — and with the debugger off there is honestly none, which the card says.
   check(
-    'video encoded through the debugger screencast fallback',
-    result.videoBytes > 0 && trace.files.video !== undefined,
-    `${(result.videoBytes / 1024).toFixed(0)} KB`,
+    withDebugger ? 'video encoded through the screencast fallback' : 'no video, and the trace says so',
+    withDebugger
+      ? result.videoBytes > 0 && trace.files.video !== undefined
+      : result.videoBytes === 0 && trace.files.video === undefined,
+    withDebugger ? `${(result.videoBytes / 1024).toFixed(0)} KB` : 'files.video omitted',
   );
 
   console.log('\n--- trace ---');

@@ -86,6 +86,10 @@ been invoked on the tab from the toolbar, and Chrome revokes that grant on navig
 unavailable the already-attached debugger session screencasts the tab instead, at half the rate. A
 trace loses its video only when neither is possible, and the card says so when that happens.
 
+Both collector modes are covered by `node scripts/trace-smoke.mjs` (debugger attached) and
+`node scripts/trace-smoke.mjs --no-cdp` (in-page collectors only) — 15 and 14 assertions against a real
+Chromium.
+
 ### Options
 
 | Option | Default | Effect |
