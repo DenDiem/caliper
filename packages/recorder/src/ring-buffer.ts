@@ -1,6 +1,9 @@
 export interface RingBuffer<T> {
   push(item: T): void;
   setCapacity(next: number): void;
+  // Cleared when a new recording opens the buffer, so a second trace on the same page is not stamped
+  // truncated because the first one overflowed.
+  resetDropped(): void;
   drain(): T[];
   readonly size: number;
   // True once anything has been discarded. A trace that silently lost its earliest events would be read
@@ -32,6 +35,9 @@ export const createRingBuffer = <T>(capacity: number): RingBuffer<T> => {
     setCapacity(next: number): void {
       limit = Math.max(0, next);
       trim();
+    },
+    resetDropped(): void {
+      dropped = false;
     },
     drain(): T[] {
       const drained = items;

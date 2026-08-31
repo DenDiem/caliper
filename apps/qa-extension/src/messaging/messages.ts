@@ -55,6 +55,8 @@ export interface SetModeTabMessage {
 export interface TraceBatch {
   // Set once any of the collector's ring buffers has discarded an event.
   dropped?: boolean;
+  // Only the page knows its own pixel ratio; chrome.tabs carries no such field.
+  dpr?: number;
   // A snapshot-only batch carries the store and nothing else; it is posted separately so that a store
   // which cannot be structured-cloned never costs the event channels.
   snapshotOnly?: boolean;

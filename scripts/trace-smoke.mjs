@@ -157,6 +157,11 @@ const main = async () => {
   await page.click('#place-order');
   await wait(1800);
 
+  // A router transition, not a page load: Angular and React replace the view with pushState, and until
+  // history was patched the trace showed no navigation at all for the primary audience.
+  await page.evaluate(() => history.pushState({}, '', '/checkout?step=review'));
+  await wait(900);
+
   // Crossing a page load mid-trace: the collector is replaced, and its clock has to continue the
   // trace's rather than restart — otherwise late steps sort in front of the events that caused them.
   await page.goto(`${DEMO_ORIGIN}/`, {waitUntil: 'domcontentloaded'});
@@ -253,6 +258,10 @@ const main = async () => {
   );
   const navigations = detail.steps.filter((step) => step.kind === 'navigation');
   check('the navigation mid-trace was recorded', navigations.length >= 2, `${navigations.length}`);
+  check(
+    'an SPA route change is recorded as a navigation',
+    navigations.some((step) => (step.url ?? '').includes('step=review')),
+  );
   check(
     'the timeline continues across the navigation instead of restarting',
     navigations.length >= 2 && navigations[navigations.length - 1].t > 2000,

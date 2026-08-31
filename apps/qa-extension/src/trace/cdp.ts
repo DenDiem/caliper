@@ -187,11 +187,13 @@ export const attachCdp = async (
   // Bounded so a chatty page cannot turn this into a second download of the whole session.
   let bodiesCollected = 0;
   const collectBody = async (requestId: string): Promise<void> => {
-    if (bodiesCollected >= MAX_BODIES) return;
-
     const index = requestIdByEntry.indexOf(requestId);
     const entry = index === -1 ? undefined : network[index];
     if (!entry || entry.responseBody !== undefined) return;
+
+    // A page that polls will finish forty uninteresting responses before the failing one. A failure is
+    // always worth its body; anything else only while there is room left.
+    if (!entry.failed && bodiesCollected >= MAX_BODIES) return;
 
     try {
       const result: unknown = await chrome.debugger.sendCommand(target, 'Network.getResponseBody', {

@@ -7,6 +7,7 @@ import {
   navigationStep,
   patchConsole,
   patchFetch,
+  patchSendBeacon,
 } from '@caliper/recorder';
 import type {DevtoolsExtension} from '@caliper/recorder';
 
@@ -28,6 +29,7 @@ const FLUSH_INTERVAL_MS = 1000;
 const CHANNEL_CAPACITY = 5000;
 const REPLAY_CAPACITY = 20_000;
 const OBSERVED_EVENTS = ['click', 'input', 'change', 'keydown'] as const;
+const SCROLL_IDLE_MS = 400;
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -61,6 +63,7 @@ export default defineContentScript({
       now,
     );
     patchFetch(window, (entry) => network.push(entry), now);
+    patchSendBeacon(window, (entry) => network.push(entry), now);
 
     // buildSelector walks ancestors running querySelectorAll, and the console patch stringifies every
     // argument. Both used to run on every page whether or not anything was recording, and only then push
@@ -73,6 +76,69 @@ export default defineContentScript({
 
     for (const type of OBSERVED_EVENTS) {
       window.addEventListener(type, onEvent, {capture: true, passive: true});
+    }
+
+    // A scroll is a step the schema always allowed and nothing ever produced. Recorded on settle rather
+    // than per event, or a single flick would bury the timeline it is meant to explain.
+    let scrollIdle: number | null = null;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (startedAt === null) return;
+        if (scrollIdle !== null) window.clearTimeout(scrollIdle);
+        scrollIdle = window.setTimeout(() => {
+          steps.push({t: now(), kind: 'scroll', text: `${Math.round(window.scrollY)}px`});
+        }, SCROLL_IDLE_MS);
+      },
+      {capture: true, passive: true},
+    );
+
+    // Without this the single most diagnostic event — the uncaught error that explains the bug — is
+    // absent whenever the debugger could not attach, and `consoleErrors` reads 0.
+    window.addEventListener('error', (event: ErrorEvent) => {
+      if (startedAt === null) return;
+      consoleEntries.push({
+        t: now(),
+        level: 'error',
+        text: event.message,
+        stack: event.error instanceof Error ? (event.error.stack ?? null) : null,
+      });
+    });
+
+    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+      if (startedAt === null) return;
+      const reason: unknown = event.reason;
+      consoleEntries.push({
+        t: now(),
+        level: 'error',
+        text:
+          reason instanceof Error
+            ? `Uncaught (in promise) ${reason.name}: ${reason.message}`
+            : `Uncaught (in promise) ${String(reason)}`,
+        stack: reason instanceof Error ? (reason.stack ?? null) : null,
+      });
+    });
+
+    // An Angular or React route change replaces the view without a document load, so the only
+    // navigation the trace would otherwise show is the one it started on.
+    let lastUrl = location.href;
+    const notePathChange = (): void => {
+      if (startedAt === null || location.href === lastUrl) return;
+      lastUrl = location.href;
+      steps.push(navigationStep(now(), location.href));
+    };
+    window.addEventListener('popstate', notePathChange);
+    window.addEventListener('hashchange', notePathChange);
+
+    for (const method of ['pushState', 'replaceState'] as const) {
+      const original = history[method];
+      history[method] = function patched(
+        this: History,
+        ...args: Parameters<History['pushState']>
+      ): void {
+        original.apply(this, args);
+        notePathChange();
+      };
     }
 
     // postMessage structured-clones the batch, and an app's store legitimately holds functions, DOM
@@ -91,6 +157,7 @@ export default defineContentScript({
     const flush = (): void => {
       const batch = {
         dropped: [steps, consoleEntries, network, state, replay].some((buffer) => buffer.dropped),
+        dpr: window.devicePixelRatio,
         steps: steps.drain(),
         console: consoleEntries.drain(),
         network: network.drain(),
@@ -109,11 +176,13 @@ export default defineContentScript({
       startedAt = performance.now();
       offsetMs = elapsedMs;
 
+      for (const buffer of [steps, consoleEntries, network, state, replay]) buffer.resetDropped();
       steps.setCapacity(CHANNEL_CAPACITY);
       consoleEntries.setCapacity(CHANNEL_CAPACITY);
       network.setCapacity(CHANNEL_CAPACITY);
       state.setCapacity(CHANNEL_CAPACITY);
       replay.setCapacity(REPLAY_CAPACITY);
+      lastUrl = location.href;
       steps.push(navigationStep(now(), location.href));
 
       // The periodic flush is armed before rrweb loads: a replay that fails to start must not also cost

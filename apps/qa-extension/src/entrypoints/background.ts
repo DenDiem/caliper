@@ -7,6 +7,8 @@ import {
   activeTraceTabId,
   finishTraceForClosedTab,
   ingestBatch,
+  onLimitAlarm,
+  recoverInterruptedTrace,
   startTrace,
   stopTrace,
   traceStatus,
@@ -76,6 +78,14 @@ export default defineBackground(() => {
   void chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: false}).catch(() => undefined);
   // Off by default: no tab shows the panel until the icon opens it on that specific (owner) tab.
   void chrome.sidePanel.setOptions({enabled: false}).catch(() => undefined);
+
+  // A worker that was unloaded mid-trace comes back with no memory of it; the marker is how it finds
+  // out, so the tab is not left recording into a void.
+  void recoverInterruptedTrace();
+
+  chrome.alarms.onAlarm.addListener(({name}) => {
+    void onLimitAlarm(name);
+  });
 
   chrome.action.onClicked.addListener((tab) => {
     if (typeof tab.id === 'number') openPanel(tab.id);

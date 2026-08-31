@@ -3,7 +3,7 @@ import {screenshotFilename, sessionToJiraComment} from '@caliper/core';
 import {devSend} from './jira-dev';
 import {postComment, resolveMediaId, setDescription, updateComment, uploadAttachment} from './jira-client';
 import {STORAGE} from './jira-config';
-import {addSend, type SendRecord} from './jira-history';
+import {addSend, type SendRecord, type SendWarning} from './jira-history';
 import {buildJiraManifest, traceFileEntries} from '../export/export-session';
 
 export type JiraTarget = 'comment' | 'description';
@@ -16,14 +16,25 @@ export interface SendOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
+// Jira Cloud rejects an attachment over its per-file limit (10 MB by default) with a 413. A trace video
+// can reach that when the length limit is raised, and finding out mid-send used to abort the whole
+// upload after some files had already landed — leaving orphans, no manifest and no comment.
+const ATTACHMENT_LIMIT_BYTES = 10 * 1024 * 1024;
+
+
+
 const toBlob = async (dataUrl: string): Promise<Blob> => (await fetch(dataUrl)).blob();
 
 const manifestFilename = (session: CaliperSession): string => `caliper-${session.id.slice(0, 8)}.session.json`;
 
 // Attaches the machine-readable session so a downstream agent can reconstruct the review offline via
 // `caliper pull` — the generic Jira MCP reads the human comment but cannot pull binary attachments.
-const uploadManifest = async (session: CaliperSession, issueKey: string): Promise<void> => {
-  const blob = new Blob([buildJiraManifest(session)], {type: 'application/json'});
+const uploadManifest = async (
+  session: CaliperSession,
+  issueKey: string,
+  delivered: ReadonlySet<string>,
+): Promise<void> => {
+  const blob = new Blob([buildJiraManifest(session, delivered)], {type: 'application/json'});
   await uploadAttachment(issueKey, manifestFilename(session), blob);
 };
 
@@ -58,12 +69,31 @@ const uploadScreenshots = async (
 
 // Trace files ride alongside the manifest as ordinary attachments; the manifest names them, so
 // `caliper pull` resolves each one back by filename the same way it already does for screenshots.
-const uploadTraceFiles = async (session: CaliperSession, issueKey: string): Promise<void> => {
+// A trace file that is too large, or that Jira refuses, costs that file and nothing else: the trace
+// itself, the marks and the comment still reach the ticket, and the manifest is built from what landed.
+const uploadTraceFiles = async (
+  session: CaliperSession,
+  issueKey: string,
+  warnings: SendWarning[],
+): Promise<Set<string>> => {
+  const delivered = new Set<string>();
+
   for (const entry of await traceFileEntries(session)) {
-    // Copied into a fresh view so its buffer is a plain ArrayBuffer — a Uint8Array over the generic
-    // ArrayBufferLike (which fflate returns) is not a BlobPart.
-    await uploadAttachment(issueKey, entry.filename, new Blob([new Uint8Array(entry.bytes)]));
+    if (entry.bytes.byteLength > ATTACHMENT_LIMIT_BYTES) {
+      warnings.push({filename: entry.filename, reason: 'too-large'});
+      continue;
+    }
+    try {
+      // Copied into a fresh view so its buffer is a plain ArrayBuffer — a Uint8Array over the generic
+      // ArrayBufferLike (which fflate returns) is not a BlobPart.
+      await uploadAttachment(issueKey, entry.filename, new Blob([new Uint8Array(entry.bytes)]));
+      delivered.add(entry.filename);
+    } catch {
+      warnings.push({filename: entry.filename, reason: 'upload-failed'});
+    }
   }
+
+  return delivered;
 };
 
 export const sendSessionToJira = async (
@@ -74,9 +104,10 @@ export const sendSessionToJira = async (
   const {issueKey, target, attachScreenshots, updateCommentId, onProgress} = options;
 
   const media = attachScreenshots ? await uploadScreenshots(session, issueKey, onProgress) : {};
-  await uploadTraceFiles(session, issueKey);
-  await uploadManifest(session, issueKey);
-  const body = sessionToJiraComment(session, media);
+  const warnings: SendWarning[] = [];
+  const delivered = await uploadTraceFiles(session, issueKey, warnings);
+  await uploadManifest(session, issueKey, delivered);
+  const body = sessionToJiraComment(session, media, warnings.map((warning) => warning.filename));
 
   let commentId: string | null = null;
   if (target === 'description') {
@@ -94,6 +125,7 @@ export const sendSessionToJira = async (
     target,
     commentId,
     at: new Date().toISOString(),
+    ...(warnings.length > 0 ? {warnings} : {}),
   };
   await addSend(record);
   await chrome.storage.local.set({[STORAGE.lastIssue]: issueKey});

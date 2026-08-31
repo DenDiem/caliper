@@ -1,12 +1,20 @@
 import type {JiraTarget} from './send-to-jira';
 import {STORAGE} from './jira-config';
 
+// A file the ticket did not receive. Kept on the record so a later send can tell the user the previous
+// one was incomplete, rather than the fact living only in a toast they already dismissed.
+export interface SendWarning {
+  filename: string;
+  reason: 'too-large' | 'upload-failed';
+}
+
 export interface SendRecord {
   sessionId: string;
   issueKey: string;
   target: JiraTarget;
   commentId: string | null;
   at: string;
+  warnings?: SendWarning[];
 }
 
 const isSendRecord = (value: unknown): value is SendRecord =>

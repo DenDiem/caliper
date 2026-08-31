@@ -26,6 +26,7 @@ export const RecordBar = () => {
   const [status, setStatus] = useState<TraceStatusMessage>(IDLE);
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
+  const [refused, setRefused] = useState(false);
 
   useEffect(() => {
     const poll = window.setInterval(() => {
@@ -47,11 +48,13 @@ export const RecordBar = () => {
     try {
       const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
       if (typeof tab?.id === 'number') {
-        await chrome.runtime.sendMessage({
+        const started: unknown = await chrome.runtime.sendMessage({
           type: 'caliper/trace-start',
           tabId: tab.id,
           label: tab.title ?? 'Bug trace',
         });
+        // A refused start (a recording already running elsewhere) used to look like a dead button.
+        setRefused(started !== true);
       }
     } finally {
       // Always cleared: a start that failed anywhere used to leave the button disabled with no way back.
@@ -74,7 +77,7 @@ export const RecordBar = () => {
     return (
       <button class="record" onClick={() => void start()} disabled={busy}>
         <span class="record__dot" />
-        START TRACE
+        {refused ? 'ALREADY RECORDING ELSEWHERE' : 'START TRACE'}
       </button>
     );
   }

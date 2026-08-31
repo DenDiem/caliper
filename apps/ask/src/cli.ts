@@ -32,6 +32,7 @@ interface ParsedArgs {
   positional: string | null;
   channels: TraceChannel[];
   around: string | null;
+  full: boolean;
 }
 
 const INIT_FLAGS = ['--global', '--agent', '--target', '--mode', '--port', '--pinned', '--help', '-h'];
@@ -40,7 +41,7 @@ const SNIPPET_FLAGS = ['--port', '--help', '-h'];
 const SERVE_FLAGS = ['--help', '-h'];
 const PULL_FLAGS = ['--help', '-h'];
 const READ_FLAGS = ['--help', '-h'];
-const TRACE_FLAGS = ['--steps', '--console', '--network', '--state', '--around', '--help', '-h'];
+const TRACE_FLAGS = ['--steps', '--console', '--network', '--state', '--around', '--full', '--help', '-h'];
 const POSITIONAL_COMMANDS: readonly Command[] = ['pull', 'read', 'trace'];
 const AROUND_WINDOW_MS = 2000;
 const MS_PER_SECOND = 1000;
@@ -74,7 +75,7 @@ const topLevelHelp = (): string =>
     '  caliper snippet [--port <n>]',
     '  caliper pull <jira-issue-url|key>',
     '  caliper read <path-to-zip|folder>',
-    '  caliper trace <path-to-trace.json> [--steps] [--console] [--network] [--state] [--around <t>]',
+    '  caliper trace <path-to-trace.json> [--steps] [--console] [--network] [--state] [--around <t>] [--full]',
     '  caliper --help',
     '',
     `Known agents: ${KNOWN_AGENT_IDS}`,
@@ -186,7 +187,11 @@ const traceHelp = (): string =>
     'caliper trace - print one bug trace, or a slice of it',
     '',
     'Usage:',
-    '  caliper trace <path-to-trace.json> [--steps] [--console] [--network] [--state] [--around <t>]',
+    '  caliper trace <path-to-trace.json> [--steps] [--console] [--network] [--state] [--around <t>] [--full]',
+    '',
+    '--full adds what the summary lines leave out: request headers and bodies, whole response bodies,',
+    'console stack traces, state diffs, and the store snapshots from the ends of the recording. Pair it',
+    'with --around or a single channel — on its own it can be very large.',
     '',
     'With no channel flags every channel is printed. Combine flags to narrow it. --around takes a',
     'timestamp from the trace (12400, or 12.4s) and keeps 2s either side of it across every channel -',
@@ -245,6 +250,7 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     positional: null,
     channels: [],
     around: null,
+    full: false,
   };
 
   for (let index = 0; index < rest.length; index += 1) {
@@ -284,6 +290,10 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
     }
     if (flag === '--pinned') {
       parsed.pinned = true;
+      continue;
+    }
+    if (flag === '--full') {
+      parsed.full = true;
       continue;
     }
     if (flag === '--agent') {
@@ -596,6 +606,7 @@ const runTrace = (args: ParsedArgs): void => {
       channels: new Set<TraceChannel>(channels),
       aroundMs: args.around === null ? null : parseTimestamp(args.around),
       windowMs: AROUND_WINDOW_MS,
+      full: args.full,
     }),
   );
 };

@@ -183,7 +183,11 @@ export const pullSession = async (input: string): Promise<string> => {
   const key = resolveKey(input);
   const attachments = await listAttachments(creds, key);
 
-  const manifest = newest(attachments.filter((item) => MANIFEST_PATTERN.test(item.filename)));
+  const manifests = attachments.filter((item) => MANIFEST_PATTERN.test(item.filename));
+  // Re-sending one session replaces its manifest, but two genuinely different sessions on a ticket
+  // both belong to it — and reading only the newest without a word made the older one vanish.
+  const distinct = new Set(manifests.map((item) => item.filename)).size;
+  const manifest = newest(manifests);
   if (!manifest) {
     throw new Error(
       `No Caliper session found on ${key}: expected a caliper-*.session.json attachment ` +
@@ -197,5 +201,10 @@ export const pullSession = async (input: string): Promise<string> => {
   await materializeScreenshots(session, attachments, creds);
   await materializeTraces(session, attachments, creds);
 
-  return [`${key}: ${composition(session)}`, '', toToon(session)].join('\n');
+  const older =
+    distinct > 1
+      ? ` — ${distinct} sessions are attached, this is the most recent; the others are still on the ticket`
+      : '';
+
+  return [`${key}: ${composition(session)}${older}`, '', toToon(session)].join('\n');
 };
