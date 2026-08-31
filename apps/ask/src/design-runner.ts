@@ -225,6 +225,7 @@ export class DesignRunner {
       createdAt: state.createdAt,
       caliperVersion: CALIPER_VERSION,
       annotations: state.annotations,
+      traces: [],
       assets: {},
     };
     return toToon(session);

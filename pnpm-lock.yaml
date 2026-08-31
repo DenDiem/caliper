@@ -35,6 +35,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@3.25.76)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       http-proxy:
         specifier: ^1.18.1
         version: 1.18.1
@@ -78,6 +81,9 @@ importers:
       vite:
         specifier: ^5.4.0
         version: 5.4.21(@types/node@22.20.1)
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)
 
   apps/qa-extension:
     dependencies:

@@ -12,7 +12,8 @@ const NUMBER_LIKE = /^-?\d+(\.\d+)?$/;
 // Properties where a raw value with no token is a defect the agent should fix (a hardcoded colour,
 // spacing, font, radius or shadow). Structural properties with no token (display, flex-direction,
 // position, computed offsets) carry no design decision, so they are dropped as noise.
-const TOKENIZABLE_STYLE = /(^|-)color$|background|box-shadow|border-radius|^padding|^margin|gap$|^font|line-height|letter-spacing/;
+const TOKENIZABLE_STYLE =
+  /(^|-)color$|background|box-shadow|border-radius|^padding|^margin|gap$|^font|line-height|letter-spacing/;
 
 const cell = (value: string | null | undefined): string => {
   const flat = (value ?? '').replace(/\s+/g, ' ').trim();
@@ -177,8 +178,18 @@ const duplicateElementSelectors = (annotations: readonly CaliperAnnotation[]): S
   return duplicates;
 };
 
-const PADDING_SIDES: readonly string[] = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
-const MARGIN_SIDES: readonly string[] = ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+const PADDING_SIDES: readonly string[] = [
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+];
+const MARGIN_SIDES: readonly string[] = [
+  'margin-top',
+  'margin-right',
+  'margin-bottom',
+  'margin-left',
+];
 const BORDER_WIDTH_SIDES: readonly string[] = [
   'border-top-width',
   'border-right-width',
@@ -211,12 +222,17 @@ const foldBox = (
       : {value: top.value};
   }
   const sides =
-    top.value === bottom.value && right.value === left.value ? [top, right] : [top, right, bottom, left];
+    top.value === bottom.value && right.value === left.value
+      ? [top, right]
+      : [top, right, bottom, left];
   return foldedShorthand(sides.map((side) => side.value).join(' '), sides);
 };
 
 // Folds row-gap/column-gap into one `gap` row (single value when equal, `<row> <column>` otherwise).
-const foldGap = (row: StyleValue | undefined, column: StyleValue | undefined): StyleValue | null => {
+const foldGap = (
+  row: StyleValue | undefined,
+  column: StyleValue | undefined,
+): StyleValue | null => {
   if (!row || !column) return null;
   if (row.value === column.value) {
     const token = row.token ?? null;
@@ -235,8 +251,18 @@ const relabel = (property: string): string =>
 // Rewrites a mark's styles so longhand box/gap/border sides read as their CSS shorthand, keeping every
 // other property in its original position. Consumed longhands collapse onto the first side encountered.
 const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] => {
-  const padding = foldBox(styles['padding-top'], styles['padding-right'], styles['padding-bottom'], styles['padding-left']);
-  const margin = foldBox(styles['margin-top'], styles['margin-right'], styles['margin-bottom'], styles['margin-left']);
+  const padding = foldBox(
+    styles['padding-top'],
+    styles['padding-right'],
+    styles['padding-bottom'],
+    styles['padding-left'],
+  );
+  const margin = foldBox(
+    styles['margin-top'],
+    styles['margin-right'],
+    styles['margin-bottom'],
+    styles['margin-left'],
+  );
   const borderWidth = foldBox(
     styles['border-top-width'],
     styles['border-right-width'],
@@ -268,10 +294,18 @@ const foldStyles = (styles: Record<string, StyleValue>): [string, StyleValue][] 
     } else if (margin && MARGIN_SIDES.includes(property) && !emitted.has('margin')) {
       emitted.add('margin');
       result.push(['margin', margin]);
-    } else if (borderWidth && BORDER_WIDTH_SIDES.includes(property) && !emitted.has('border-width')) {
+    } else if (
+      borderWidth &&
+      BORDER_WIDTH_SIDES.includes(property) &&
+      !emitted.has('border-width')
+    ) {
       emitted.add('border-width');
       result.push(['border-width', borderWidth]);
-    } else if (gap && (property === 'row-gap' || property === 'column-gap') && !emitted.has('gap')) {
+    } else if (
+      gap &&
+      (property === 'row-gap' || property === 'column-gap') &&
+      !emitted.has('gap')
+    ) {
       emitted.add('gap');
       result.push(['gap', gap]);
     }
@@ -294,7 +328,11 @@ interface StyleEntry {
 const styleEntries = (annotations: readonly CaliperAnnotation[]): StyleEntry[] => {
   const seen = new Set<string>();
   const entries: StyleEntry[] = [];
-  const collect = (scope: 'host' | 'el', selector: string, styles: Record<string, StyleValue>): void => {
+  const collect = (
+    scope: 'host' | 'el',
+    selector: string,
+    styles: Record<string, StyleValue>,
+  ): void => {
     const key = `${scope} ${selector}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -320,15 +358,20 @@ const helpLines = (session: CaliperSession, hasScreenshots: boolean): string[] =
     return ['Arm the picker with Alt+Shift+C, then click an element to record a defect'];
   }
 
-  const lines = [
-    'Each mark: `element` = a chosen element, `area`/`strike` = a derived anchor — for those trust `covers`/`bbox` over `selector`',
-    'Match a `styles` token against the design-token variable of the same name before hardcoding a value',
-    '`intent: remove` deletes the element; `intent: add` inserts relative to `anchor` (after/before/inside-*/replace) → target',
-    'If a mark is ambiguous or its selector is container-level, resolve it with caliper_ask (point on the page), not a chat question',
-    'An `area` bbox is where the region sits, not a size to apply — never resize an element to match it',
-    '`covers: []` is conclusive: nothing lies under the loop, so read the mark from its `anchor` target',
-    'screenshot is a fallback — open it only if selector/text/covers left the mark ambiguous',
-  ];
+  // Mark-reading guidance is worthless to a trace-only session and costs the agent ten lines of
+  // context before it reaches the trace, so it is emitted only when there are marks to read.
+  const lines =
+    session.annotations.length === 0
+      ? []
+      : [
+          'Each mark: `element` = a chosen element, `area`/`strike` = a derived anchor — for those trust `covers`/`bbox` over `selector`',
+          'Match a `styles` token against the design-token variable of the same name before hardcoding a value',
+          '`intent: remove` deletes the element; `intent: add` inserts relative to `anchor` (after/before/inside-*/replace) → target',
+          'If a mark is ambiguous or its selector is container-level, resolve it with caliper_ask (point on the page), not a chat question',
+          'An `area` bbox is where the region sits, not a size to apply — never resize an element to match it',
+          '`covers: []` is conclusive: nothing lies under the loop, so read the mark from its `anchor` target',
+          'screenshot is a fallback — open it only if selector/text/covers left the mark ambiguous',
+        ];
 
   if (hasScreenshots) {
     lines.push(
