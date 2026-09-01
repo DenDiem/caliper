@@ -9,7 +9,7 @@ export default defineConfig({
   manifest: withinStoreLimits({
     name: 'Caliper QA — UI Marks & Bug Traces for AI Coding Agents',
     description:
-      'Mark up any web UI or record a full bug trace — DOM, console, network, store — and hand the replayable defect to your AI agent.',
+      'Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.',
     permissions: [
       'storage',
       'unlimitedStorage',
