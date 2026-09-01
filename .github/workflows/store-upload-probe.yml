@@ -1,0 +1,37 @@
+name: Store upload probe
+
+# Answers one question a release cannot: does the store actually accept our package?
+#
+# Runs the real publish script in --upload-only mode, so it stops before the review queue. An upload
+# only replaces the draft, so the answer costs nothing beyond that — and it exercises the same code
+# path a release uses, rather than a second copy of it that could drift.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and zip
+        run: pnpm --filter @caliper/qa-extension zip
+
+      - name: Upload it and read what the store says
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          zip=$(ls apps/qa-extension/.output/caliper-*-chrome.zip | head -1)
+          scripts/publish-chrome.sh --upload-only "$zip"
