@@ -11,7 +11,8 @@
   <a href="https://donatello.to/dendiem"><img alt="Tips" src="https://img.shields.io/badge/tips-%E2%98%95_buy_me_a_coffee-ff813f?labelColor=13161d"></a>
 </p>
 
-An MCP server that lets a coding agent — Claude Code, Codex, Cursor or any MCP client — stop
+An MCP server that lets a coding agent — Claude Code, Codex, Cursor, Windsurf, VS Code (Copilot),
+Gemini CLI or any MCP client — stop
 guessing about ambiguous UI regions. While implementing a design, the agent marks the elements it
 is unsure about, calls a tool, and a browser opens against your running dev preview with those
 questions pinned to the live elements. You answer them in place; the answers flow straight back to

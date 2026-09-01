@@ -95,7 +95,8 @@ A developer reads either kind the same way — `caliper pull <ticket>` when QA f
 
 ### 💬 The MCP server — the agent asks, you answer
 
-Register it with your coding agent (Claude Code, Codex, Cursor, any MCP client) — one command, and it
+Register it with your coding agent (Claude Code, Codex, Cursor, Windsurf, VS Code, Gemini CLI, or any
+MCP client) — one command, and it
 auto-updates on each launch:
 
 ```bash
