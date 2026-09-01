@@ -1,14 +1,15 @@
 import {defineConfig} from 'wxt';
+import {withinStoreLimits} from './build/store-limits';
 import {utf8SafeOutput} from './build/utf8-safe-output';
 
 export default defineConfig({
   srcDir: 'src',
   vite: () => ({plugins: [utf8SafeOutput()]}),
   zip: {name: 'caliper'},
-  manifest: {
+  manifest: withinStoreLimits({
     name: 'Caliper QA — UI Marks & Bug Traces for AI Coding Agents',
     description:
-      'Mark up any web UI or record a full bug trace — DOM, console, network and store — and hand a precise, replayable defect to Claude Code, Cursor or any AI agent.',
+      'Mark up any web UI or record a full bug trace — DOM, console, network, store — and hand the replayable defect to your AI agent.',
     permissions: [
       'storage',
       'unlimitedStorage',
@@ -53,5 +54,5 @@ export default defineConfig({
         description: 'Open the Caliper side panel',
       },
     },
-  },
+  }),
 });
