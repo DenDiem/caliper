@@ -1,0 +1,85 @@
+name: Store upload probe
+
+# Answers one question the release cannot: does an upload actually reach the store?
+#
+# `wxt submit` uses publish-browser-extension, whose uploadZip and submitForReview both do
+# `await fetch(...)` and discard the response. fetch does not throw on 4xx, so a 403 or a 404 prints
+# the same cheerful ✔ as a success. Three releases reported success while the store kept serving the
+# previous version, and nothing in the logs can distinguish "worked" from "silently refused".
+#
+# This uploads the built zip with curl and prints the HTTP status and the body verbatim. It does NOT
+# submit for review — an upload only updates the draft, so the answer costs nothing beyond that.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and zip
+        run: pnpm --filter @caliper/qa-extension zip
+
+      - name: Upload it by hand and read what the store says
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          set -uo pipefail
+
+          zip=$(ls apps/qa-extension/.output/caliper-*-chrome.zip | head -1)
+          echo "zip: ${zip} ($(stat -c%s "${zip}") bytes)"
+
+          token_response=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${CHROME_CLIENT_ID}" \
+            -d "client_secret=${CHROME_CLIENT_SECRET}" \
+            -d "refresh_token=${CHROME_REFRESH_TOKEN}" \
+            -d "grant_type=refresh_token")
+
+          token=$(echo "$token_response" | jq -r '.access_token // empty')
+          if [ -z "$token" ]; then
+            echo "token exchange FAILED:"
+            echo "$token_response" | jq 'del(.access_token)'
+            exit 1
+          fi
+          echo "token exchange: ok"
+
+          echo "--- PUT (upload) ---"
+          status=$(curl -sS -o /tmp/upload.json -w '%{http_code}' \
+            -X PUT \
+            -H "Authorization: Bearer ${token}" \
+            -H "x-goog-api-version: 2" \
+            -T "${zip}" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}")
+          echo "HTTP ${status}"
+          cat /tmp/upload.json
+          echo
+
+          echo "--- GET (what the store now holds) ---"
+          curl -sS \
+            -H "Authorization: Bearer ${token}" \
+            -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=DRAFT"
+          echo
+
+          {
+            echo "### Upload probe"
+            echo ""
+            echo "- zip: \`$(basename "${zip}")\`"
+            echo "- PUT returned HTTP \`${status}\`"
+            echo "- uploadState: \`$(jq -r '.uploadState // "absent"' /tmp/upload.json)\`"
+            echo "- crxVersion: \`$(jq -r '.crxVersion // "absent"' /tmp/upload.json)\`"
+            echo "- itemError: \`$(jq -c '.itemError // "none"' /tmp/upload.json)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
