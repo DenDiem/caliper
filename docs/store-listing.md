@@ -17,6 +17,9 @@ Caliper QA — UI Marks & Bug Traces for AI Coding Agents
 Mark up any web UI or record a bug trace — DOM, console, network and store — and hand it to Claude Code, Cursor or any AI agent.
 ```
 
+> This is the `description` in `apps/qa-extension/wxt.config.ts` verbatim — the store takes the
+> summary from the manifest, and `build/store-limits.ts` fails the build if it passes 132.
+
 > See `docs/seo.md` for the discoverability strategy behind this name/summary and the GitHub topics.
 
 ## Category
