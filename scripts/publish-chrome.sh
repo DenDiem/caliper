@@ -52,20 +52,22 @@ if [ -z "$token" ]; then
   exit 1
 fi
 
+# Prints the HTTP status and leaves the body in the file named first, so both can be judged.
 api() {
-  curl -sS -o "$2" -w '%{http_code}' \
+  curl -sS -o "$1" -w '%{http_code}' \
     -H "Authorization: Bearer ${token}" \
     -H "x-goog-api-version: 2" \
-    "${@:3}"
+    "${@:2}"
 }
 
 # --- upload ----------------------------------------------------------------------------------------
 
 echo "uploading…"
+: >/tmp/cws-upload.json
 status=$(api /tmp/cws-upload.json -X PUT -T "$zip" \
   "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}")
 
-upload_state=$(jq -r '.uploadState // "absent"' /tmp/cws-upload.json)
+upload_state=$(jq -r '.uploadState // "absent"' /tmp/cws-upload.json 2>/dev/null || echo absent)
 echo "upload: HTTP ${status}, uploadState ${upload_state}"
 
 if [ "$status" != "200" ] || [ "$upload_state" = "FAILURE" ] || [ "$upload_state" = "absent" ]; then
@@ -83,6 +85,7 @@ if [ "$publish" = false ]; then
 fi
 
 echo "submitting for review…"
+: >/tmp/cws-publish.json
 status=$(api /tmp/cws-publish.json -X POST -H 'Content-Length: 0' \
   "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}/publish")
 
