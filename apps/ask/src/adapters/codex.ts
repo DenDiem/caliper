@@ -109,6 +109,14 @@ const buildCaliperSection = (config: InstallConfig): string =>
       "store action / seed the flag), never a bypass. The developer sees it and chooses run-or-skip " +
       'before it executes, so keep it minimal.',
     '',
+    'A QA session can hold two kinds of thing: **marks** (an element and what is wrong with it) and ' +
+      '**bug traces** (a recording of a reproduction — steps, DOM, console, network, store actions, and ' +
+      'a video). Read a trace with `caliper trace <file>`, narrowing it with --steps / --console / ' +
+      '--network / --state / --around <t>, and add --full for request headers and bodies, console ' +
+      'stacks, state diffs and the store snapshots. The `.webm` beside a trace is for a human — never ' +
+      'open it, it carries nothing the trace does not. If QA handed you the archive directly instead of ' +
+      'filing it, `caliper read <path-to-zip|folder>` does the same as `pull` with no Jira credentials.',
+    '',
     'To fix UI defects filed to a Jira issue (a URL or key, with or without the word "Caliper"), run ' +
       '`caliper pull <jira-url|key>` (or `npx -y @dendiem/caliper@latest pull <url>`). It fetches the QA ' +
       'session Caliper attached to the ticket, materialises its screenshots under `.caliper/<id>/`, and ' +
