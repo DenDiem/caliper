@@ -34,14 +34,15 @@ jobs:
       - name: Build and zip
         run: pnpm --filter @caliper/qa-extension zip
 
+      # Not `wxt submit`: the library under it discards the store's answer, so a refused upload
+      # printed the same success line as an accepted one. scripts/publish-chrome.sh reads it.
       - name: Publish to the Chrome Web Store
-        working-directory: apps/qa-extension
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
-        run: pnpm exec wxt submit --chrome-zip ".output/caliper-${GITHUB_REF_NAME#v}-chrome.zip"
+        run: scripts/publish-chrome.sh "apps/qa-extension/.output/caliper-${GITHUB_REF_NAME#v}-chrome.zip"
 
       - name: Attach the zip to the GitHub release
         uses: softprops/action-gh-release@v2
