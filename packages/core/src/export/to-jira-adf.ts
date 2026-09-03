@@ -76,10 +76,14 @@ const heading = (session: CaliperSession): string => {
   return `Caliper QA — ${parts.join(', ')}`;
 };
 
-// The video is the half of a trace made for whoever reads the ticket, so this is the one place its
-// filename belongs — the agent-facing TOON deliberately never names it. Without this the attachments
-// arrive silently and a trace-only session posts a comment claiming "0 defects" and nothing else.
-const traceBullet = (trace: CaliperTrace): AdfNode => {
+// The video is the half of a trace made for whoever reads the ticket, so this is the one place it is
+// named — the agent-facing TOON deliberately never names it. Without this the attachments arrive
+// silently and a trace-only session posts a comment claiming "0 defects" and nothing else.
+//
+// When the upload resolved a media id the video is embedded the same way a mark's screenshot is, so
+// it plays in the comment instead of being a filename to download. The filename is still written when
+// there is no id, which is what happens for a file Jira refused or one uploaded before this existed.
+const traceBullet = (trace: CaliperTrace, index: number, videos?: Record<number, MediaRef>): AdfNode => {
   const {steps, consoleErrors, failedRequests, stateActions} = trace.summary;
   const summary = [
     plural(steps, 'step'),
@@ -95,20 +99,25 @@ const traceBullet = (trace: CaliperTrace): AdfNode => {
     text(summary),
   ];
 
-  if (trace.files.video) {
+  const video = videos?.[index];
+  if (trace.files.video && !video) {
     lines.push({type: 'hardBreak'}, text('video: '), text(trace.files.video, [{type: 'code'}]));
   }
   if (trace.truncated) {
     lines.push({type: 'hardBreak'}, text(`truncated: ${truncationNote(trace)}`));
   }
 
-  return {type: 'listItem', content: [{type: 'paragraph', content: lines}]};
+  const content: AdfNode[] = [{type: 'paragraph', content: lines}];
+  if (video) content.push(mediaSingle(video));
+
+  return {type: 'listItem', content};
 };
 
 export const sessionToJiraComment = (
   session: CaliperSession,
   media?: Record<number, MediaRef>,
   undelivered?: readonly string[],
+  videos?: Record<number, MediaRef>,
 ): AdfDoc => {
   const content: AdfNode[] = [
     {type: 'heading', attrs: {level: 3}, content: [text(heading(session))]},
@@ -125,7 +134,10 @@ export const sessionToJiraComment = (
   if (session.traces.length > 0) {
     content.push(
       {type: 'heading', attrs: {level: 4}, content: [text('Recorded traces')]},
-      {type: 'bulletList', content: session.traces.map(traceBullet)},
+      {
+        type: 'bulletList',
+        content: session.traces.map((trace, index) => traceBullet(trace, index, videos)),
+      },
       {
         type: 'paragraph',
         content: [

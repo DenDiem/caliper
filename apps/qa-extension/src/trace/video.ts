@@ -3,6 +3,7 @@ const OFFSCREEN_PATH = 'offscreen.html';
 export interface VideoOptions {
   maxDurationMs: number;
   videoBitrate: number;
+  videoFormat: string;
 }
 
 export interface VideoResult {
@@ -11,6 +12,12 @@ export interface VideoResult {
 }
 
 const EMPTY: VideoResult = {dataUrl: null, truncated: false};
+
+// The recorder falls back to WebM when the browser cannot encode MP4, so the extension is read back
+// off the data URL the encoder produced rather than off the requested format. Naming a WebM file
+// .mp4 would produce something no player opens.
+export const videoExtension = (dataUrl: string): string =>
+  dataUrl.startsWith('data:video/mp4') ? 'mp4' : 'webm';
 
 const ensureDocument = async (): Promise<void> => {
   if (await chrome.offscreen.hasDocument()) return;

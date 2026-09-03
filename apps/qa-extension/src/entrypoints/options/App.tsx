@@ -214,6 +214,23 @@ export const App = () => {
           250 kbps keeps a 30-second trace near 1 MB, which fits a Jira attachment comfortably.
         </p>
 
+        <label class="opt__field">
+          <span>Video format</span>
+          <select
+            value={trace.videoFormat}
+            onChange={(event) =>
+              saveTrace({videoFormat: event.currentTarget.value === 'webm' ? 'webm' : 'mp4'})
+            }
+          >
+            <option value="mp4">MP4 — plays in Jira and chat</option>
+            <option value="webm">WebM — smaller file</option>
+          </select>
+        </label>
+        <p class="opt__hint">
+          MP4 is what Jira and most chat clients can play in place; WebM is smaller but usually has to
+          be downloaded first. WebM is used regardless when this browser cannot encode MP4.
+        </p>
+
         <span class="opt__label">Shortcuts</span>
         <dl class="opt__keys">
           {shortcuts.map((item) => (

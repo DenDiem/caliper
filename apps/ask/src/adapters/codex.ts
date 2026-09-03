@@ -113,7 +113,7 @@ const buildCaliperSection = (config: InstallConfig): string =>
       '**bug traces** (a recording of a reproduction — steps, DOM, console, network, store actions, and ' +
       'a video). Read a trace with `caliper trace <file>`, narrowing it with --steps / --console / ' +
       '--network / --state / --around <t>, and add --full for request headers and bodies, console ' +
-      'stacks, state diffs and the store snapshots. The `.webm` beside a trace is for a human — never ' +
+      'stacks, state diffs and the store snapshots. The video beside a trace is for a human — never ' +
       'open it, it carries nothing the trace does not. If QA handed you the archive directly instead of ' +
       'filing it, `caliper read <path-to-zip|folder>` does the same as `pull` with no Jira credentials.',
     '',

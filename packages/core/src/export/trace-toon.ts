@@ -65,5 +65,5 @@ export const traceHelpLines = (): readonly string[] => [
   'A trace is a recorded reproduction: read its steps in order, then correlate console/network by their `t` (ms from trace start)',
   'Open a trace with `caliper trace <file>`; narrow it with --network / --console / --state / --around <t> instead of reading it whole',
   'Add --full when a slice is not enough: request headers and bodies, console stacks, state diffs, store snapshots',
-  'The .webm beside a trace is for humans — never open it, it carries nothing the trace does not',
+  'The video beside a trace is for humans — never open it, it carries nothing the trace does not',
 ];

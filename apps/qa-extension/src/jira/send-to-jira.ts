@@ -6,6 +6,18 @@ import {STORAGE} from './jira-config';
 import {addSend, type SendRecord, type SendWarning} from './jira-history';
 import {buildJiraManifest, traceFileEntries} from '../export/export-session';
 
+// Jira decides whether an attachment gets a player or a download link from its content type, so an
+// upload with no type at all is a video nobody can watch in the ticket.
+const CONTENT_TYPES: Record<string, string> = {
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  json: 'application/json',
+  gz: 'application/gzip',
+};
+
+const contentType = (filename: string): string =>
+  CONTENT_TYPES[filename.split('.').pop() ?? ''] ?? 'application/octet-stream';
+
 export type JiraTarget = 'comment' | 'description';
 
 export interface SendOptions {
@@ -75,8 +87,16 @@ const uploadTraceFiles = async (
   session: CaliperSession,
   issueKey: string,
   warnings: SendWarning[],
-): Promise<Set<string>> => {
+): Promise<{delivered: Set<string>; videos: Record<number, MediaRef>}> => {
   const delivered = new Set<string>();
+  const videos: Record<number, MediaRef> = {};
+
+  // Only the video is worth a media id: it is the one trace file a person watches, and an id is what
+  // lets the comment play it inline instead of offering a download.
+  const videoTrace = new Map<string, number>();
+  session.traces.forEach((trace, index) => {
+    if (trace.files.video) videoTrace.set(trace.files.video, index);
+  });
 
   for (const entry of await traceFileEntries(session)) {
     if (entry.bytes.byteLength > ATTACHMENT_LIMIT_BYTES) {
@@ -86,14 +106,24 @@ const uploadTraceFiles = async (
     try {
       // Copied into a fresh view so its buffer is a plain ArrayBuffer — a Uint8Array over the generic
       // ArrayBufferLike (which fflate returns) is not a BlobPart.
-      await uploadAttachment(issueKey, entry.filename, new Blob([new Uint8Array(entry.bytes)]));
+      const attachmentId = await uploadAttachment(
+        issueKey,
+        entry.filename,
+        new Blob([new Uint8Array(entry.bytes)], {type: contentType(entry.filename)}),
+      );
       delivered.add(entry.filename);
+
+      const index = videoTrace.get(entry.filename);
+      if (index !== undefined) {
+        const mediaId = await resolveMediaId(attachmentId).catch(() => null);
+        if (mediaId) videos[index] = {id: mediaId};
+      }
     } catch {
       warnings.push({filename: entry.filename, reason: 'upload-failed'});
     }
   }
 
-  return delivered;
+  return {delivered, videos};
 };
 
 export const sendSessionToJira = async (
@@ -105,9 +135,14 @@ export const sendSessionToJira = async (
 
   const media = attachScreenshots ? await uploadScreenshots(session, issueKey, onProgress) : {};
   const warnings: SendWarning[] = [];
-  const delivered = await uploadTraceFiles(session, issueKey, warnings);
+  const {delivered, videos} = await uploadTraceFiles(session, issueKey, warnings);
   await uploadManifest(session, issueKey, delivered);
-  const body = sessionToJiraComment(session, media, warnings.map((warning) => warning.filename));
+  const body = sessionToJiraComment(
+    session,
+    media,
+    warnings.map((warning) => warning.filename),
+    videos,
+  );
 
   let commentId: string | null = null;
   if (target === 'description') {

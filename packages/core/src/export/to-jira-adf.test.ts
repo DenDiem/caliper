@@ -133,10 +133,23 @@ describe('sessionToJiraComment', () => {
   });
 
   // The video is the half made for the person reading the ticket, so unlike the agent-facing TOON this
-  // is the one output that names it.
-  it('names the video file so a reader knows which attachment to open', () => {
+  // is the one output that names it -- but only when it could not be embedded.
+  it('names the video file when there is no media id to embed it with', () => {
     const doc = sessionToJiraComment({...session([]), traces: [trace()]});
     expect(JSON.stringify(doc)).toContain('caliper-a3f0c1d2.webm');
+  });
+
+  // A filename is something to download; a media node plays where the comment is read, which is the
+  // whole point of attaching a video to the ticket rather than to a zip.
+  it('embeds the video inline when the upload resolved a media id', () => {
+    const doc = sessionToJiraComment({...session([]), traces: [trace()]}, undefined, undefined, {
+      0: {id: 'media-9f2'},
+    });
+
+    const rendered = JSON.stringify(doc);
+    expect(rendered).toContain('"type":"mediaSingle"');
+    expect(rendered).toContain('media-9f2');
+    expect(rendered).not.toContain('caliper-a3f0c1d2.webm');
   });
 
   it('tells a reader which end of a cut-short recording is missing', () => {
