@@ -2,24 +2,39 @@ import {useEffect, useState} from 'preact/hooks';
 import {SessionView} from './SessionView';
 import {TraceView} from './TraceView';
 
-const TRACE_ROUTE = '#trace/';
+const TRACE = '#trace/';
+const DEFECT = '#defect/';
 
-const routeOf = (hash: string): string | null =>
-  hash.startsWith(TRACE_ROUTE) ? hash.slice(TRACE_ROUTE.length) : null;
+interface Route {
+  traceId: string | null;
+  defectId: string | null;
+}
 
-// The hash is the route so the browser's own back button works, which is what a person reaches for
-// after following a trace out of the list.
+const routeOf = (hash: string): Route => ({
+  traceId: hash.startsWith(TRACE) ? hash.slice(TRACE.length) : null,
+  defectId: hash.startsWith(DEFECT) ? hash.slice(DEFECT.length) : null,
+});
+
 export const App = () => {
-  const [traceId, setTraceId] = useState(() => routeOf(location.hash));
+  const [route, setRoute] = useState(() => routeOf(location.hash));
 
   useEffect(() => {
-    const listener = () => setTraceId(routeOf(location.hash));
+    const listener = () => setRoute(routeOf(location.hash));
     addEventListener('hashchange', listener);
     return () => removeEventListener('hashchange', listener);
   }, []);
 
-  if (traceId !== null) {
-    return <TraceView traceId={traceId} onBack={() => history.back()} />;
+  // Not history.back(): the tab is usually opened straight onto a trace from the panel, so there is
+  // no earlier entry to go back to and the button did nothing at all. Going to the list is what the
+  // button says it does, and it is right from either arrival.
+  if (route.traceId !== null) {
+    return <TraceView traceId={route.traceId} onBack={() => (location.hash = '#')} />;
   }
-  return <SessionView onOpenTrace={(id) => (location.hash = `${TRACE_ROUTE}${id}`)} />;
+
+  return (
+    <SessionView
+      focusId={route.defectId}
+      onOpenTrace={(id) => (location.hash = `${TRACE}${id}`)}
+    />
+  );
 };

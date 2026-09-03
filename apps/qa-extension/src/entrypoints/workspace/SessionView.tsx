@@ -10,13 +10,14 @@ import {TaskSheet} from '../sidepanel/TaskSheet';
 import {TraceCard} from '../sidepanel/TraceCard';
 
 interface Props {
+  focusId: string | null;
   onOpenTrace: (traceId: string) => void;
 }
 
 // Everything the panel does except the two things that only make sense against a live tab: starting a
 // recording and arming the picker. Those stay in the panel; this is where the result is read, sorted
 // and sent on.
-export const SessionView = ({onOpenTrace}: Props) => {
+export const SessionView = ({focusId, onOpenTrace}: Props) => {
   const [store, setStore] = useState<CaliperStore | null>(null);
   const [connection, setConnection] = useState<JiraConnection | null>(null);
   const [taskSheet, setTaskSheet] = useState(false);
@@ -32,6 +33,15 @@ export const SessionView = ({onOpenTrace}: Props) => {
     chrome.storage.local.onChanged.addListener(listener);
     return () => chrome.storage.local.onChanged.removeListener(listener);
   }, []);
+
+  // Arriving from a defect card in the panel: the list can be long, so the card it was opened for is
+  // brought into view rather than left to be hunted for.
+  useEffect(() => {
+    if (!focusId || !store) return;
+    const card = document.getElementById(`defect-${focusId}`);
+    card?.scrollIntoView({block: 'center'});
+    card?.classList.add('card--focus');
+  }, [focusId, store]);
 
   if (!store) return <main class="page" />;
 
@@ -105,11 +115,13 @@ export const SessionView = ({onOpenTrace}: Props) => {
           {annotations.map((annotation, position) => (
             <DefectCard
               key={annotation.id}
+              id={`defect-${annotation.id}`}
               annotation={annotation}
               index={position}
               screenshot={
                 annotation.screenshotId ? session.assets[annotation.screenshotId] : undefined
               }
+              onOpen={(defectId) => (location.hash = `#defect/${defectId}`)}
               onRemove={() => void chromeStorageSink.remove(annotation.id).then(refresh)}
             />
           ))}
