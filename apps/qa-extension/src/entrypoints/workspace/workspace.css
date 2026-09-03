@@ -123,3 +123,74 @@ body {
   color: var(--cal-text-hint);
   font-size: 0.8125rem;
 }
+
+.back {
+  margin-bottom: 1.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cal-text-hint);
+  cursor: pointer;
+  font-family: var(--cal-font-sans);
+  font-size: 0.8125rem;
+}
+
+.back:hover {
+  color: var(--cal-text-strong);
+}
+
+.ws-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.ws-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.ws-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ws-btn {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+  color: var(--cal-text-body);
+  cursor: pointer;
+  font-family: var(--cal-font-sans);
+  font-size: 0.8125rem;
+}
+
+.ws-btn:hover {
+  border-color: var(--cal-teal-border-35);
+  color: var(--cal-text-strong);
+}
+
+.ws-btn--primary {
+  border-color: var(--cal-teal-border-45);
+  color: var(--cal-text-strong);
+}
+
+/* The cards come from the panel, where they fill a 380px column. Given a whole tab they would stretch
+   to an unreadable width, so the list keeps the column and the page centres it. */
+.page .list {
+  max-width: 34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card--focus {
+  outline: 2px solid var(--cal-teal);
+  outline-offset: 2px;
+}

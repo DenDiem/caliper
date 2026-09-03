@@ -1593,3 +1593,24 @@ body {
 .trace__open:hover {
   color: var(--cal-text-strong);
 }
+
+.trace--open {
+  cursor: pointer;
+  transition: border-color var(--cal-ease), background var(--cal-ease);
+}
+
+.trace--open:hover {
+  border-color: var(--cal-teal-border-35);
+  background: var(--cal-teal-06);
+}
+
+.trace--open:hover .trace__open {
+  color: var(--cal-text-strong);
+}
+
+/* The controls inside the card keep their own cursor, so nothing looks like it navigates when it
+   does not. */
+.trace--open input,
+.trace--open video {
+  cursor: auto;
+}

@@ -17,7 +17,12 @@ const HUE: Record<string, Hue> = {
 interface Props {
   annotation: CaliperAnnotation;
   index: number;
+  // Set by the workspace so a card opened from the panel can be scrolled to.
+  id?: string;
   screenshot?: string;
+  // The card has always lit up on hover, which only ever revealed the remove button. Beside traces
+  // that now open, the same hover reads as "click me", so it opens too.
+  onOpen?: (id: string) => void;
   onRemove: () => void;
 }
 
@@ -46,10 +51,28 @@ const Shot = ({screenshot}: {screenshot?: string}) => {
 
 const ordinal = (index: number): string => String(index + 1).padStart(2, '0');
 
-export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => {
+const INTERACTIVE = 'input, button, video, a, select, textarea';
+
+export const DefectCard = ({annotation, index, id, screenshot, onOpen, onRemove}: Props) => {
   const hue = HUE[annotation.severity] ?? 'minor';
   const component = annotation.target.componentName ?? annotation.target.tagName;
   const region = annotation.region;
+
+  const open = (): void => {
+    if (onOpen) return onOpen(annotation.id);
+    void chrome.tabs.create({url: chrome.runtime.getURL(`workspace.html#defect/${annotation.id}`)});
+  };
+
+  const rootProps = (className: string) => ({
+    id,
+    class: className,
+    onClick: (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest(INTERACTIVE)) return;
+      open();
+    },
+    title: 'Open this defect',
+  });
 
   const topRight = (
     <div class="card__top-right">
@@ -63,7 +86,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
   // hue = severity, form = intent: a remove-mark drops severity entirely.
   if (annotation.intent === 'remove') {
     return (
-      <li class="card card--remove">
+      <li {...rootProps('card card--remove')}>
         <div class="card__top">
           <span class="card__tag card__tag--remove">REMOVE</span>
           {topRight}
@@ -86,7 +109,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
     const nodes = region.covers.length;
     const zone = `${Math.round(region.box.width)} × ${Math.round(region.box.height)}${nodes ? ` · ${nodes} node${nodes === 1 ? '' : 's'}` : ''}`;
     return (
-      <li class={`card card--${hue}`}>
+      <li {...rootProps(`card card--${hue}`)}>
         <div class="card__top">
           <div class="card__tags">
             <span class="card__pill">{annotation.severity}</span>
@@ -112,7 +135,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
 
   if (hue === 'minor') {
     return (
-      <li class="card card--compact card--minor">
+      <li {...rootProps('card card--compact card--minor')}>
         <div class="card__compact-body">
           <div class="card__compact-note">{annotation.comment}</div>
           <div class="card__compact-meta">
@@ -128,7 +151,7 @@ export const DefectCard = ({annotation, index, screenshot, onRemove}: Props) => 
   }
 
   return (
-    <li class={`card card--${hue}`}>
+    <li {...rootProps(`card card--${hue}`)}>
       <div class="card__top">
         <div class="card__tags">
           <span class="card__pill">{annotation.severity}</span>

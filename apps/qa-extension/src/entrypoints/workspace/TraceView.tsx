@@ -56,15 +56,23 @@ const NetworkRow = ({entry}: {entry: TraceNetworkEntry}) => (
   </li>
 );
 
-export const App = () => {
+interface Props {
+  traceId: string;
+  onBack: () => void;
+}
+
+export const TraceView = ({traceId, onBack}: Props) => {
   const [trace, setTrace] = useState<CaliperTrace | null>(null);
   const [detail, setDetail] = useState<TraceDetail | null>(null);
   const [video, setVideo] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
-    const id = location.hash.slice(1);
-    if (!id) return setMissing(true);
+    const id = traceId;
+    setMissing(false);
+    setTrace(null);
+    setDetail(null);
+    setVideo(null);
 
     void (async () => {
       const store = await readStore();
@@ -80,18 +88,25 @@ export const App = () => {
         if (parsed.success) setDetail(parsed.data);
       }
     })();
-  }, []);
+  }, [traceId]);
+
+  const back = (
+    <button class="back" onClick={onBack}>
+      ← All defects and traces
+    </button>
+  );
 
   if (missing) {
     return (
       <main class="page">
+        {back}
         <p class="empty">
           This trace is no longer in the extension&rsquo;s storage — it was deleted, or its task was.
         </p>
       </main>
     );
   }
-  if (!trace) return <main class="page" />;
+  if (!trace) return <main class="page">{back}</main>;
 
   const errors = (detail?.console ?? []).filter(isError);
   const network = detail?.network ?? [];
@@ -99,6 +114,7 @@ export const App = () => {
 
   return (
     <main class="page">
+      {back}
       <header class="head">
         <h1 class="head__title">{trace.label}</h1>
         <span class="head__meta">

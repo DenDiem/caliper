@@ -45,6 +45,14 @@ export const PanelFooter = ({copied, jiraLabel, onCopyToon, onJira, onJson, onZi
           <button class="link" onClick={onZip}>
             zip
           </button>
+          <button
+            class="link"
+            onClick={() =>
+              void chrome.tabs.create({url: chrome.runtime.getURL('workspace.html')})
+            }
+          >
+            open in tab
+          </button>
           <button class="link" onClick={onClear}>
             clear
           </button>
