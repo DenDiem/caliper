@@ -8,6 +8,9 @@ const MS_PER_SECOND = 1000;
 interface Props {
   trace: CaliperTrace;
   index: number;
+  // The panel opens the workspace in a tab; the workspace routes in place. The card does not need to
+  // know which, only that opening is someone's job.
+  onOpen?: (id: string) => void;
   onRename: (id: string, label: string) => void;
   onRemove: (id: string) => void;
 }
@@ -17,13 +20,25 @@ interface Props {
 const ordinal = (index: number): string => String(index + 1).padStart(2, '0');
 
 // The Fullscreen API is unavailable in a side panel, so the video's own fullscreen button does
-// nothing there. The detail page is an ordinary extension tab, where it works -- and where there is
+// nothing there. The workspace is an ordinary extension tab, where it works -- and where there is
 // room for the console and network read-out the panel has no space for.
-const openDetail = (traceId: string): void => {
-  void chrome.tabs.create({url: chrome.runtime.getURL(`trace.html#${traceId}`)});
+const openInTab = (traceId: string): void => {
+  void chrome.tabs.create({url: chrome.runtime.getURL(`workspace.html#trace/${traceId}`)});
 };
 
-export const TraceCard = ({trace, index, onRename, onRemove}: Props) => {
+// The card is one big target, but the controls inside it are not: renaming, deleting and the video's
+// own transport must not also navigate away.
+const INTERACTIVE = 'input, button, video, a, select, textarea';
+
+export const TraceCard = ({trace, index, onOpen, onRename, onRemove}: Props) => {
+  const open = (): void => (onOpen ? onOpen(trace.id) : openInTab(trace.id));
+
+  const onCardClick = (event: MouseEvent): void => {
+    const target = event.target;
+    if (target instanceof Element && target.closest(INTERACTIVE)) return;
+    open();
+  };
+
   const [video, setVideo] = useState<string | null>(null);
   const [label, setLabel] = useState(trace.label);
 
@@ -37,7 +52,7 @@ export const TraceCard = ({trace, index, onRename, onRemove}: Props) => {
   };
 
   return (
-    <li class="trace">
+    <li class="trace trace--open" onClick={onCardClick} title="Open this trace">
       <div class="trace__head">
         <span class="trace__badge">TRACE</span>
         <span class="trace__index">{ordinal(index)}</span>
@@ -51,7 +66,7 @@ export const TraceCard = ({trace, index, onRename, onRemove}: Props) => {
         <span class="trace__duration">{(trace.durationMs / MS_PER_SECOND).toFixed(1)}s</span>
         <button
           class="trace__open"
-          onClick={() => openDetail(trace.id)}
+          onClick={open}
           title="Open this trace — video, console and network"
           aria-label="Open this trace"
         >
