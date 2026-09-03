@@ -45,6 +45,23 @@ export const uploadAttachment = async (issueKey: string, filename: string, blob:
   return id;
 };
 
+// Read back what the issue actually holds. Every upload here is a fetch whose failure modes are not
+// all exceptions -- an attachment can be accepted and still not end up on the issue -- and a file that
+// silently never arrived is the worst outcome for a bug report, because the reader has no way to know
+// something is missing.
+export const listAttachmentNames = async (issueKey: string): Promise<Set<string>> => {
+  const response = await fetch(`${await apiBase()}/issue/${issueKey}?fields=attachment`, {
+    headers: {Authorization: await authHeader(), Accept: 'application/json'},
+  });
+  if (!response.ok) throw new Error(`could not read attachments: ${response.status}`);
+
+  const issue: {fields?: {attachment?: {filename?: string}[]}} = await response.json();
+  const names = (issue.fields?.attachment ?? []).flatMap((item) =>
+    item.filename === undefined ? [] : [item.filename],
+  );
+  return new Set(names);
+};
+
 export const resolveMediaId = async (attachmentId: string): Promise<string | null> => {
   const response = await fetch(`${await apiBase()}/attachment/content/${attachmentId}`, {
     headers: {Authorization: await authHeader(), Range: 'bytes=0-0'},

@@ -1,7 +1,14 @@
 import type {CaliperSession, MediaRef} from '@caliper/core';
 import {screenshotFilename, sessionToJiraComment} from '@caliper/core';
 import {devSend} from './jira-dev';
-import {postComment, resolveMediaId, setDescription, updateComment, uploadAttachment} from './jira-client';
+import {
+  listAttachmentNames,
+  postComment,
+  resolveMediaId,
+  setDescription,
+  updateComment,
+  uploadAttachment,
+} from './jira-client';
 import {STORAGE} from './jira-config';
 import {addSend, type SendRecord, type SendWarning} from './jira-history';
 import {buildJiraManifest, traceFileEntries} from '../export/export-session';
@@ -126,6 +133,28 @@ const uploadTraceFiles = async (
   return {delivered, videos};
 };
 
+// An upload that resolved without throwing is not proof the file is on the issue, and a trace whose
+// video quietly never arrived reads exactly like a trace that never had one. So the issue is asked
+// what it actually holds, and anything missing is named in the comment instead of being lost.
+// A failure to perform the check is not itself a reason to fail the send.
+const confirmDelivered = async (
+  issueKey: string,
+  delivered: Set<string>,
+  warnings: SendWarning[],
+): Promise<void> => {
+  if (delivered.size === 0) return;
+
+  const onIssue = await listAttachmentNames(issueKey).catch(() => null);
+  if (!onIssue) return;
+
+  for (const filename of delivered) {
+    if (!onIssue.has(filename)) {
+      warnings.push({filename, reason: 'not-on-issue'});
+      delivered.delete(filename);
+    }
+  }
+};
+
 export const sendSessionToJira = async (
   session: CaliperSession,
   options: SendOptions,
@@ -136,7 +165,16 @@ export const sendSessionToJira = async (
   const media = attachScreenshots ? await uploadScreenshots(session, issueKey, onProgress) : {};
   const warnings: SendWarning[] = [];
   const {delivered, videos} = await uploadTraceFiles(session, issueKey, warnings);
+  // Before the manifest, so `caliper pull` is told about the files that are really there.
+  await confirmDelivered(issueKey, delivered, warnings);
   await uploadManifest(session, issueKey, delivered);
+
+  // A media id resolved at upload time is worthless if the file is not on the issue: embedding it
+  // would put a broken player in the comment instead of the filename that says what is missing.
+  session.traces.forEach((trace, index) => {
+    const filename = trace.files.video;
+    if (filename !== undefined && !delivered.has(filename)) delete videos[index];
+  });
   const body = sessionToJiraComment(
     session,
     media,
