@@ -122,13 +122,28 @@ export const App = () => {
 
       <RecordBar />
 
-      <button class={taskSheet ? 'chip chip--open' : 'chip'} onClick={() => setTaskSheet(!taskSheet)}>
-        <div class="chip__body">
-          <div class="chip__label">TASK</div>
-          <div class="chip__name">{taskName}</div>
-        </div>
-        <span class="chip__caret">{taskSheet ? '▴' : '▾'}</span>
-      </button>
+      <div class="chip-row">
+        <button
+          class={taskSheet ? 'chip chip--open' : 'chip'}
+          onClick={() => setTaskSheet(!taskSheet)}
+        >
+          <div class="chip__body">
+            <div class="chip__label">TASK</div>
+            <div class="chip__name">{taskName}</div>
+          </div>
+          <span class="chip__caret">{taskSheet ? '▴' : '▾'}</span>
+        </button>
+        {/* Starting the next task was three interactions deep: open the sheet, name it, confirm. It
+            is the most common thing done here, so it gets one. */}
+        <button
+          class="chip-new"
+          onClick={() => void chromeStorageSink.createSession().then(refresh)}
+          title="Start a new task"
+          aria-label="Start a new task"
+        >
+          +
+        </button>
+      </div>
 
       {taskSheet ? (
         <TaskSheet store={store} onChange={refresh} onClose={() => setTaskSheet(false)} />
@@ -166,10 +181,11 @@ export const App = () => {
           </div>
 
           <ul class="list">
-            {traces.map((trace) => (
+            {traces.map((trace, index) => (
               <TraceCard
                 key={trace.id}
                 trace={trace}
+                index={index}
                 onRename={(id, label) => void chromeStorageSink.renameTrace(id, label).then(refresh)}
                 onRemove={(id) => void chromeStorageSink.removeTrace(id).then(refresh)}
               />

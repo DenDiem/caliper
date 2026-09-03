@@ -1,0 +1,125 @@
+@import '@caliper/design/tokens.css';
+
+body {
+  margin: 0;
+  background: var(--cal-ground);
+  color: var(--cal-text-body);
+  font-family: var(--cal-font-sans);
+}
+
+.page {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.head__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.head__meta {
+  color: var(--cal-text-hint);
+  font-size: 0.875rem;
+}
+
+.note {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 2px solid var(--cal-major);
+  color: var(--cal-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+  background: #000;
+}
+
+.section {
+  margin-top: 2rem;
+}
+
+.section__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cal-text-hint);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 3.5rem auto auto 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--cal-divider);
+  font-family: var(--cal-font-mono);
+  font-size: 0.8125rem;
+}
+
+/* The whole point of the page: a failure has to be findable without reading every row. */
+.row--bad {
+  background: var(--cal-blocker-fill);
+}
+
+.row__t,
+.row__ms {
+  color: var(--cal-text-hint);
+}
+
+.row__level,
+.row__method {
+  color: var(--cal-text-secondary);
+}
+
+.row__status--bad {
+  color: var(--cal-blocker);
+  font-weight: 600;
+}
+
+.row__url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__body {
+  grid-column: 2 / -1;
+}
+
+.row__text {
+  white-space: pre-wrap;
+}
+
+.row__stack,
+.row__why {
+  grid-column: 2 / -1;
+  margin: 0.25rem 0 0;
+  color: var(--cal-text-hint);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.empty {
+  color: var(--cal-text-hint);
+  font-size: 0.875rem;
+}
+
+.foot {
+  margin-top: 3rem;
+  color: var(--cal-text-hint);
+  font-size: 0.8125rem;
+}

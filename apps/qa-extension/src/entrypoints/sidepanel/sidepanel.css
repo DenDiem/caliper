@@ -1547,3 +1547,49 @@ body {
   color: var(--cal-text-body-soft);
   font: 400 11px/1.45 var(--cal-font-sans);
 }
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 12px 0;
+}
+
+.chip-row .chip {
+  flex: 1;
+  margin: 0;
+}
+
+.chip-new {
+  width: 38px;
+  border: 1px solid var(--cal-border-control);
+  border-radius: var(--cal-radius-8);
+  background: var(--cal-card);
+  color: var(--cal-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip-new:hover {
+  border-color: var(--cal-teal-border-35);
+  color: var(--cal-text-strong);
+}
+
+.trace__index {
+  color: var(--cal-text-hint);
+  font-family: var(--cal-font-mono);
+  font-size: 11px;
+}
+
+.trace__open {
+  border: 0;
+  background: none;
+  color: var(--cal-text-hint);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.trace__open:hover {
+  color: var(--cal-text-strong);
+}

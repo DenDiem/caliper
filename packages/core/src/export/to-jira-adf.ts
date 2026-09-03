@@ -153,7 +153,7 @@ export const sessionToJiraComment = (
     content.push({
       type: 'paragraph',
       content: [
-        text('Not attached (too large or refused by Jira): '),
+        text('Missing from this issue (too large, refused, or it did not arrive): '),
         text(undelivered.join(', '), [{type: 'code'}]),
         text('. The rest of the session is here and complete.'),
       ],

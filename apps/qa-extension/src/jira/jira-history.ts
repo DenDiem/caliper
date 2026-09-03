@@ -5,7 +5,7 @@ import {STORAGE} from './jira-config';
 // one was incomplete, rather than the fact living only in a toast they already dismissed.
 export interface SendWarning {
   filename: string;
-  reason: 'too-large' | 'upload-failed';
+  reason: 'too-large' | 'upload-failed' | 'not-on-issue';
 }
 
 export interface SendRecord {
