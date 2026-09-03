@@ -48,8 +48,8 @@ export const buildGuidanceBody = (config: InstallConfig): string =>
     '```',
     '',
     'Every `t` is milliseconds from the trace start, so a step, a console error and a failed request ' +
-      'sharing a timestamp are the same instant. **Never open the `.webm`** beside a trace — it is for ' +
-      'the human reading the ticket and carries nothing the trace does not.',
+      'sharing a timestamp are the same instant. **Never open the video file** beside a trace — it is ' +
+      'for the human reading the ticket and carries nothing the trace does not.',
     '',
     'Two notes a trace may carry. `truncated` says **which end** is missing — a length limit stops the ' +
       'recording so the end is gone, while a buffer overflow drops the earliest events; read it rather ' +

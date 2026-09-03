@@ -5,7 +5,7 @@ import {runOp} from '../sinks/store';
 import {attachCdp, type CdpCollector} from './cdp';
 import {putBlob} from './blob-store';
 import {readTraceOptions} from './options';
-import {pushVideoFrame, startFrameVideo, startVideo, stopVideo} from './video';
+import {pushVideoFrame, startFrameVideo, startVideo, stopVideo, videoExtension} from './video';
 
 const ID_LENGTH = 8;
 // A service worker can be unloaded whenever it goes quiet — and the page hanging is a plausible thing
@@ -187,6 +187,7 @@ export const startTrace = async (tabId: number, label: string): Promise<boolean>
   const videoOptions = {
     maxDurationMs: options.maxDurationMs,
     videoBitrate: options.videoBitrate,
+    videoFormat: options.videoFormat,
   };
 
   // tabCapture is the better picture, but it needs the extension to have been invoked on this tab from
@@ -272,7 +273,7 @@ export const stopTrace = async (): Promise<boolean> => {
     files: {
       trace: `${base}.trace.json`,
       replay: merged.replay.length > 0 ? `${base}.replay.ndjson.gz` : undefined,
-      video: video.dataUrl ? `${base}.webm` : undefined,
+      video: video.dataUrl ? `${base}.${videoExtension(video.dataUrl)}` : undefined,
     },
     redactSecrets: options.redactSecrets,
     maxStateDiffBytes: MAX_STATE_DIFF_BYTES,

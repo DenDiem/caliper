@@ -197,7 +197,7 @@ const traceHelp = (): string =>
     'timestamp from the trace (12400, or 12.4s) and keeps 2s either side of it across every channel -',
     'use it to read the moment a step, error or failed request points at, not the whole recording.',
     '',
-    'The .webm beside a trace is for humans; it carries nothing this command does not.',
+    'The video beside a trace is for humans; it carries nothing this command does not.',
   ].join('\n');
 
 const helpForCommand = (command: Command): string => {

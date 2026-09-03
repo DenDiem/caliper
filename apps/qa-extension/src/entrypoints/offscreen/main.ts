@@ -3,13 +3,18 @@ const MAX_FPS = 12;
 const FRAME_WIDTH = 1280;
 const FRAME_HEIGHT = 800;
 const CHUNK_MS = 1000;
-const PREFERRED = 'video/webm;codecs=vp9';
-const FALLBACK = 'video/webm;codecs=vp8';
+// Ordered by preference within each container. MP4 is tried first when it is asked for, but WebM
+// always follows as a fallback: Chrome only learned to encode MP4 in MediaRecorder recently, and a
+// recording that fails to start is worse than one in the less convenient container.
+const MP4_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4'];
+const WEBM_TYPES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+const LAST_RESORT = 'video/webm';
 
 interface StartPayload {
   streamId?: string;
   maxDurationMs: number;
   videoBitrate: number;
+  videoFormat?: string;
 }
 
 export interface VideoResult {
@@ -23,11 +28,17 @@ let maxChunks = 0;
 let truncated = false;
 let frameCanvas: HTMLCanvasElement | null = null;
 let frameTrack: CanvasCaptureMediaStreamTrack | null = null;
+// Held for the life of a recording so the Blob is labelled with the type the recorder actually used,
+// not with a preference the browser may have declined.
+let activeMime = '';
 
 const isCanvasTrack = (track: MediaStreamTrack): track is CanvasCaptureMediaStreamTrack =>
   'requestFrame' in track;
 
-const mimeType = (): string => (MediaRecorder.isTypeSupported(PREFERRED) ? PREFERRED : FALLBACK);
+const mimeType = (format?: string): string => {
+  const wanted = format === 'webm' ? WEBM_TYPES : [...MP4_TYPES, ...WEBM_TYPES];
+  return wanted.find((type) => MediaRecorder.isTypeSupported(type)) ?? LAST_RESORT;
+};
 
 const isStartPayload = (value: unknown): value is StartPayload =>
   typeof value === 'object' &&
@@ -48,7 +59,7 @@ const tabConstraints = (streamId: string): MediaStreamConstraints => ({
   video: {mandatory: {chromeMediaSource: 'tab', chromeMediaSourceId: streamId}},
 });
 
-const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Promise<void> => {
+const start = async ({streamId, maxDurationMs, videoBitrate, videoFormat}: StartPayload): Promise<void> => {
   if (!streamId) throw new Error('tab capture needs a stream id');
   // Two starts would orphan the first recorder and interleave both sources into one blob.
   if (recorder) throw new Error('a recording is already running');
@@ -64,8 +75,9 @@ const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Pro
   chunks = [];
   truncated = false;
   maxChunks = Math.max(1, Math.ceil(maxDurationMs / CHUNK_MS));
+  activeMime = mimeType(videoFormat);
 
-  recorder = new MediaRecorder(stream, {mimeType: mimeType(), videoBitsPerSecond: videoBitrate});
+  recorder = new MediaRecorder(stream, {mimeType: activeMime, videoBitsPerSecond: videoBitrate});
   recorder.ondataavailable = (event: BlobEvent) => {
     if (event.data.size === 0) return;
     chunks.push(event.data);
@@ -82,7 +94,7 @@ const start = async ({streamId, maxDurationMs, videoBitrate}: StartPayload): Pro
 // The screencast path: frames arrive one at a time from the debugger session, so the canvas track is
 // created at rate 0 and each frame is pushed explicitly. That keeps the encoded timeline matched to the
 // frames that actually arrived instead of inventing a clock.
-const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): boolean => {
+const startFrames = ({maxDurationMs, videoBitrate, videoFormat}: StartPayload): boolean => {
   if (recorder) return false;
 
   frameCanvas = document.createElement('canvas');
@@ -96,8 +108,9 @@ const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): boolean => {
   chunks = [];
   truncated = false;
   maxChunks = Math.max(1, Math.ceil(maxDurationMs / CHUNK_MS));
+  activeMime = mimeType(videoFormat);
 
-  recorder = new MediaRecorder(stream, {mimeType: mimeType(), videoBitsPerSecond: videoBitrate});
+  recorder = new MediaRecorder(stream, {mimeType: activeMime, videoBitsPerSecond: videoBitrate});
   recorder.ondataavailable = (event: BlobEvent) => {
     if (event.data.size === 0) return;
     chunks.push(event.data);
@@ -112,7 +125,7 @@ const startFrames = ({maxDurationMs, videoBitrate}: StartPayload): boolean => {
 
 const finalise = (active: MediaRecorder, resolve: (result: VideoResult) => void): void => {
   for (const track of active.stream.getTracks()) track.stop();
-  const blob = new Blob(chunks, {type: mimeType()});
+  const blob = new Blob(chunks, {type: activeMime});
   recorder = null;
   chunks = [];
   frameCanvas = null;
